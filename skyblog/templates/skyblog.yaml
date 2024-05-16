@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: skyblog
+  name: skyblog
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: skyblog
+  template:
+    metadata:
+      labels:
+        app: skyblog
+    spec:
+      containers:
+      - image: nginx
+        name: nginx
+        volumeMounts:
+        - mountPath: /usr/share/nginx/html/index.html
+          name: skyblog-content
+          subPath: index.html
+        resources:
+          limits:
+            cpu: 100m
+            memory: 128Mi
+      volumes:
+      - name: skyblog-content
+        configMap:
+          name: skyblog-content
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: skyblog-content
+data:
+  index.html: |
+    <title>Skyf0l</title>
+
+    <h1>Skyf0l</h1>
+    That's a zero, not a capital o please.
+
+    <ul>
+      <li><a href="https://github.com/skyf0l">github</a></li>
+      <li><a href="https://discord.com/users/276962910268555264">discord</a>, @skyf0l</li>
+      <li>skyf0lmails@proton.me (i dont read it)</li>
+    </ul>
+
+    Deployed on Kubernetes)
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: skyblog
+spec:
+  ports:
+  - port: 80
+    targetPort: 80
+  selector:
+    app: skyblog
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: nginx
+spec:
+  entryPoints:
+  - web
+  routes:
+  - match: Host(`skyf0l.dev`) && PathPrefix(`/`)
+    kind: Rule
+    services:
+    - name: skyblog
+      port: 80
