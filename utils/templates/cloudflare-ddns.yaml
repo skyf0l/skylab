@@ -98,7 +98,7 @@ data:
         }
       ],
       "a": true,
-      "aaaa": true,
+      "aaaa": false,
       "purgeUnknownRecords": false,
       "ttl": 300
     }
