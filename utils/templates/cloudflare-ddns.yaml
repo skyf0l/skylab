@@ -48,8 +48,8 @@ spec:
         - name: cloudflare-ddns-config
           mountPath: /cloudflare-ddns-config
       containers:
-      - image: cloudflare-ddns
-        name: timothyjmiller/cloudflare-ddns:latest
+      - name: cloudflare-ddns
+        image: timothyjmiller/cloudflare-ddns:latest
         env:
         - name: CONFIG_PATH
           value: /etc/cloudflare-ddns/
