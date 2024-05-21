@@ -20,7 +20,7 @@ spec:
         command:
         - 'sh'
         - '-c'
-        - 'envsubst < /cloudflare-ddns-config/config.json.template > /config/config.json'
+        - 'envsubst < /cloudflare-ddns-config-template/config.json > /config/config.json'
         env:
         - name: API_TOKEN
           valueFrom:
@@ -45,8 +45,8 @@ spec:
         volumeMounts:
         - name: config
           mountPath: /config
-        - name: cloudflare-ddns-config
-          mountPath: /cloudflare-ddns-config
+        - name: cloudflare-ddns-config-template
+          mountPath: /cloudflare-ddns-config-template
       containers:
       - name: cloudflare-ddns
         image: timothyjmiller/cloudflare-ddns:latest
@@ -55,25 +55,25 @@ spec:
           value: /etc/cloudflare-ddns/
         volumeMounts:
         - mountPath: /etc/cloudflare-ddns
-          name: config-cloudflare-ddns
+          name: config
           readOnly: true
         resources:
           limits:
             memory: '32Mi'
             cpu: '50m'
       volumes:
-      - name: cloudflare-ddns-config
+      - name: cloudflare-ddns-config-template
         configMap:
-          name: cloudflare-ddns-config
+          name: cloudflare-ddns-config-template
       - name: config
         emptyDir: {}
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: cloudflare-ddns-config
+  name: cloudflare-ddns-config-template
 data:
-  config.json.template: |
+  config.json: |
     {
       "cloudflare": [
         {
