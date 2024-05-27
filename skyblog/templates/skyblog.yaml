@@ -73,3 +73,8 @@ spec:
     services:
     - name: skyblog
       port: 80
+  - match: Host(`skyblogbi7n34iohqbbq2ot2e63c4676tblblupigkti2l4jzhqzx2yd.onion`) && PathPrefix(`/`)
+    kind: Rule
+    services:
+    - name: skyblog
+      port: 80
