@@ -63,13 +63,15 @@ spec:
 apiVersion: traefik.containo.us/v1alpha1
 kind: IngressRoute
 metadata:
-  name: nginx
+  name: skyblog-route
 spec:
   entryPoints:
   - web
   routes:
   - match: Host(`skyf0l.dev`) && PathPrefix(`/`)
     kind: Rule
+    middlewares:
+      - name: skyblog-tor-location
     services:
     - name: skyblog
       port: 80
@@ -78,3 +80,12 @@ spec:
     services:
     - name: skyblog
       port: 80
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: skyblog-tor-location
+spec:
+  headers:
+    customResponseHeaders:
+      Onion-Location: "skyblogbi7n34iohqbbq2ot2e63c4676tblblupigkti2l4jzhqzx2yd.onion"
