@@ -1,0 +1,30 @@
+prometheus:
+  prometheusSpec:
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: local-path
+          accessModes: [ "ReadWriteOnce" ]
+          resources:
+            requests:
+              storage: 10Gi
+
+# See <https://hodovi.cc/blog/configuring-kube-prometheus-stack-dashboards-and-alerts-for-k3s-compatibility/>
+
+defaultRules:
+  # The default rules are not working for `k3s`, so we disable them.
+  create: false
+
+# Source for issues/solutions: https://github.com/k3s-io/k3s/issues/3619#issuecomment-1425852034
+# `k3s` exposes all metrics combined for each component, so we don't need to scrape them separately
+# We'll only scrape kubelet, otherwise we'd get duplicate metrics.
+kubelet:
+  enabled: true
+# Kubernetes API server collects data from master nodes, while kubelet collects data from master and worker nodes
+# To not duplicate metrics we'll only scrape Kubelet
+kubeApiServer: {}
+kubeControllerManager: {}
+kubeProxy: {}
+kubeScheduler: {}
+# `k3s` runs SQLite by default and not etcd, so we don't need to scrape etcd.
+kubeEtcd: {}

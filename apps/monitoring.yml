@@ -8,12 +8,18 @@ metadata:
 spec:
   project: default
   sources:
-  - repoURL: 'https://github.com/skyf0l/skylab.git'
-    path: monitoring
-    targetRevision: HEAD
   - repoURL: 'https://prometheus-community.github.io/helm-charts'
     targetRevision: 69.2.0
     chart: kube-prometheus-stack
+    helm:
+      valueFiles:
+      - $values/monitoring/values.yml
+  - repoURL: 'https://github.com/skyf0l/skylab.git'
+    ref: values
+    targetRevision: HEAD
+  - repoURL: 'https://github.com/skyf0l/skylab.git'
+    path: monitoring
+    targetRevision: HEAD
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: monitoring
