@@ -1,0 +1,14 @@
+project: default
+source:
+  repoURL: 'https://github.com/skyf0l/skylab.git'
+  path: skyblog
+  targetRevision: HEAD
+destination:
+  server: 'https://kubernetes.default.svc'
+  namespace: skyblog
+syncPolicy:
+  automated:
+    prune: true
+    selfHeal: true
+  syncOptions:
+  - CreateNamespace=true
