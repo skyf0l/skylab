@@ -18,9 +18,9 @@ spec:
       - name: init-config
         image: bhgedigital/envsubst:latest
         command:
-        - 'sh'
-        - '-c'
-        - 'envsubst < /cloudflare-ddns-config-template/config.json > /config/config.json'
+        - "sh"
+        - "-c"
+        - "envsubst < /cloudflare-ddns-config-template/config.json > /config/config.json"
         env:
         - name: API_TOKEN
           valueFrom:
@@ -59,8 +59,8 @@ spec:
           readOnly: true
         resources:
           limits:
-            memory: '32Mi'
-            cpu: '50m'
+            memory: "32Mi"
+            cpu: "50m"
       volumes:
       - name: cloudflare-ddns-config-template
         configMap:
@@ -93,6 +93,10 @@ data:
             {
               "name": "pi",
               "proxied": false
+            },
+            {
+              "name": "*",
+              "proxied": true
             }
           ]
         }
@@ -102,6 +106,7 @@ data:
       "purgeUnknownRecords": false,
       "ttl": 300
     }
+
 # ---
 # apiVersion: v1
 # kind: Secret
