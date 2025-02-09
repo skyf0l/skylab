@@ -1,7 +1,7 @@
 apiVersion: traefik.containo.us/v1alpha1
 kind: IngressRoute
 metadata:
-  name: kube-prometheus-stack-grafana-route
+  name: monitoring-grafana-route
 spec:
   entryPoints:
   - web
@@ -9,5 +9,5 @@ spec:
   - match: Host(`cluster.skyf0l.dev`)
     kind: Rule
     services:
-    - name: kube-prometheus-stack-grafana
+    - name: monitoring-grafana
       port: 80
