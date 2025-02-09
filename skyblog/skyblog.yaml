@@ -118,7 +118,7 @@ spec:
   - match: Host(`skyf0l.dev`) && PathPrefix(`/`)
     kind: Rule
     middlewares:
-      - name: skyblog-tor-location
+    - name: skyblog-tor-location
     services:
     - name: skyblog
       port: 80
