@@ -13,10 +13,9 @@ spec:
     chart: traefik
     helm:
       valueFiles:
-      - $values/values.yaml
+      - $values/traefik/values.yml
   - repoURL: 'https://github.com/skyf0l/skylab.git'
     ref: values
-    path: traefik
     targetRevision: HEAD
   - repoURL: 'https://github.com/skyf0l/skylab.git'
     path: traefik
