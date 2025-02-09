@@ -7,10 +7,20 @@ metadata:
   - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
-  source:
-    repoURL: 'https://traefik.github.io/charts'
+  sources:
+  - repoURL: 'https://traefik.github.io/charts'
     targetRevision: 34.3.0
     chart: traefik
+    helm:
+      valueFiles:
+      - $values/values.yaml
+  - repoURL: 'https://github.com/skyf0l/skylab.git'
+    ref: values
+    path: traefik
+    targetRevision: HEAD
+  - repoURL: 'https://github.com/skyf0l/skylab.git'
+    path: traefik
+    targetRevision: HEAD
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: traefik
