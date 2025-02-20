@@ -1,0 +1,10 @@
+{
+  "diffEditor.ignoreTrimWhitespace": false,
+  "editor.bracketPairColorization.enabled": true,
+  "editor.detectIndentation": false,
+  "editor.insertSpaces": false,
+  "editor.minimap.enabled": true,
+  "editor.renderWhitespace": "all",
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode"
+}
