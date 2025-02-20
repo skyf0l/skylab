@@ -15,58 +15,58 @@ spec:
         app: cloudflare-ddns
     spec:
       initContainers:
-      - name: init-config
-        image: bhgedigital/envsubst:latest
-        command:
-        - "sh"
-        - "-c"
-        - "envsubst < /cloudflare-ddns-config-template/config.json > /config/config.json"
-        env:
-        - name: API_TOKEN
-          valueFrom:
-            secretKeyRef:
-              name: cloudflare-ddns-secret
-              key: API_TOKEN
-        - name: API_KEY
-          valueFrom:
-            secretKeyRef:
-              name: cloudflare-ddns-secret
-              key: API_KEY
-        - name: ACCOUNT_EMAIL
-          valueFrom:
-            secretKeyRef:
-              name: cloudflare-ddns-secret
-              key: ACCOUNT_EMAIL
-        - name: ZONE_ID
-          valueFrom:
-            secretKeyRef:
-              name: cloudflare-ddns-secret
-              key: ZONE_ID
-        volumeMounts:
-        - name: config
-          mountPath: /config
-        - name: cloudflare-ddns-config-template
-          mountPath: /cloudflare-ddns-config-template
+        - name: init-config
+          image: bhgedigital/envsubst:latest
+          command:
+            - "sh"
+            - "-c"
+            - "envsubst < /cloudflare-ddns-config-template/config.json > /config/config.json"
+          env:
+            - name: API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflare-ddns-secret
+                  key: API_TOKEN
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflare-ddns-secret
+                  key: API_KEY
+            - name: ACCOUNT_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflare-ddns-secret
+                  key: ACCOUNT_EMAIL
+            - name: ZONE_ID
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflare-ddns-secret
+                  key: ZONE_ID
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: cloudflare-ddns-config-template
+              mountPath: /cloudflare-ddns-config-template
       containers:
-      - name: cloudflare-ddns
-        image: timothyjmiller/cloudflare-ddns:latest
-        env:
-        - name: CONFIG_PATH
-          value: /etc/cloudflare-ddns/
-        volumeMounts:
-        - mountPath: /etc/cloudflare-ddns
-          name: config
-          readOnly: true
-        resources:
-          limits:
-            memory: "32Mi"
-            cpu: "50m"
+        - name: cloudflare-ddns
+          image: timothyjmiller/cloudflare-ddns:latest
+          env:
+            - name: CONFIG_PATH
+              value: /etc/cloudflare-ddns/
+          volumeMounts:
+            - mountPath: /etc/cloudflare-ddns
+              name: config
+              readOnly: true
+          resources:
+            limits:
+              memory: "32Mi"
+              cpu: "50m"
       volumes:
-      - name: cloudflare-ddns-config-template
-        configMap:
-          name: cloudflare-ddns-config-template
-      - name: config
-        emptyDir: {}
+        - name: cloudflare-ddns-config-template
+          configMap:
+            name: cloudflare-ddns-config-template
+        - name: config
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: ConfigMap

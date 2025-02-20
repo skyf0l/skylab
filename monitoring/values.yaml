@@ -4,7 +4,7 @@ prometheus:
       volumeClaimTemplate:
         spec:
           storageClassName: local-path
-          accessModes: [ "ReadWriteOnce" ]
+          accessModes: ["ReadWriteOnce"]
           resources:
             requests:
               storage: 10Gi

@@ -4,10 +4,10 @@ metadata:
   name: monitoring-grafana-route
 spec:
   entryPoints:
-  - web
+    - web
   routes:
-  - match: Host(`cluster.skyf0l.dev`)
-    kind: Rule
-    services:
-    - name: monitoring-grafana
-      port: 80
+    - match: Host(`cluster.skyf0l.dev`)
+      kind: Rule
+      services:
+        - name: monitoring-grafana
+          port: 80

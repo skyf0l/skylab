@@ -15,40 +15,40 @@ spec:
         app: tor
     spec:
       initContainers:
-      - name: init
-        image: busybox
-        command:
-        - 'sh'
-        - '-c'
-        - 'cp /hs_ed25519_secret_key /var/lib/tor/traefik/hs_ed25519_secret_key && chown 101:65533 /var/lib/tor/ -R && chmod 700 /var/lib/tor/ -R'
-        volumeMounts:
-        - mountPath: /var/lib/tor/traefik
-          name: hs-config
-        - mountPath: /hs_ed25519_secret_key
-          name: hs-secret-key
-          subPath: hs_ed25519_secret_key
+        - name: init
+          image: busybox
+          command:
+            - "sh"
+            - "-c"
+            - "cp /hs_ed25519_secret_key /var/lib/tor/traefik/hs_ed25519_secret_key && chown 101:65533 /var/lib/tor/ -R && chmod 700 /var/lib/tor/ -R"
+          volumeMounts:
+            - mountPath: /var/lib/tor/traefik
+              name: hs-config
+            - mountPath: /hs_ed25519_secret_key
+              name: hs-secret-key
+              subPath: hs_ed25519_secret_key
       containers:
-      - image: dperson/torproxy
-        name: tor
-        volumeMounts:
-        - mountPath: /etc/tor/torrc
-          name: torrc
-          subPath: torrc
-        - mountPath: /var/lib/tor/traefik
-          name: hs-config
-        resources:
-          limits:
-            cpu: 100m
-            memory: 128Mi
+        - image: dperson/torproxy
+          name: tor
+          volumeMounts:
+            - mountPath: /etc/tor/torrc
+              name: torrc
+              subPath: torrc
+            - mountPath: /var/lib/tor/traefik
+              name: hs-config
+          resources:
+            limits:
+              cpu: 100m
+              memory: 128Mi
       volumes:
-      - name: torrc
-        configMap:
-          name: torrc
-      - name: hs-config
-        emptyDir: {}
-      - name: hs-secret-key
-        secret:
-          secretName: tor-hs-secret-key
+        - name: torrc
+          configMap:
+            name: torrc
+        - name: hs-config
+          emptyDir: {}
+        - name: hs-secret-key
+          secret:
+            secretName: tor-hs-secret-key
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -76,11 +76,11 @@ metadata:
   name: tor
 spec:
   ports:
-  - name: http
-    port: 80
-    targetPort: 80
-  - name: https
-    port: 443
-    targetPort: 443
+    - name: http
+      port: 80
+      targetPort: 80
+    - name: https
+      port: 443
+      targetPort: 443
   selector:
     app: tor

@@ -15,26 +15,26 @@ spec:
         app: skyblog
     spec:
       containers:
-      - image: nginx
-        name: nginx
-        volumeMounts:
-        - mountPath: /usr/share/nginx/html/index.html
-          name: content
-          subPath: index.html
-        - mountPath: /etc/nginx/nginx.conf
-          name: nginx-config
-          subPath: nginx.conf
-        resources:
-          limits:
-            cpu: 100m
-            memory: 128Mi
+        - image: nginx
+          name: nginx
+          volumeMounts:
+            - mountPath: /usr/share/nginx/html/index.html
+              name: content
+              subPath: index.html
+            - mountPath: /etc/nginx/nginx.conf
+              name: nginx-config
+              subPath: nginx.conf
+          resources:
+            limits:
+              cpu: 100m
+              memory: 128Mi
       volumes:
-      - name: content
-        configMap:
-          name: skyblog-content
-      - name: nginx-config
-        configMap:
-          name: skyblog-nginx-config
+        - name: content
+          configMap:
+            name: skyblog-content
+        - name: nginx-config
+          configMap:
+            name: skyblog-nginx-config
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -102,8 +102,8 @@ metadata:
   name: skyblog
 spec:
   ports:
-  - port: 80
-    targetPort: 80
+    - port: 80
+      targetPort: 80
   selector:
     app: skyblog
 ---
@@ -113,20 +113,20 @@ metadata:
   name: skyblog-route
 spec:
   entryPoints:
-  - web
+    - web
   routes:
-  - match: Host(`skyf0l.dev`) && PathPrefix(`/`)
-    kind: Rule
-    middlewares:
-    - name: skyblog-tor-location
-    services:
-    - name: skyblog
-      port: 80
-  - match: Host(`skyblogbi7n34iohqbbq2ot2e63c4676tblblupigkti2l4jzhqzx2yd.onion`) && PathPrefix(`/`)
-    kind: Rule
-    services:
-    - name: skyblog
-      port: 80
+    - match: Host(`skyf0l.dev`) && PathPrefix(`/`)
+      kind: Rule
+      middlewares:
+        - name: skyblog-tor-location
+      services:
+        - name: skyblog
+          port: 80
+    - match: Host(`skyblogbi7n34iohqbbq2ot2e63c4676tblblupigkti2l4jzhqzx2yd.onion`) && PathPrefix(`/`)
+      kind: Rule
+      services:
+        - name: skyblog
+          port: 80
 ---
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
