@@ -1,0 +1,75 @@
+name: Vault
+on:
+  pull_request:
+    branches: ["main"]
+    paths: ["vault/**"]
+  push:
+    branches: ["main"]
+    paths: ["vault/**"]
+
+permissions:
+  contents: read
+  id-token: write # OIDC
+  pull-requests: write
+
+env:
+  VAULT_ADDR: https://vault.skyf0l.dev:8200
+  TF_IN_AUTOMATION: "1"
+  TF_INPUT: "false"
+  WORKING_DIRECTORY: vault/terraform
+
+jobs:
+  vault:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Install Vault's Root CA
+        run: |
+          echo "${{ secrets.VAULT_CA_CERT }}" | sudo tee /usr/local/share/ca-certificates/vault-root.crt >/dev/null
+          sudo update-ca-certificates
+
+      - name: Import Secrets
+        uses: hashicorp/vault-action@v3
+        with:
+          url: ${{ env.VAULT_ADDR }}
+          caCertificate: ${{ secrets.VAULT_CA_CERT_B64 }}
+          exportToken: true # Required by terraform
+          method: jwt
+          role: admin
+          secrets: |
+            kvv2/data/cicd/cloudflare-tfstates AWS_ACCESS_KEY_ID ;
+            kvv2/data/cicd/cloudflare-tfstates AWS_SECRET_ACCESS_KEY ;
+
+      - run: terraform init -input=false
+      - run: terraform validate
+
+      - name: Plan (PR)
+        if: github.event_name == 'pull_request'
+        run: terraform plan -out .planfile
+
+      - name: Comment plan
+        if: github.event_name == 'pull_request'
+
+        uses: borchero/terraform-plan-comment@v2
+        with:
+          token: ${{ github.token }}
+          header: Vault Plan
+          planfile: .planfile
+          working-directory: ${{ env.WORKING_DIRECTORY }}
+
+      - name: Apply (push to main)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: terraform apply
+        env:
+          TF_CLI_ARGS_apply: "-auto-approve"
+
+      - name: Revoke token
+        if: always()
+        run: |
+          curl -X POST -sv -H "X-Vault-Token: ${{ env.VAULT_TOKEN }}" ${{ env.VAULT_ADDR }}/v1/auth/token/revoke-self
