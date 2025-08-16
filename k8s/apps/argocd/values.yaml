@@ -1,0 +1,13 @@
+server:
+  ingress:
+    enabled: true
+    tls: true
+    hostname: argocd.skyf0l.dev
+    ingressClassName: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt
+      external-dns.alpha.kubernetes.io/hostname: argocd.skyf0l.dev
+
+      # Required for ArgoCD
+      nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+      nginx.ingress.kubernetes.io/backend-protocol: HTTPS
