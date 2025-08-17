@@ -1,0 +1,32 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: vault-injector
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    # Helm chart from upstream
+    - repoURL: https://helm.releases.hashicorp.com
+      chart: vault
+      targetRevision: 0.30.1
+      helm:
+        releaseName: argo
+        valueFiles:
+          - $values/k8s/src/vault-injector/values.yaml
+    # Values from this repo
+    - repoURL: https://github.com/skyf0l/skylab.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: vault-injector
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - Replace=true
+      - PruneLast=true
+      - PrunePropagationPolicy=foreground

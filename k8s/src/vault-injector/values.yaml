@@ -1,0 +1,11 @@
+# Config docs: https://developer.hashicorp.com/vault/docs/deploy/kubernetes/helm/configuration
+server:
+  enabled: false
+injector:
+  enabled: true
+  replicas: 1
+  metrics:
+    enabled: true
+  externalVaultAddr: "https://vault.skyf0l.dev:8200"
+csi:
+  enabled: false
