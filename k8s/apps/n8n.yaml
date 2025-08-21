@@ -1,0 +1,32 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: n8n
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    # Helm chart from upstream
+    - repoURL: oci://8gears.container-registry.com/library/n8n
+      targetRevision: 1.0.10
+      path: .
+      helm:
+        releaseName: n8n
+        valueFiles:
+          - $values/k8s/src/n8n/values.yaml
+    # Values from this repo
+    - repoURL: https://github.com/skyf0l/skylab.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: n8n
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - Replace=true
+      - PruneLast=true
+      - PrunePropagationPolicy=foreground
