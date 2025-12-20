@@ -26,7 +26,7 @@ jobs:
         working-directory: ${{ env.WORKING_DIRECTORY }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: hashicorp/setup-terraform@v3
 
       - name: Install Vault's Root CA
