@@ -6,6 +6,7 @@ on:
   push:
     branches: ["main"]
     paths: ["vault/**"]
+  workflow_dispatch:
 
 permissions:
   contents: read
