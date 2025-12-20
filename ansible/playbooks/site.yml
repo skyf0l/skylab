@@ -1,0 +1,5 @@
+---
+- import_playbook: 00-prep/main.yml
+- import_playbook: 01-k3s/main.yml
+- import_playbook: 02-tools/main.yml
+- import_playbook: 03-argocd/main.yml

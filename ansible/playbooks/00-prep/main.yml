@@ -1,0 +1,39 @@
+---
+- name: Prep
+  hosts: server
+  become: yes
+  tasks:
+  - name: Install required Python libraries for kubernetes.core modules
+    apt:
+      update_cache: true
+      name:
+      - python3
+      - python3-pip
+      - python3-kubernetes
+      - python3-openshift
+      state: present
+
+- name: Enable amd64 emulation on arm64 nodes
+  hosts: arm64_nodes
+  become: true
+  tasks:
+  - name: Ensure binfmt_misc is mounted
+    mount:
+      path: /proc/sys/fs/binfmt_misc
+      src: binfmt_misc
+      fstype: binfmt_misc
+      state: mounted
+
+  - name: Install qemu user emulation packages
+    apt:
+      update_cache: yes
+      name:
+      - qemu-user-static
+      - binfmt-support
+      state: present
+
+  - name: Enable qemu x86_64 binfmt
+    command: update-binfmts --enable qemu-x86_64
+
+  - name: Verify registration
+    command: bash -lc "grep -q '^enabled' /proc/sys/fs/binfmt_misc/qemu-x86_64"

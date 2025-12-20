@@ -1,0 +1,53 @@
+---
+# From <https://helm.sh/docs/intro/install/#from-apt-debianubuntu>
+- name: Install Helm via apt
+  hosts: server
+  become: yes
+  tasks:
+    - name: Ensure apt supports HTTPS
+      ansible.builtin.apt:
+        name: apt-transport-https
+        state: present
+        update_cache: yes
+
+    - name: Download Helm GPG key (ascii armored)
+      ansible.builtin.get_url:
+        url: https://packages.buildkite.com/helm-linux/helm-debian/gpgkey
+        dest: /tmp/helm.gpgkey
+        mode: "0644"
+        force: yes
+
+    - name: Dearmor Helm GPG key into keyring
+      ansible.builtin.command:
+        cmd: gpg --dearmor --yes -o /usr/share/keyrings/helm.gpg /tmp/helm.gpgkey
+
+    - name: Set permissions on Helm keyring
+      ansible.builtin.file:
+        path: /usr/share/keyrings/helm.gpg
+        owner: root
+        group: root
+        mode: "0644"
+        state: file
+
+    - name: Add Helm apt repository (Buildkite)
+      ansible.builtin.apt_repository:
+        repo: "deb [signed-by=/usr/share/keyrings/helm.gpg] https://packages.buildkite.com/helm-linux/helm-debian/any/ any main"
+        filename: helm-stable-debian
+        state: present
+        update_cache: yes
+
+    - name: Install Helm package
+      ansible.builtin.apt:
+        name: helm
+        state: present
+        update_cache: no
+
+- name: Install Flux CLI via official script
+  hosts: all
+  become: true
+  tasks:
+    - name: Install Flux CLI via official script
+      ansible.builtin.shell:
+        cmd: curl -s https://fluxcd.io/install.sh | sudo bash
+      args:
+        creates: /usr/local/bin/flux

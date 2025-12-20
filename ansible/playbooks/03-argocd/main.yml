@@ -1,0 +1,45 @@
+---
+- name: Install ArgoCD
+  hosts: server
+  tasks:
+  - name: Add argocd helm repo
+    kubernetes.core.helm_repository:
+      name: argo
+      repo_url: "https://argoproj.github.io/argo-helm"
+
+  # Get initial password with `kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d`
+  - name: Deploy latest version of ArgoCD chart inside argocd namespace with values
+    kubernetes.core.helm:
+      chart_ref: argo/argo-cd
+      release_name: argo
+      release_namespace: argocd
+      create_namespace: true
+      wait: true
+
+  - name: Bootstrap root Application
+    kubernetes.core.k8s:
+      state: present
+      definition: |
+        apiVersion: argoproj.io/v1alpha1
+        kind: Application
+        metadata:
+          name: bootstrap-root
+          namespace: argocd
+        spec:
+          project: default
+          source:
+            repoURL: https://github.com/skyf0l/skylab.git
+            targetRevision: main
+            path: k8s/root
+          destination:
+            server: https://kubernetes.default.svc
+            namespace: argocd
+          syncPolicy:
+            automated:
+              prune: true
+              selfHeal: true
+            syncOptions:
+              - CreateNamespace=true
+              - Replace=true
+              - PruneLast=true
+              - PrunePropagationPolicy=foreground
