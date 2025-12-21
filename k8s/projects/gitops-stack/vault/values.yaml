@@ -1,0 +1,39 @@
+vault:
+  injector:
+    enabled: true
+
+  server:
+    ingress:
+      enabled: true
+      ingressClassName: traefik
+      annotations:
+        traefik.ingress.kubernetes.io/router.entrypoints: websecure
+        traefik.ingress.kubernetes.io/router.tls: "true"
+      hosts:
+        - host: test-vault.skyf0l.dev
+          paths:
+            - /
+      tls:
+        - hosts:
+            - test-vault.skyf0l.dev
+
+    dataStorage:
+      size: 10Gi
+      storageClass: local-path
+
+    auditStorage:
+      size: 10Gi
+      storageClass: local-path
+
+    standalone:
+      enabled: false
+
+    ha:
+      enabled: true
+      replicas: 1
+
+      raft:
+        enabled: true
+
+  ui:
+    enabled: true
