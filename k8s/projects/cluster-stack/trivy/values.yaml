@@ -1,0 +1,7 @@
+trivy-operator:
+  # Metrics scraping for kube-prometheus-stack
+  serviceMonitor:
+    enabled: true
+    namespace: trivy-system
+    labels:
+      release: kube-prometheus
