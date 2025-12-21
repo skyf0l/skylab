@@ -9,3 +9,5 @@ trivy-operator:
   operator:
     # Reduce concurrent scan jobs to limit resource usage
     scanJobsConcurrentLimit: 1
+    # Show CVE IDs in vulnerability reports
+    metricsVulnIdEnabled: true
