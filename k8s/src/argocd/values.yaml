@@ -12,3 +12,7 @@ server:
 configs:
   params:
     server.insecure: true
+
+redisSecretInit:
+  # Disable the chart's redis-secret-init Helm hook job to avoid "already exists" sync failures when Argo CD manages itself after the initial install.
+  enabled: false
