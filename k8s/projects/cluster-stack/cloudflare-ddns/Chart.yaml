@@ -1,0 +1,4 @@
+apiVersion: v2
+name: cloudflare-ddns
+type: application
+version: 0.1.0

@@ -5,13 +5,14 @@ metadata:
   namespace: argocd
 spec:
   project: default
-  sources:
-    # Extra manifests source
-    - repoURL: https://github.com/skyf0l/skylab.git
-      targetRevision: main
-      path: k8s/src/cloudflare-ddns/manifests
-      directory:
-        recurse: true
+  source:
+    repoURL: https://github.com/skyf0l/skylab.git
+    targetRevision: main
+    path: k8s/projects/cluster-stack/cloudflare-ddns
+    helm:
+      releaseName: cloudflare-ddns
+      valueFiles:
+        - values.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: cloudflare-ddns
