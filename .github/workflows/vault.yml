@@ -46,6 +46,8 @@ jobs:
           secrets: |
             kvv2/data/cicd/cloudflare-tfstates AWS_ACCESS_KEY_ID ;
             kvv2/data/cicd/cloudflare-tfstates AWS_SECRET_ACCESS_KEY ;
+            kvv2/data/cicd/kubernetes_auth_backend_config KUBERNETES_CA_CERT | TF_VAR_kubernetes_auth_backend_ca_cert ;
+            kvv2/data/cicd/kubernetes_auth_backend_config TOKEN_REVIEWER_JWT | TF_VAR_kubernetes_auth_backend_token_reviewer_jwt ;
 
       - run: terraform init -input=false
       - run: terraform validate
