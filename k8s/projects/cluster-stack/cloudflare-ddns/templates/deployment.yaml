@@ -20,7 +20,7 @@ spec:
         # Write this file: /vault/secrets/config.json
         vault.hashicorp.com/agent-inject-secret-config.json: "kvv2/data/cluster/default/cloudflare-ddns/cloudflare-ddns/cloudflare-ddns-config"
         vault.hashicorp.com/agent-inject-template-config.json: |
-          {{ .Files.Get "files/vault-config.tpl" }}
+          {{- .Files.Get "files/vault-config.tpl" | nindent 10 }}
     spec:
       serviceAccountName: cloudflare-ddns
       containers:
