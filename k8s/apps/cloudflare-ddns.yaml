@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cloudflare-ddns
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    # Extra manifests source
+    - repoURL: https://github.com/skyf0l/skylab.git
+      targetRevision: main
+      path: k8s/src/cloudflare-ddns/manifests
+      directory:
+        recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cloudflare-ddns
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - Replace=true
+      - PruneLast=true
+      - PrunePropagationPolicy=foreground
