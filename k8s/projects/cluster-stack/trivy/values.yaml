@@ -5,3 +5,7 @@ trivy-operator:
     namespace: trivy-system
     labels:
       release: kube-prometheus
+
+  operator:
+    # Reduce concurrent scan jobs to limit resource usage
+    scanJobsConcurrentLimit: 1
