@@ -1,0 +1,8 @@
+n8n:
+  ingress:
+    enabled: true
+    hosts:
+      - host: n8n.skyf0l.dev
+        paths:
+          - path: /
+            pathType: Prefix

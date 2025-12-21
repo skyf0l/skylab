@@ -5,19 +5,14 @@ metadata:
   namespace: argocd
 spec:
   project: default
-  sources:
-    # Helm chart from upstream
-    - repoURL: oci://8gears.container-registry.com/library/n8n
-      targetRevision: 2.0.1
-      path: .
-      helm:
-        releaseName: n8n
-        valueFiles:
-          - $values/k8s/src/n8n/values.yaml
-    # Values from this repo
-    - repoURL: https://github.com/skyf0l/skylab.git
-      targetRevision: main
-      ref: values
+  source:
+    repoURL: https://github.com/skyf0l/skylab.git
+    targetRevision: main
+    path: k8s/projects/user-stack/n8n
+    helm:
+      releaseName: n8n
+      valueFiles:
+        - values.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: n8n
