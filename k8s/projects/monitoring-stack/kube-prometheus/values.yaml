@@ -15,11 +15,11 @@ kube-prometheus-stack:
         - hosts:
             - grafana.skyf0l.dev
 
-    # persistence:
-    #   enabled: true
-    #   storageClassName: local-path
-    #   accessModes: ["ReadWriteOnce"]
-    #   size: 5Gi
+    persistence:
+      enabled: true
+      storageClassName: local-path
+      accessModes: ["ReadWriteOnce"]
+      size: 5Gi
 
   prometheus:
     prometheusSpec:
