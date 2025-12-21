@@ -1,0 +1,19 @@
+argo-cd:
+  global:
+    domain: argocd.skyf0l.dev
+
+  server:
+    ingress:
+      enabled: true
+      ingressClassName: traefik
+      extraTls:
+        - hosts:
+            - argocd.skyf0l.dev
+
+  configs:
+    params:
+      server.insecure: true
+
+  redisSecretInit:
+    # Disable the chart's redis-secret-init Helm hook job to avoid "already exists" sync failures when Argo CD manages itself after the initial install.
+    enabled: false
