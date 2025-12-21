@@ -8,7 +8,7 @@ spec:
   sources:
     # Helm chart from upstream
     - repoURL: oci://8gears.container-registry.com/library/n8n
-      targetRevision: 1.0.10
+      targetRevision: 1.1.0
       path: .
       helm:
         releaseName: n8n
