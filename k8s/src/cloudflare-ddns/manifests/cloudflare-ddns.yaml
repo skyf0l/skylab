@@ -40,6 +40,7 @@ spec:
                 "subdomains": [
                   { "name": "",   "proxied": true  },
                   { "name": "pi", "proxied": false },
+                  { "name": "vault", "proxied": false },
                   { "name": "*",  "proxied": true  }
                 ]
               }
