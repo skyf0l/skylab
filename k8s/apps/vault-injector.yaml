@@ -18,6 +18,12 @@ spec:
     - repoURL: https://github.com/skyf0l/skylab.git
       targetRevision: main
       ref: values
+    # Extra manifests source
+    - repoURL: https://github.com/skyf0l/skylab.git
+      targetRevision: main
+      path: k8s/src/vault-injector/manifests
+      directory:
+        recurse: true
   destination:
     server: https://kubernetes.default.svc
     namespace: vault-injector
