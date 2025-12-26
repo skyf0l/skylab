@@ -25,3 +25,5 @@ spec:
       - Replace=true
       - PruneLast=true
       - PrunePropagationPolicy=foreground
+      - RespectIgnoreDifferences=true
+      - ServerSideApply=true
