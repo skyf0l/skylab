@@ -1,9 +1,30 @@
 kube-prometheus-stack:
-  kubeProxy:
-    enabled: false
-
   alertmanager:
     enabled: false
+  # Not available on k3s
+  kubeEtcd:
+    enabled: false
+  kubeProxy:
+    enabled: false
+  kubeControllerManager:
+    enabled: false
+  kubeScheduler:
+    enabled: false
+  defaultRules:
+    rules:
+      alertmanager: false
+      etcd: false
+      kubeProxy: false
+      kubeControllerManager: false
+      kubeSchedulerAlerting: false
+      kubeSchedulerRecording: false
+
+  nodeExporter:
+    operatingSystems:
+      aix:
+        enabled: false
+      darwin:
+        enabled: false
 
   grafana:
     ingress:
