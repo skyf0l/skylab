@@ -1,0 +1,48 @@
+- name: Get Kubernetes api server endpoint
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ kubeconfig_local_path }}"
+    kind: Endpoints
+    namespace: default
+    name: kubernetes
+  register: k8s_api_server_endpoint
+  failed_when: k8s_api_server_endpoint.resources | length == 0
+  retries: 30
+  delay: 30
+
+- name: Set kubernetes api server endpoint variables
+  set_fact:
+    k8s_api_server_endpoint_ip: "{{ k8s_api_server_endpoint.resources[0].subsets[0].addresses[0].ip }}"
+    k8s_api_server_endpoint_port: "{{ k8s_api_server_endpoint.resources[0].subsets[0].ports[0].port }}"
+
+- debug:
+    msg: "Kubernetes API Server Endpoint IP: {{ k8s_api_server_endpoint_ip }}, Port: {{ k8s_api_server_endpoint_port }}"
+
+- name: Add Cilium chart repo
+  kubernetes.core.helm_repository:
+    name: cilium
+    repo_url: https://helm.cilium.io/
+
+- name: Install Cilium
+  kubernetes.core.helm:
+    kubeconfig: "{{ kubeconfig_local_path }}"
+    name: cilium
+    chart_ref: cilium/cilium
+    chart_version: 1.18.6
+    release_namespace: kube-system
+    release_values: "{{ lookup('template', './templates/cilium-values.yaml.j2') | from_yaml }}"
+
+# Node should be ready after CNI installation
+- name: Wait until all Nodes are Ready
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ kubeconfig_local_path }}"
+    kind: Node
+  register: node_info
+  until: >
+    (node_info.resources | length) > 0 and
+    (
+      node_info.resources
+      | json_query("[?status.conditions[?type=='Ready' && status=='True']]")
+      | length
+    ) == (node_info.resources | length)
+  retries: 60
+  delay: 10

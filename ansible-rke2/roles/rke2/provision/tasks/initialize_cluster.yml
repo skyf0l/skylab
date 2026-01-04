@@ -1,0 +1,13 @@
+- name: Check if cluster is available
+  kubernetes.core.k8s_cluster_info:
+    kubeconfig: "{{ kubeconfig_local_path }}"
+  register: k8s_info
+  until: not k8s_info.failed
+  retries: 60
+  delay: 10
+
+- name: Setup cilium
+  ansible.builtin.include_tasks: init/cilium.yml
+
+- name: Setup traefik
+  ansible.builtin.include_tasks: init/traefik.yml

@@ -1,0 +1,25 @@
+# Global variables
+cluster_name: vagrant
+domain_name: vagrant.local
+kubeconfig_local_path: "{{ rke2_download_kubeconf_path }}/{{ rke2_download_kubeconf_file_name }}"
+repo_root: "{{ playbook_dir }}/../../.."
+
+gitea_enabled: true
+
+# RKE2 variables (https://github.com/rancher/rke2/releases)
+rke2_version: v1.35.0+rke2r1
+rke2_token: RANDOMLY_GENERATED_TOKEN
+
+rke2_download_kubeconf: true
+rke2_download_kubeconf_file_name: "{{ cluster_name }}.kubeconfig"
+rke2_download_kubeconf_path: ~/.kube
+
+rke2_custom_registry_mirrors:
+  - name: "docker.io"
+    endpoint: ["http://{{ cache_host }}:5000"]
+  - name: "index.docker.io"
+    endpoint: ["http://{{ cache_host }}:5000"]
+  - name: "quay.io"
+    endpoint: ["http://{{ cache_host }}:5001"]
+  - name: "ghcr.io"
+    endpoint: ["http://{{ cache_host }}:5002"]

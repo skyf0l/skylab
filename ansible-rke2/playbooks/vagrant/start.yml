@@ -1,0 +1,16 @@
+- name: Provision RKE2 cluster
+  hosts: k8s_cluster
+  become: true
+  roles:
+    - role: "../../../roles/rke2/provision"
+
+- name: "Install GitOps Stack"
+  hosts: localhost
+  roles:
+    - role: "../../../roles/gitops/install"
+
+- name: Show kubeconfig location
+  hosts: localhost
+  tasks:
+    - ansible.builtin.debug:
+        msg: "Kubeconfig downloaded to {{ cluster_name }}; export KUBECONFIG={{ cluster_name }} to use it"

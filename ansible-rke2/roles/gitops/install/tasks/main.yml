@@ -1,0 +1,6 @@
+- name: Install ArgoCD
+  ansible.builtin.include_tasks: argocd.yml
+
+- name: Install Gitea
+  ansible.builtin.include_tasks: gitea.yml
+  when: gitea_enabled | default(false)

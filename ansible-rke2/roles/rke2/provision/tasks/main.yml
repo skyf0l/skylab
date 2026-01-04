@@ -1,0 +1,13 @@
+- name: Prepare host
+  ansible.builtin.include_tasks: prepare_host.yml
+
+- name: Create cluster
+  ansible.builtin.include_tasks: create_cluster.yml
+
+- name: Initialize cluster
+  ansible.builtin.include_tasks:
+    file: initialize_cluster.yml
+    apply:
+      delegate_to: localhost
+      run_once: true
+      become: false

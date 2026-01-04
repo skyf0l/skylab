@@ -1,0 +1,28 @@
+# From https://artifacthub.io/packages/helm/traefik/traefik
+
+- name: Add Traefik chart repo
+  kubernetes.core.helm_repository:
+    name: traefik
+    repo_url: https://traefik.github.io/charts
+
+# Delete existing Traefik installation if any
+- name: Delete existing Traefik installation
+  kubernetes.core.helm:
+    kubeconfig: "{{ kubeconfig_local_path }}"
+    name: traefik
+    state: absent
+    release_namespace: traefik
+    wait: true
+  ignore_errors: true
+
+- name: Install Traefik
+  kubernetes.core.helm:
+    kubeconfig: "{{ kubeconfig_local_path }}"
+    name: traefik
+    chart_ref: traefik/traefik
+    chart_version: 38.0.2
+    release_namespace: traefik
+    create_namespace: true
+    release_values: "{{ lookup('template', './templates/traefik-values.yaml.j2') | from_yaml }}"
+    wait: true
+    wait_timeout: 10m

@@ -91,3 +91,6 @@ projects/ansible/inventory
 **/charts
 
 **/.secret
+
+# Vagrant
+.vagrant/

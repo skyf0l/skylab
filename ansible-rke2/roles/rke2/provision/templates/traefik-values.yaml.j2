@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/SchemaStore/schemastore/refs/heads/master/src/schemas/json/traefik-v3.json
+
+# Listen on all nodes
+deployment:
+  kind: DaemonSet
+
+service:
+  type: ClusterIP
+
+ports:
+  web:
+    hostPort: 80
+    redirections:
+      entryPoint:
+        to: websecure
+        scheme: https
+        permanent: true
+  websecure:
+    hostPort: 443
+
+# Enable the internal API/dashboard
+api:
+  insecure: true
+  dashboard: true
+
+# Create the dashboard IngressRoute
+ingressRoute:
+  dashboard:
+    enabled: true
+    # Custom match rule with host domain
+    matchRule: Host(`traefik.{{ domain_name }}`) && (PathPrefix(`/dashboard`) || PathPrefix(`/api`))
+    entryPoints: ["websecure"]

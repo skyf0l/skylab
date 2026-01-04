@@ -1,0 +1,12 @@
+- name: Install RKE2 using LabLabs role
+  ansible.builtin.include_role:
+    name: lablabs.rke2
+
+- name: Add k8s Binaries to PATH
+  ansible.builtin.lineinfile:
+    path: /root/.bashrc
+    line: "{{ item }}"
+  loop:
+    - "export KUBECONFIG=/etc/rancher/rke2/rke2.yaml"
+    - "export CONTAINER_RUNTIME_ENDPOINT=unix:///run/k3s/containerd/containerd.sock"
+    - "PATH=$PATH:/var/lib/rancher/rke2/bin"

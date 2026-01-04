@@ -1,0 +1,10 @@
+# Note: variables defined here will be passed to lablabs.rke2 role
+rke2_api_ip: "{{ hostvars[groups['masters'][0]]['ansible_host'] }}"
+
+# We use cilium as CNI, so we disable kube-proxy
+disable_kube_proxy: true
+rke2_disable:
+  - rke2-canal
+  - rke2-ingress-nginx
+# Cilium not available at install time, it will be installed later
+rke2_cni: none

@@ -1,0 +1,13 @@
+{
+  "overrides": [
+    {
+      "files": ["*.yaml", "*.yml", "*.yaml.j2", "*.yml.j2"],
+      "options": {
+        "parser": "yaml",
+        "tabWidth": 2,
+        "printWidth": 150,
+        "bracketSpacing": false
+      }
+    }
+  ]
+}

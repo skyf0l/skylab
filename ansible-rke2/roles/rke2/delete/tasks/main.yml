@@ -1,0 +1,11 @@
+- name: Run RKE2 killall if present
+  ansible.builtin.shell: |
+    set -e
+    if [ -x /usr/local/bin/rke2-killall.sh ]; then /usr/local/bin/rke2-killall.sh; fi
+    if [ -x /usr/bin/rke2-killall.sh ]; then /usr/bin/rke2-killall.sh; fi
+
+- name: Run RKE2 uninstall if present
+  ansible.builtin.shell: |
+    set -e
+    if [ -x /usr/local/bin/rke2-uninstall.sh ]; then /usr/local/bin/rke2-uninstall.sh; fi
+    if [ -x /usr/bin/rke2-uninstall.sh ]; then /usr/bin/rke2-uninstall.sh; fi

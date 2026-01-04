@@ -1,0 +1,35 @@
+# Get initial password with `kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d`
+- name: Deploy latest version of ArgoCD chart inside argocd namespace with values
+  kubernetes.core.helm:
+    kubeconfig: "{{ kubeconfig_local_path }}"
+    name: argo-cd
+    chart_ref: "{{ repo_root }}/k8s/projects/gitops-stack/argocd"
+    values_files:
+      - "{{ repo_root }}/k8s/projects/gitops-stack/argocd/values.yaml"
+      - "{{ repo_root }}/k8s/projects/gitops-stack/argocd/values/{{ cluster_name }}/values.yaml"
+    set_values:
+      - value: "argo-cd.global.domain=argocd.{{ domain_name }}"
+      - value: "argo-cd.server.ingress.extraTls[0].hosts[0]=argocd.{{ domain_name }}"
+    release_namespace: argocd
+    create_namespace: true
+    dependency_update: true
+
+- name: Wait for ArgoCD server pod to be ready
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ kubeconfig_local_path }}"
+    kind: Pod
+    namespace: argocd
+    label_selectors:
+      - app.kubernetes.io/name=argocd-server
+    field_selectors:
+      - status.phase=Running
+  register: argocd_server_pods
+  until: >
+    (argocd_server_pods.resources | length) > 0 and
+    (
+      argocd_server_pods.resources
+      | json_query("[?status.conditions[?type=='Ready' && status=='True']]")
+      | length
+    ) == (argocd_server_pods.resources | length)
+  retries: 30
+  delay: 10
