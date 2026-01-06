@@ -1,0 +1,54 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: kube-prometheus
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          # Auto updated by parent ApplicationSet
+          - list:
+              elements:
+                - name: vagrant
+          - git:
+              repoURL: http://gitea-http.gitea.svc.cluster.local:3000/gitea_admin/gitops
+              revision: HEAD
+              files:
+                - path: clusters/{{.name }}/config.json
+  template:
+    metadata:
+      name: "{{.name}}-kube-prometheus"
+    spec:
+      project: default
+      source:
+        repoURL: "{{.repo.url}}"
+        targetRevision: "{{.repo.revision}}"
+        path: k8s/projects/monitoring-stack/kube-prometheus
+        helm:
+          releaseName: kube-prometheus
+          valueFiles:
+            - values.yaml
+            - values/{{.name}}.yaml
+          parameters:
+            - name: "kube-prometheus-stack.grafana.ingress.hosts[0]"
+              value: "grafana.{{.global.domain}}"
+            - name: "kube-prometheus-stack.grafana.ingress.tls[0].hosts[0]"
+              value: "grafana.{{.global.domain}}"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: monitoring
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - Validate=true
+          - PrunePropagationPolicy=foreground
+          - PruneLast=true
+          - RespectIgnoreDifferences=true
+          - ServerSideApply=true # Avoids annotation size limits
+        retry:
+          limit: 5

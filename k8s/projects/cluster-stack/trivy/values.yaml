@@ -2,12 +2,6 @@ trivy-operator:
   # Metrics scraping for kube-prometheus-stack
   serviceMonitor:
     enabled: true
-    namespace: trivy-system
+    namespace: trivy
     labels:
       release: kube-prometheus
-
-  operator:
-    # Reduce concurrent scan jobs to limit resource usage
-    scanJobsConcurrentLimit: 1
-    # Show CVE IDs in vulnerability reports
-    metricsVulnIdEnabled: true

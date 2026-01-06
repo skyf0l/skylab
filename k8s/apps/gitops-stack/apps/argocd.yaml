@@ -1,0 +1,58 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          # Auto updated by parent ApplicationSet
+          - list:
+              elements:
+                - name: vagrant
+          - git:
+              repoURL: http://gitea-http.gitea.svc.cluster.local:3000/gitea_admin/gitops
+              revision: HEAD
+              files:
+                - path: clusters/{{.name }}/config.json
+  template:
+    metadata:
+      name: "{{.name}}-argocd"
+      annotations:
+        argocd.argoproj.io/sync-wave: "-1"
+    spec:
+      project: default
+      source:
+        repoURL: "{{.repo.url}}"
+        targetRevision: "{{.repo.revision}}"
+        path: k8s/projects/gitops-stack/argocd
+        helm:
+          releaseName: argocd
+          valueFiles:
+            - values.yaml
+            - values/{{.name}}.yaml
+          parameters:
+            - name: "argo-cd.global.domain"
+              value: "argocd.{{.global.domain}}"
+            - name: "argo-cd.server.ingress.extraTls[0].hosts[0]"
+              value: "argocd.{{.global.domain}}"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: argocd
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - Validate=true
+          - PrunePropagationPolicy=foreground
+          - PruneLast=true
+          - RespectIgnoreDifferences=true
+          - ServerSideApply=true # Avoids annotation size limits
+        retry:
+          limit: 5

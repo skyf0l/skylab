@@ -1,0 +1,12 @@
+cilium:
+  hubble:
+    ui:
+      enabled: true
+      ingress:
+        enabled: true
+        className: "traefik"
+        hosts:
+          - hubble.vagrant.local
+        tls:
+          - hosts:
+              - hubble.vagrant.local

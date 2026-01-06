@@ -1,0 +1,17 @@
+cilium:
+  rollOutCiliumPods: true
+  kubeProxyReplacement: "true"
+
+  cni:
+    install: true
+    uninstall: false
+
+  ipam:
+    mode: kubernetes
+
+  hubble:
+    enable: true
+    relay:
+      enabled: true
+    ui:
+      enabled: true

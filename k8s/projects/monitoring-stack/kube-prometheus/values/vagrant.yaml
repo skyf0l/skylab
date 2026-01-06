@@ -1,0 +1,9 @@
+kube-prometheus-stack:
+  grafana:
+    ingress:
+      ingressClassName: traefik
+      hosts:
+        - grafana.vagrant.local
+      tls:
+        - hosts:
+            - grafana.vagrant.local

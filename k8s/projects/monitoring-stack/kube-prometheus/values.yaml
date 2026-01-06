@@ -1,24 +1,4 @@
 kube-prometheus-stack:
-  alertmanager:
-    enabled: false
-  # Not available on k3s
-  kubeEtcd:
-    enabled: false
-  kubeProxy:
-    enabled: false
-  kubeControllerManager:
-    enabled: false
-  kubeScheduler:
-    enabled: false
-  defaultRules:
-    rules:
-      alertmanager: false
-      etcd: false
-      kubeProxy: false
-      kubeControllerManager: false
-      kubeSchedulerAlerting: false
-      kubeSchedulerRecording: false
-
   nodeExporter:
     operatingSystems:
       aix:
@@ -29,35 +9,17 @@ kube-prometheus-stack:
   grafana:
     ingress:
       enabled: true
-      ingressClassName: traefik
-      hosts:
-        - grafana.skyf0l.dev
-      tls:
-        - hosts:
-            - grafana.skyf0l.dev
 
-    persistence:
-      enabled: true
-      storageClassName: local-path
-      accessModes: ["ReadWriteOnce"]
-      size: 5Gi
+    # persistence:
+    #   enabled: true
+    #   size: 5Gi
 
-  prometheus:
-    prometheusSpec:
-      retention: 30d
-      retentionSize: 15GiB
-
-    storageSpec:
-      volumeClaimTemplate:
-        spec:
-          storageClassName: local-path
-          accessModes: ["ReadWriteOnce"]
-          resources:
-            requests:
-              storage: 15Gi
-
-  prometheusOperator:
-    admissionWebhooks:
-      enabled: false
-      patch:
-        enabled: false
+  # prometheus:
+  #   storageSpec:
+  #     volumeClaimTemplate:
+  #       spec:
+  #         storageClassName: local-path
+  #         accessModes: ["ReadWriteOnce"]
+  #         resources:
+  #           requests:
+  #             storage: 15Gi

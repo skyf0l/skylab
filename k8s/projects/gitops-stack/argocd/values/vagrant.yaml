@@ -1,0 +1,18 @@
+argo-cd:
+  global:
+    domain: argocd.vagrant.local
+
+  server:
+    ingress:
+      enabled: true
+      ingressClassName: traefik
+      extraTls:
+        - hosts:
+            - argocd.vagrant.local
+
+  configs:
+    params:
+      server.insecure: true
+    secret:
+      argocdServerAdminPassword: "$2a$10$HSIpMGHQgCUz/Z.YDc.WSuDQ4/j5aJ9aa42ku1nakEtUQIxFnuZQG" # admin
+

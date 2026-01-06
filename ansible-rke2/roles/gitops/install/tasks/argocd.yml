@@ -2,17 +2,18 @@
 - name: Deploy latest version of ArgoCD chart inside argocd namespace with values
   kubernetes.core.helm:
     kubeconfig: "{{ kubeconfig_local_path }}"
-    name: argo-cd
+    name: argocd
     chart_ref: "{{ repo_root }}/k8s/projects/gitops-stack/argocd"
     values_files:
       - "{{ repo_root }}/k8s/projects/gitops-stack/argocd/values.yaml"
-      - "{{ repo_root }}/k8s/projects/gitops-stack/argocd/values/{{ cluster_name }}/values.yaml"
+      - "{{ repo_root }}/k8s/projects/gitops-stack/argocd/values/{{ cluster_name }}.yaml"
     set_values:
       - value: "argo-cd.global.domain=argocd.{{ domain_name }}"
       - value: "argo-cd.server.ingress.extraTls[0].hosts[0]=argocd.{{ domain_name }}"
     release_namespace: argocd
     create_namespace: true
     dependency_update: true
+    wait: true
 
 - name: Wait for ArgoCD server pod to be ready
   kubernetes.core.k8s_info:
