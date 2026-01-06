@@ -6,6 +6,12 @@
   retries: 60
   delay: 10
 
+- name: Init local path storage provisioner
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig_local_path }}"
+    state: present
+    definition: "{{ lookup('template', 'templates/local-path-provisioner.yaml') }}"
+
 - name: Setup cilium
   ansible.builtin.include_tasks: init/cilium.yml
 
