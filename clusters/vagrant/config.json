@@ -1,0 +1,10 @@
+{
+  "name": "vagrant",
+  "repo": {
+    "url": "http://gitea-http.gitea.svc.cluster.local:3000/gitea_admin/gitops",
+    "revision": "HEAD"
+  },
+  "global": {
+    "domain": "vagrant.local"
+  }
+}

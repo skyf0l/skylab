@@ -1,0 +1,49 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: apps
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - git:
+        repoURL: http://gitea-http.gitea.svc.cluster.local:3000/gitea_admin/gitops
+        revision: HEAD
+        files:
+          - path: clusters/vagrant/config.json
+  template:
+    metadata:
+      name: "{{.name}}-apps"
+    spec:
+      project: default
+      source:
+        repoURL: "{{.repo.url}}"
+        targetRevision: "{{.repo.revision}}"
+        path: k8s/apps
+        kustomize:
+          namePrefix: "{{.name}}-"
+          patches:
+            - target:
+                kind: ApplicationSet
+              patch: |-
+                - op: replace
+                  path: /spec/generators/0/matrix/generators/0/list/elements/0/name
+                  value: {{.name}}
+                - op: replace
+                  path: /spec/generators/0/matrix/generators/1/git/repoURL
+                  value: {{.repo.url}}
+                - op: replace
+                  path: /spec/generators/0/matrix/generators/1/git/revision
+                  value: {{.repo.revision}}
+      destination:
+        server: "https://kubernetes.default.svc"
+        namespace: argocd
+      syncPolicy:
+        automated:
+          prune: true
+        syncOptions:
+          - Validate=true
+          - PrunePropagationPolicy=foreground
+          - PruneLast=true
+          - RespectIgnoreDifferences=true
