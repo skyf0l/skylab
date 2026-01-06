@@ -25,3 +25,12 @@ services:
     volumes:
       - ./data/ghcr:/var/lib/registry
       - ./config/ghcr.yml:/etc/docker/registry/config.yml:ro
+
+  cache_gcr:
+    image: registry:2
+    container_name: cache_gcr
+    restart: always
+    ports: ["5003:5000"]
+    volumes:
+      - ./data/gcr:/var/lib/registry
+      - ./config/gcr.yml:/etc/docker/registry/config.yml:ro

@@ -13,4 +13,4 @@
   hosts: localhost
   tasks:
     - ansible.builtin.debug:
-        msg: "Kubeconfig downloaded to {{ cluster_name }}; export KUBECONFIG={{ cluster_name }} to use it"
+        msg: "Kubeconfig downloaded to {{ kubeconfig_local_path }}; export KUBECONFIG={{ kubeconfig_local_path }} to use it"

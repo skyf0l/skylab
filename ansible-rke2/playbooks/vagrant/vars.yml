@@ -23,3 +23,5 @@ rke2_custom_registry_mirrors:
     endpoint: ["http://{{ cache_host }}:5001"]
   - name: "ghcr.io"
     endpoint: ["http://{{ cache_host }}:5002"]
+  - name: "mirror.gcr.io"
+    endpoint: ["http://{{ cache_host }}:5003"]
