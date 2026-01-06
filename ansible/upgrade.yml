@@ -1,3 +1,0 @@
----
-- name: Upgrade k3s cluster
-  import_playbook: k3s.orchestration.upgrade

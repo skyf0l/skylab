@@ -1,8 +1,0 @@
----
-collections:
-  - name: k3s.orchestration
-    type: git
-    source: git+https://github.com/k3s-io/k3s-ansible
-
-roles:
-  - name: git+https://github.com/lablabs/ansible-role-rke2
