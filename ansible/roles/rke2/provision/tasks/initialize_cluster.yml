@@ -10,7 +10,7 @@
   kubernetes.core.k8s:
     kubeconfig: "{{ kubeconfig_local_path }}"
     state: present
-    definition: "{{ lookup('template', 'templates/local-path-provisioner.yaml') }}"
+    src: "local-path-provisioner.yaml"
 
 - name: Setup cilium
   ansible.builtin.include_tasks: init/cilium.yml
