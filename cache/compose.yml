@@ -1,6 +1,6 @@
 services:
   cache_dockerhub:
-    image: registry:2
+    image: registry:3
     container_name: cache_dockerhub
     restart: always
     ports: ["5000:5000"]
@@ -9,7 +9,7 @@ services:
       - ./config/dockerhub.yml:/etc/docker/registry/config.yml:ro
 
   cache_quay:
-    image: registry:2
+    image: registry:3
     container_name: cache_quay
     restart: always
     ports: ["5001:5000"]
@@ -18,7 +18,7 @@ services:
       - ./config/quay.yml:/etc/docker/registry/config.yml:ro
 
   cache_ghcr:
-    image: registry:2
+    image: registry:3
     container_name: cache_ghcr
     restart: always
     ports: ["5002:5000"]
@@ -27,7 +27,7 @@ services:
       - ./config/ghcr.yml:/etc/docker/registry/config.yml:ro
 
   cache_gcr:
-    image: registry:2
+    image: registry:3
     container_name: cache_gcr
     restart: always
     ports: ["5003:5000"]
