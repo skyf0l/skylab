@@ -10,12 +10,7 @@ vault:
     ha:
       replicas: 1
 
+    # NOT publicly exposed. Vault is reached in-cluster (vault.vault.svc:8200 for
+    # ESO/apps) and by admins via `kubectl port-forward` / the tailnet.
     ingress:
-      ingressClassName: traefik
-
-      hosts:
-        - host: vault.skyf0l.dev
-          paths: []
-      tls:
-        - hosts:
-            - vault.skyf0l.dev
+      enabled: false

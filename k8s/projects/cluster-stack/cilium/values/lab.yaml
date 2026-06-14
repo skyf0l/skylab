@@ -7,11 +7,7 @@ cilium:
   hubble:
     ui:
       enabled: true
+      # NOT publicly exposed. Reach it via `cilium hubble ui` / port-forward,
+      # or over the tailnet once Headscale is wired.
       ingress:
-        enabled: true
-        className: "traefik"
-        hosts:
-          - hubble.skyf0l.dev
-        tls:
-          - hosts:
-              - hubble.skyf0l.dev
+        enabled: false
