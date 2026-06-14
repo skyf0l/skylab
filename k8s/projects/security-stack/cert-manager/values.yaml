@@ -1,0 +1,8 @@
+cert-manager:
+  # Install the cert-manager CRDs with the chart and keep them on uninstall.
+  crds:
+    enabled: true
+    keep: true
+
+  # Runs on the VPS control-plane; the Pi light node is tainted NoSchedule so
+  # nothing here needs a toleration.

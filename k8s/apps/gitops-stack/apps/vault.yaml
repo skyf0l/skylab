@@ -1,31 +1,58 @@
-# apiVersion: argoproj.io/v1alpha1
-# kind: Application
-# metadata:
-#   name: vault
-#   namespace: argocd
-#   annotations:
-#     argocd.argoproj.io/sync-wave: "-2"
-# spec:
-#   project: default
-#   source:
-#     repoURL: https://github.com/skyf0l/skylab.git
-#     targetRevision: main
-#     path: k8s/projects/gitops-stack/vault
-#     helm:
-#       releaseName: vault
-#       valueFiles:
-#         - values.yaml
-#   destination:
-#     server: https://kubernetes.default.svc
-#     namespace: vault
-#   syncPolicy:
-#     automated:
-#       prune: true
-#       selfHeal: true
-#     syncOptions:
-#       - CreateNamespace=true
-#       - Validate=true
-#       - PrunePropagationPolicy=foreground
-#       - PruneLast=true
-#     retry:
-#       limit: 5
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: vault
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          # Auto updated by parent ApplicationSet
+          - list:
+              elements:
+                - name: lab
+          - git:
+              repoURL: https://github.com/skyf0l/skylab.git
+              revision: main
+              files:
+                - path: clusters/{{.name }}/config.json
+  template:
+    metadata:
+      name: "{{.name}}-vault"
+      annotations:
+        argocd.argoproj.io/sync-wave: "-2"
+    spec:
+      project: default
+      source:
+        repoURL: "{{.repo.url}}"
+        targetRevision: "{{.repo.revision}}"
+        path: k8s/projects/gitops-stack/vault
+        helm:
+          releaseName: vault
+          valueFiles:
+            - values.yaml
+            - values/{{.name}}.yaml
+          parameters:
+            - name: "vault.server.ingress.hosts[0].host"
+              value: "vault.{{.global.domain}}"
+            - name: "vault.server.ingress.tls[0].hosts[0]"
+              value: "vault.{{.global.domain}}"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: vault
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - Validate=true
+          - PrunePropagationPolicy=foreground
+          - PruneLast=true
+          - RespectIgnoreDifferences=true
+          - ServerSideApply=true # Avoids annotation size limits
+        retry:
+          limit: 5

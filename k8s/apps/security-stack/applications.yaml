@@ -1,9 +1,9 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: argocd
+  name: security-stack
   annotations:
-    argocd.argoproj.io/sync-wave: "-1"
+    argocd.argoproj.io/sync-wave: "-9"
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -18,41 +18,41 @@ spec:
               repoURL: https://github.com/skyf0l/skylab.git
               revision: main
               files:
-                - path: clusters/{{.name }}/config.json
+                - path: clusters/{{.name}}/config.json
   template:
     metadata:
-      name: "{{.name}}-argocd"
-      annotations:
-        argocd.argoproj.io/sync-wave: "-1"
+      name: "{{.name}}-security-stack"
     spec:
       project: default
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"
-        path: k8s/projects/gitops-stack/argocd
-        helm:
-          releaseName: argocd
-          valueFiles:
-            - values.yaml
-            - values/{{.name}}.yaml
-          parameters:
-            - name: "argo-cd.global.domain"
-              value: "argocd.{{.global.domain}}"
-            - name: "argo-cd.server.ingress.extraTls[0].hosts[0]"
-              value: "argocd.{{.global.domain}}"
+        path: k8s/apps/security-stack
+        kustomize:
+          namePrefix: "{{.name}}-"
+          patches:
+            - target:
+                kind: ApplicationSet
+              patch: |-
+                - op: replace
+                  path: /spec/generators/0/matrix/generators/0/list/elements/0/name
+                  value: {{.name}}
+                - op: replace
+                  path: /spec/generators/0/matrix/generators/1/git/repoURL
+                  value: {{.repo.url}}
+                - op: replace
+                  path: /spec/generators/0/matrix/generators/1/git/revision
+                  value: {{.repo.revision}}
       destination:
         server: https://kubernetes.default.svc
         namespace: argocd
       syncPolicy:
         automated:
           prune: true
-          selfHeal: true
         syncOptions:
-          - CreateNamespace=true
           - Validate=true
           - PrunePropagationPolicy=foreground
           - PruneLast=true
           - RespectIgnoreDifferences=true
-          - ServerSideApply=true # Avoids annotation size limits
         retry:
           limit: 5

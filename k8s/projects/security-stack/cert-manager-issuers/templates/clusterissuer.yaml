@@ -1,0 +1,17 @@
+{{- range $name, $server := .Values.issuers }}
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: {{ $name }}
+spec:
+  acme:
+    server: {{ $server }}
+    email: {{ required "cert-manager-issuers: .Values.email is required (set it in values/<cluster>.yaml)" $.Values.email }}
+    privateKeySecretRef:
+      name: {{ $name }}-account-key
+    solvers:
+      - http01:
+          ingress:
+            class: {{ $.Values.ingressClass }}
+---
+{{- end }}

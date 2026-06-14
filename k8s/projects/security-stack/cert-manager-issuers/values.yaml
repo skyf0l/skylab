@@ -1,0 +1,10 @@
+# Let's Encrypt ClusterIssuers. HTTP-01 solved through the Traefik ingress.
+# Use letsencrypt-staging first to avoid rate limits, then switch ingress
+# annotations to letsencrypt-prod once the handshake is proven.
+ingressClass: traefik
+issuers:
+  letsencrypt-staging: https://acme-staging-v02.api.letsencrypt.org/directory
+  letsencrypt-prod: https://acme-v02.api.letsencrypt.org/directory
+
+# ACME registration email — set per cluster in values/<cluster>.yaml
+email: ""

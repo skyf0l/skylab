@@ -13,10 +13,10 @@ spec:
           # Auto updated by parent ApplicationSet
           - list:
               elements:
-                - name: dev-station
+                - name: lab
           - git:
-              repoURL: http://gitea-http.gitea.svc.cluster.local:3000/gitea_admin/gitops
-              revision: HEAD
+              repoURL: https://github.com/skyf0l/skylab.git
+              revision: main
               files:
                 - path: clusters/{{.name}}/config.json
   template:

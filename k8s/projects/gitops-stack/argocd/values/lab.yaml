@@ -1,0 +1,21 @@
+argo-cd:
+  global:
+    domain: argocd.skyf0l.dev
+
+  server:
+    ingress:
+      enabled: true
+      ingressClassName: traefik
+      extraTls:
+        - hosts:
+            - argocd.skyf0l.dev
+
+  configs:
+    params:
+      # Traefik terminates TLS in front of ArgoCD.
+      server.insecure: true
+    # Admin login uses the auto-generated `argocd-initial-admin-secret` for now:
+    #   kubectl -n argocd get secret argocd-initial-admin-secret \
+    #     -o jsonpath="{.data.password}" | base64 -d
+    # Phase 3 (External Secrets Operator) will populate `argocd-secret` from Vault
+    # instead of committing a bcrypt hash here.

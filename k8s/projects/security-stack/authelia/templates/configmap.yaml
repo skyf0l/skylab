@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: authelia-config
+  labels:
+    app: authelia
+data:
+  configuration.yml: |
+{{ .Files.Get "files/configuration.yml" | indent 4 }}

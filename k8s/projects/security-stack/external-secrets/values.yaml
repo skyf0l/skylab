@@ -1,0 +1,3 @@
+external-secrets:
+  # Install the ESO CRDs (ExternalSecret, ClusterSecretStore, ...) with the chart.
+  installCRDs: true

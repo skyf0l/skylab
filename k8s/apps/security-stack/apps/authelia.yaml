@@ -1,9 +1,10 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: argocd
+  name: authelia
   annotations:
-    argocd.argoproj.io/sync-wave: "-1"
+    # After cert-manager (TLS), ESO store, and Vault (gitops-stack -2).
+    argocd.argoproj.io/sync-wave: "0"
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -21,28 +22,23 @@ spec:
                 - path: clusters/{{.name }}/config.json
   template:
     metadata:
-      name: "{{.name}}-argocd"
+      name: "{{.name}}-authelia"
       annotations:
-        argocd.argoproj.io/sync-wave: "-1"
+        argocd.argoproj.io/sync-wave: "0"
     spec:
       project: default
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"
-        path: k8s/projects/gitops-stack/argocd
+        path: k8s/projects/security-stack/authelia
         helm:
-          releaseName: argocd
+          releaseName: authelia
           valueFiles:
             - values.yaml
             - values/{{.name}}.yaml
-          parameters:
-            - name: "argo-cd.global.domain"
-              value: "argocd.{{.global.domain}}"
-            - name: "argo-cd.server.ingress.extraTls[0].hosts[0]"
-              value: "argocd.{{.global.domain}}"
       destination:
         server: https://kubernetes.default.svc
-        namespace: argocd
+        namespace: authelia
       syncPolicy:
         automated:
           prune: true
@@ -53,6 +49,5 @@ spec:
           - PrunePropagationPolicy=foreground
           - PruneLast=true
           - RespectIgnoreDifferences=true
-          - ServerSideApply=true # Avoids annotation size limits
         retry:
           limit: 5

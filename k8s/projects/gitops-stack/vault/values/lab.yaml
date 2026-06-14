@@ -1,0 +1,21 @@
+vault:
+  server:
+    dataStorage:
+      storageClass: local-path
+
+    auditStorage:
+      storageClass: local-path
+
+    # Single-node VPS for now; raise once more heavy nodes exist.
+    ha:
+      replicas: 1
+
+    ingress:
+      ingressClassName: traefik
+
+      hosts:
+        - host: vault.skyf0l.dev
+          paths: []
+      tls:
+        - hosts:
+            - vault.skyf0l.dev

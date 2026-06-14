@@ -1,0 +1,6 @@
+apiVersion: v2
+name: authelia
+type: application
+version: 0.1.0
+# Custom chart deploying upstream Authelia (image pinned in values.yaml) with
+# config-as-code + ESO-managed secrets.

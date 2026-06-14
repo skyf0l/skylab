@@ -1,0 +1,17 @@
+cilium:
+  # Single-node cluster: the operator defaults to 2 replicas with hostname
+  # anti-affinity, so the 2nd never schedules. Run one.
+  operator:
+    replicas: 1
+
+  hubble:
+    ui:
+      enabled: true
+      ingress:
+        enabled: true
+        className: "traefik"
+        hosts:
+          - hubble.skyf0l.dev
+        tls:
+          - hosts:
+              - hubble.skyf0l.dev

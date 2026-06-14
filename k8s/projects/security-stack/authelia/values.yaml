@@ -1,0 +1,33 @@
+# Authelia OIDC provider (authorization server for the MCP gateway).
+image:
+  repository: ghcr.io/authelia/authelia
+  tag: 4.39.20
+  pullPolicy: IfNotPresent
+
+# Public OIDC issuer host (Authelia derives the issuer from this).
+host: auth.skyf0l.dev
+
+ingress:
+  enabled: true
+  className: traefik
+  # Use letsencrypt-staging first to avoid rate limits, then switch to prod.
+  clusterIssuer: letsencrypt-staging
+  tlsSecretName: authelia-tls
+
+storage:
+  # SQLite on a small PVC + in-memory sessions (single replica) — light for the lab.
+  size: 1Gi
+  storageClassName: local-path
+
+# ESO pulls these from Vault at: kvv2/cluster/lab/authelia
+# Fields the user must populate in that Vault secret:
+#   jwt_secret              random >=64 chars
+#   session_secret          random >=64 chars
+#   storage_encryption_key  random >=20 chars
+#   oidc_hmac_secret        random >=64 chars
+#   oidc_jwks_key           RSA private key PEM (openssl genrsa 4096)
+#   users_yaml              the file-users database (users: { you: { password: <argon2id hash>, ... } })
+externalSecret:
+  enabled: true
+  storeName: vault-backend
+  vaultKey: cluster/lab/authelia

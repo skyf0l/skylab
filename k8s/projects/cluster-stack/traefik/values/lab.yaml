@@ -3,6 +3,13 @@ traefik:
   deployment:
     kind: DaemonSet
 
+  # Run the ingress DaemonSet on the tainted light (Pi) node too, so ingress
+  # is reachable on every node.
+  tolerations:
+    - key: node-role.skylab/light
+      operator: Exists
+      effect: NoSchedule
+
   service:
     type: ClusterIP
 
@@ -27,5 +34,5 @@ traefik:
     dashboard:
       enabled: true
       # Custom match rule with host domain
-      matchRule: Host(`traefik.vagrant.local`) && (PathPrefix(`/dashboard`) || PathPrefix(`/api`))
+      matchRule: Host(`traefik.skyf0l.dev`) && (PathPrefix(`/dashboard`) || PathPrefix(`/api`))
       entryPoints: ["websecure"]

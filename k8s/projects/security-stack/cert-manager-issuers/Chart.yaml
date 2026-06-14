@@ -1,0 +1,4 @@
+apiVersion: v2
+name: cert-manager-issuers
+type: application
+version: 0.1.0

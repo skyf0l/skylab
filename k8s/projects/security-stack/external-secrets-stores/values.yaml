@@ -1,0 +1,24 @@
+# ClusterSecretStore that lets ESO read secrets from the in-cluster Vault.
+#
+# Vault prerequisites (configure once, same way cloudflare-ddns uses Vault):
+#   1. Enable the KV v2 engine at `kvv2/` (already used by cloudflare-ddns).
+#   2. Enable Kubernetes auth:  vault auth enable kubernetes
+#   3. Policy granting read on the paths ESO needs, e.g.
+#        path "kvv2/data/cluster/lab/*" { capabilities = ["read"] }
+#   4. Role binding the ESO service account to that policy:
+#        vault write auth/kubernetes/role/external-secrets \
+#          bound_service_account_names=external-secrets \
+#          bound_service_account_namespaces=external-secrets \
+#          policies=external-secrets ttl=1h
+vault:
+  storeName: vault-backend
+  # In-cluster Vault service. Switch to https:// + caBundle if Vault's listener
+  # has TLS enabled.
+  server: "http://vault.vault.svc:8200"
+  kvPath: "kvv2"
+  kvVersion: "v2"
+  authMount: "kubernetes"
+  role: "external-secrets"
+  serviceAccount: "external-secrets"
+  serviceAccountNamespace: "external-secrets"
+  # caBundle: ""   # base64 PEM, only if using https with a private CA

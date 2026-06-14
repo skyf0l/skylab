@@ -1,0 +1,96 @@
+# Authelia configuration — config-as-code.
+#
+# Secrets are NOT in this file. `{{ secret "/secrets/<key>" }}` is Authelia's own
+# template filter (enabled via X_AUTHELIA_CONFIG_FILTERS=template); it reads files
+# mounted from the ESO-managed `authelia-secrets` Secret at /secrets/ at runtime.
+# This file is included verbatim via Helm `.Files.Get`, so these stay literal.
+
+theme: dark
+
+server:
+  address: 'tcp://:9091'
+
+log:
+  level: info
+
+totp:
+  issuer: skyf0l.dev
+
+identity_validation:
+  reset_password:
+    jwt_secret: '{{ secret "/secrets/jwt" }}'
+
+# Single local user; the users database (with the argon2id hash) is provided by
+# ESO from Vault and mounted at /config/users.yml.
+authentication_backend:
+  file:
+    path: /config/users.yml
+
+access_control:
+  default_policy: one_factor
+
+session:
+  secret: '{{ secret "/secrets/session" }}'
+  cookies:
+    - domain: skyf0l.dev
+      authelia_url: https://auth.skyf0l.dev
+
+storage:
+  encryption_key: '{{ secret "/secrets/storage.encryption" }}'
+  local:
+    path: /data/db.sqlite3
+
+notifier:
+  filesystem:
+    filename: /data/notification.txt
+
+identity_providers:
+  oidc:
+    hmac_secret: '{{ secret "/secrets/oidc.hmac" }}'
+    jwks:
+      - key: {{ secret "/secrets/oidc.jwks.key" | mindent 10 "|" | msquote }}
+    # Two public PKCE clients (no client secret) — one per assistant.
+    clients:
+      - client_id: claude
+        client_name: Claude
+        public: true
+        require_pkce: true
+        pkce_challenge_method: 'S256'
+        token_endpoint_auth_method: 'none'
+        authorization_policy: one_factor
+        redirect_uris:
+          - https://claude.ai/api/mcp/auth_callback
+          - http://localhost/callback
+          - http://127.0.0.1/callback
+        scopes:
+          - openid
+          - profile
+          - email
+          - offline_access
+        grant_types:
+          - authorization_code
+          - refresh_token
+        response_types:
+          - code
+        consent_mode: implicit
+      - client_id: chatgpt
+        client_name: ChatGPT
+        public: true
+        require_pkce: true
+        pkce_challenge_method: 'S256'
+        token_endpoint_auth_method: 'none'
+        authorization_policy: one_factor
+        # TODO: confirm ChatGPT's exact MCP OAuth callback URL and replace.
+        redirect_uris:
+          - https://chatgpt.com/connector_platform_oauth_redirect
+        scopes:
+          - openid
+          - profile
+          - email
+          - offline_access
+        grant_types:
+          - authorization_code
+          - refresh_token
+        response_types:
+          - code
+        consent_mode: implicit
