@@ -1,8 +1,14 @@
 ---
 collections:
+  # Used by the gitops/rke2 roles (k8s, helm, k8s_info modules)
+  - name: kubernetes.core
+  - name: community.general
   - name: k3s.orchestration
     type: git
     source: git+https://github.com/k3s-io/k3s-ansible
 
 roles:
-  - name: git+https://github.com/lablabs/ansible-role-rke2
+  # RKE2 installer (https://github.com/lablabs/ansible-role-rke2)
+  - name: lablabs.rke2
+    src: https://github.com/lablabs/ansible-role-rke2
+    scm: git

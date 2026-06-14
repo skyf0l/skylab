@@ -1,5 +1,7 @@
 - name: Delete RKE2 cluster
   hosts: k8s_cluster
   become: true
+  vars_files:
+    - vars.yml
   roles:
     - role: "../../../roles/rke2/delete"

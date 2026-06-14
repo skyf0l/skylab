@@ -1,0 +1,15 @@
+# Light worker (the Raspberry Pi 5, arm64) joined over WireGuard.
+#
+# The NoSchedule taint keeps everything off the Pi by default; only workloads
+# that explicitly tolerate `node-role.skylab/light` (DaemonSets like cilium /
+# traefik / node-exporter, and opt-in light apps) run here.
+k8s_node_label:
+  - "node-role.skylab/light=true"
+
+rke2_agent_node_taints:
+  - "node-role.skylab/light=true:NoSchedule"
+
+# Advertise the Pi's WireGuard address so node-to-node (Cilium) traffic uses the
+# tunnel rather than the home LAN / public path. Replace <PI_WG_IP>.
+rke2_kubelet_arg:
+  - "--node-ip=<PI_WG_IP>"

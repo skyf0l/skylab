@@ -1,0 +1,26 @@
+# Upgrade RKE2. Bump `rke2_version` in vars.yml first, then run this.
+# lablabs does a rolling restart (one node at a time, waits for Ready).
+# Skips the one-time Cilium/Traefik/GitOps bootstrap (ArgoCD owns those), and
+# re-unseals Vault afterwards (its pod restarts during the upgrade).
+#
+# NOTE: upgrade one MINOR version at a time (e.g. 1.35 -> 1.36 -> 1.37).
+- name: Upgrade RKE2 (rolling restart)
+  hosts: k8s_cluster
+  become: true
+  vars_files:
+    - vars.yml
+  vars:
+    rke2_run_init: false
+  roles:
+    - role: rke2/provision
+
+- name: Re-unseal Vault
+  hosts: localhost
+  gather_facts: true
+  vars_files:
+    - vars.yml
+  tasks:
+    - name: Unseal Vault
+      ansible.builtin.import_role:
+        name: gitops/install
+        tasks_from: unseal_vault

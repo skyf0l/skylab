@@ -1,0 +1,83 @@
+# Read Vault status and unseal it if sealed, then expose the root token.
+# Self-contained + idempotent: runs both at the end of bootstrap (tasks/vault.yml)
+# and standalone (playbooks/lab/unseal.yml) after a Vault pod restart re-seals it.
+# Does NOT touch Helm — ArgoCD owns the Vault release.
+
+- name: Get Vault server pods
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ gitops_install_kubeconfig_local_path }}"
+    namespace: vault
+    kind: Pod
+    label_selectors:
+      - app.kubernetes.io/name=vault
+      - component=server
+    field_selectors:
+      - status.phase=Running
+  register: gitops_install_vault_pods
+  retries: 30
+  delay: 10
+  until: gitops_install_vault_pods.resources | length > 0
+
+# `vault status` prints JSON on stdout even when sealed (exit 2) -> parse stdout.
+- name: Read Vault status
+  ansible.builtin.command:
+    cmd: "kubectl exec {{ gitops_install_vault_pods.resources[0].metadata.name }} -n vault -- vault status -format=json"
+  environment:
+    KUBECONFIG: "{{ gitops_install_kubeconfig_local_path | regex_replace('^~', ansible_env.HOME) }}"
+  register: gitops_install_vault_status_raw
+  changed_when: false
+  failed_when: false
+  retries: 12
+  delay: 5
+  until: gitops_install_vault_status_raw.stdout is search('"initialized"')
+
+- name: Parse Vault status
+  ansible.builtin.set_fact:
+    gitops_install_vault_status: "{{ gitops_install_vault_status_raw.stdout | from_json }}"
+
+- name: Unseal Vault
+  when: gitops_install_vault_status.sealed
+  block:
+    - name: Read unseal keys from the local file
+      ansible.builtin.slurp:
+        src: "{{ gitops_install_workdir }}/{{ gitops_install_cluster_name }}/{{ gitops_install_vault_cluster_keys_file }}"
+      register: gitops_install_vault_keys_raw
+      no_log: true
+
+    - name: Parse unseal keys
+      ansible.builtin.set_fact:
+        gitops_install_vault_unseal_keys: "{{ (gitops_install_vault_keys_raw.content | b64decode | from_json).unseal_keys_b64 }}"
+      no_log: true
+
+    - name: Unseal each Vault pod
+      ansible.builtin.shell: |
+        set -e
+        {% for key in gitops_install_vault_unseal_keys %}
+        kubectl exec {{ item.metadata.name }} -n vault -- vault operator unseal "{{ key }}"
+        {% endfor %}
+      environment:
+        KUBECONFIG: "{{ gitops_install_kubeconfig_local_path | regex_replace('^~', ansible_env.HOME) }}"
+      loop: "{{ gitops_install_vault_pods.resources }}"
+      loop_control:
+        label: "{{ item.metadata.name }}"
+      no_log: true
+      changed_when: true
+
+- name: Stat the local keys file
+  ansible.builtin.stat:
+    path: "{{ gitops_install_workdir }}/{{ gitops_install_cluster_name }}/{{ gitops_install_vault_cluster_keys_file }}"
+  register: gitops_install_vault_keys_stat
+
+- name: Read the Vault root token
+  when: gitops_install_vault_keys_stat.stat.exists
+  block:
+    - name: Slurp the keys file for the root token
+      ansible.builtin.slurp:
+        src: "{{ gitops_install_workdir }}/{{ gitops_install_cluster_name }}/{{ gitops_install_vault_cluster_keys_file }}"
+      register: gitops_install_vault_token_raw
+      no_log: true
+
+    - name: Set the Vault root token fact
+      ansible.builtin.set_fact:
+        gitops_install_vault_token: "{{ (gitops_install_vault_token_raw.content | b64decode | from_json).root_token }}"
+      no_log: true

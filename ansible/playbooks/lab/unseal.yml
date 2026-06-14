@@ -1,0 +1,13 @@
+# Unseal Vault from the local keys (idempotent). Run after a Vault pod restart.
+# Localhost-only: it talks to the cluster via kubectl/kubeconfig and never
+# touches Helm (ArgoCD owns the Vault release).
+- name: Unseal Vault
+  hosts: localhost
+  gather_facts: true
+  vars_files:
+    - vars.yml
+  tasks:
+    - name: Unseal Vault
+      ansible.builtin.import_role:
+        name: gitops/install
+        tasks_from: unseal_vault

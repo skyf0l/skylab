@@ -1,6 +1,15 @@
 - name: Install ArgoCD
   ansible.builtin.include_tasks: argocd.yml
 
-- name: Install Gitea
-  ansible.builtin.include_tasks: gitea.yml
-  when: gitea_enabled | default(false)
+- name: Install Vault
+  ansible.builtin.include_tasks: vault.yml
+
+# ArgoCD is the source of truth from here on: apply the root ApplicationSet,
+# which reads clusters/{{ cluster_name }}/config.json (pointing at GitHub) and
+# fans out every stack. Replaces the old in-cluster Gitea push (sync.sh).
+- name: Bootstrap ArgoCD root ApplicationSet (GitHub source of truth)
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig_local_path }}"
+    namespace: argocd
+    state: present
+    src: "{{ repo_root }}/clusters/{{ cluster_name }}/application.yml"

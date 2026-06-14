@@ -1,0 +1,4 @@
+# Control-plane / heavy node (the VPS). Schedulable by default; stateful and
+# heavy workloads land here because the light (Pi) node is tainted NoSchedule.
+k8s_node_label:
+  - "node-role.skylab/heavy=true"

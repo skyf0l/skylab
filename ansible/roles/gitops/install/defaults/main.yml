@@ -1,0 +1,14 @@
+---
+# Role-scoped aliases. The playbook (playbooks/lab/vars.yml) defines the
+# unprefixed cluster vars; this maps them into clearly-scoped role names.
+gitops_install_kubeconfig_local_path: "{{ kubeconfig_local_path }}"
+gitops_install_cluster_name: "{{ cluster_name }}"
+gitops_install_repo_root: "{{ repo_root }}"
+
+# Vault bootstrap: the generated unseal keys + root token are saved ONLY here.
+# ansible/artifacts/* is gitignored — they are never committed (public repo).
+gitops_install_workdir: "{{ repo_root }}/ansible/artifacts"
+gitops_install_vault_cluster_keys_file: "vault-cluster-keys.json"
+
+# Public Vault address (Traefik ingress). Used by downstream tasks if needed.
+gitops_install_vault_address: "https://vault.{{ domain_name }}"

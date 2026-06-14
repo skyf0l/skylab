@@ -8,10 +8,10 @@ spec:
   goTemplateOptions: ["missingkey=error"]
   generators:
     - git:
-        repoURL: http://gitea-http.gitea.svc.cluster.local:3000/gitea_admin/gitops
-        revision: HEAD
+        repoURL: https://github.com/skyf0l/skylab.git
+        revision: main
         files:
-          - path: clusters/vagrant/config.json
+          - path: clusters/lab/config.json
   template:
     metadata:
       name: "{{.name}}-apps"

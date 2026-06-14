@@ -1,0 +1,16 @@
+# Global variables for the lab cluster (VPS control-plane + Pi light worker)
+cluster_name: lab
+domain_name: skyf0l.dev
+kubeconfig_local_path: "{{ rke2_download_kubeconf_path }}/{{ rke2_download_kubeconf_file_name }}"
+repo_root: "{{ playbook_dir }}/../../.."
+
+# ArgoCD syncs from GitHub directly — no in-cluster Gitea to bootstrap.
+gitea_enabled: false
+
+# RKE2 variables (https://github.com/rancher/rke2/releases)
+rke2_version: v1.36.1+rke2r2
+rke2_token: CHANGE_ME_RANDOM_TOKEN
+
+rke2_download_kubeconf: true
+rke2_download_kubeconf_file_name: "{{ cluster_name }}.kubeconfig"
+rke2_download_kubeconf_path: ~/.kube

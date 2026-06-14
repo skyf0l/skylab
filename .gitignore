@@ -17,6 +17,7 @@ node_modules
 .settings/
 *.sublime-workspace
 .env
+/tasks
 
 # IDE - VSCode
 .vscode/*
@@ -94,3 +95,7 @@ projects/ansible/inventory
 
 # Vagrant
 .vagrant/
+
+# Local-only ansible inventory + cluster token (never commit — public repo)
+**/hosts.local.ini
+**/secrets.local.yml

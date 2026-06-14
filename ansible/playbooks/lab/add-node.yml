@@ -1,0 +1,18 @@
+# Join new node(s) to the cluster. Add them to hosts.local.ini first (reusing
+# the same rke2_token), then run this. lablabs installs RKE2 on the new node(s)
+# and joins them; existing nodes are a no-op (same version).
+#
+# Skips the one-time Cilium/Traefik/GitOps bootstrap — Cilium's DaemonSet
+# (ArgoCD-managed) schedules onto the new node automatically once it joins.
+#
+# Runs against the whole cluster (not --limit): lablabs needs the existing
+# server in play to resolve the join address/token.
+- name: Add node(s) to the RKE2 cluster
+  hosts: k8s_cluster
+  become: true
+  vars_files:
+    - vars.yml
+  vars:
+    rke2_run_init: false
+  roles:
+    - role: rke2/provision

@@ -1,16 +1,14 @@
 - name: Provision RKE2 cluster
   hosts: k8s_cluster
   become: true
+  vars_files:
+    - vars.yml
   roles:
     - role: "../../../roles/rke2/provision"
 
 - name: "Install GitOps Stack"
   hosts: localhost
+  vars_files:
+    - vars.yml
   roles:
     - role: "../../../roles/gitops/install"
-
-- name: Show kubeconfig location
-  hosts: localhost
-  tasks:
-    - ansible.builtin.debug:
-        msg: "Kubeconfig downloaded to {{ kubeconfig_local_path }}; export KUBECONFIG={{ kubeconfig_local_path }} to use it"

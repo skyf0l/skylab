@@ -1,0 +1,10 @@
+{
+  "name": "lab",
+  "repo": {
+    "url": "https://github.com/skyf0l/skylab.git",
+    "revision": "main"
+  },
+  "global": {
+    "domain": "skyf0l.dev"
+  }
+}

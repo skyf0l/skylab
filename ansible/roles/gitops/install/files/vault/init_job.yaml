@@ -1,0 +1,77 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vault-init
+  namespace: vault
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: vault-init
+  namespace: vault
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create", "get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: vault-init
+  namespace: vault
+subjects:
+  - kind: ServiceAccount
+    name: vault-init
+    namespace: vault
+roleRef:
+  kind: Role
+  name: vault-init
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: vault-init
+  namespace: vault
+spec:
+  backoffLimit: 3
+  activeDeadlineSeconds: 600
+  ttlSecondsAfterFinished: 600
+  template:
+    spec:
+      serviceAccountName: vault-init
+      restartPolicy: Never
+      containers:
+        - name: init
+          image: alpine/kubectl:1.36.1
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -o pipefail
+              echo "Waiting for vault-0 to respond..."
+              for i in $(seq 1 60); do
+                kubectl exec vault-0 -n vault -- vault status -format=json > /tmp/st 2>/dev/null || true
+                [ -s /tmp/st ] && break
+                echo "  vault-0 not ready yet ($i)"; sleep 5
+              done
+              if [ ! -s /tmp/st ]; then echo "vault-0 never responded" >&2; exit 1; fi
+              # Idempotency guard (the ansible task also gates on this).
+              if grep -q '"initialized"[: ]*true' /tmp/st; then
+                echo "Vault already initialized; nothing to do."; exit 0
+              fi
+              echo "Initializing Vault (key-shares=5, key-threshold=3)..."
+              kubectl exec vault-0 -n vault -- \
+                vault operator init -key-shares=5 -key-threshold=3 -format=json \
+                > /tmp/cluster-keys.json
+              [ -s /tmp/cluster-keys.json ] || { echo "init produced no output" >&2; exit 1; }
+              # Hand the keys to ansible via a short-lived Secret (ansible copies
+              # them to a local gitignored file, then deletes this Secret).
+              kubectl create secret generic vault-unseal-keys -n vault \
+                --from-file=cluster-keys.json=/tmp/cluster-keys.json
+              echo "Init complete; keys written to Secret vault-unseal-keys."

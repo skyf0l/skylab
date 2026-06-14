@@ -1,5 +1,5 @@
 # Get initial password with `kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d`
-- name: Deploy latest version of ArgoCD chart inside argocd namespace with values
+- name: Deploy ArgoCD chart (managed later by ArgoCD itself)
   kubernetes.core.helm:
     kubeconfig: "{{ kubeconfig_local_path }}"
     name: argocd

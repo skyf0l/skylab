@@ -4,6 +4,9 @@
 - name: Create cluster
   ansible.builtin.include_tasks: create_cluster.yml
 
+# One-time bootstrap: local-path + Cilium + Traefik (Helm). After first boot
+# these are ArgoCD-owned, so upgrade/add-node runs skip this (rke2_run_init=false)
+# to avoid re-running Helm against resources ArgoCD now manages.
 - name: Initialize cluster
   ansible.builtin.include_tasks:
     file: initialize_cluster.yml
@@ -11,3 +14,4 @@
       delegate_to: localhost
       run_once: true
       become: false
+  when: rke2_run_init | default(true)

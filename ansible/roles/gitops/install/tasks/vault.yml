@@ -1,0 +1,111 @@
+# =============================================================================
+# Deploy Vault (Helm) + initialize it, then hand off to unseal_vault.yml.
+# ArgoCD adopts the same Helm release later (GitOps); init/unseal is imperative
+# and can't be done by ArgoCD.
+#
+# Keys + root token are saved ONLY in {{ gitops_install_workdir }} (gitignored).
+# Requires `kubectl` on the control host. Idempotent (re-runnable).
+# =============================================================================
+
+- name: Deploy Vault chart (managed later by ArgoCD)
+  kubernetes.core.helm:
+    kubeconfig: "{{ gitops_install_kubeconfig_local_path }}"
+    name: vault
+    chart_ref: "{{ gitops_install_repo_root }}/k8s/projects/gitops-stack/vault"
+    values_files:
+      - "{{ gitops_install_repo_root }}/k8s/projects/gitops-stack/vault/values.yaml"
+      - "{{ gitops_install_repo_root }}/k8s/projects/gitops-stack/vault/values/{{ gitops_install_cluster_name }}.yaml"
+    release_namespace: vault
+    create_namespace: true
+    dependency_update: true
+    wait: true
+
+- name: Wait for at least one Vault server pod to be running
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ gitops_install_kubeconfig_local_path }}"
+    namespace: vault
+    kind: Pod
+    label_selectors:
+      - app.kubernetes.io/name=vault
+      - component=server
+    field_selectors:
+      - status.phase=Running
+  register: gitops_install_vault_pods
+  retries: 30
+  delay: 10
+  until: gitops_install_vault_pods.resources | length > 0
+
+- name: Read Vault status
+  ansible.builtin.command:
+    cmd: "kubectl exec {{ gitops_install_vault_pods.resources[0].metadata.name }} -n vault -- vault status -format=json"
+  environment:
+    KUBECONFIG: "{{ gitops_install_kubeconfig_local_path | regex_replace('^~', ansible_env.HOME) }}"
+  register: gitops_install_vault_status_raw
+  changed_when: false
+  failed_when: false
+  retries: 12
+  delay: 5
+  until: gitops_install_vault_status_raw.stdout is search('"initialized"')
+
+- name: Parse Vault status
+  ansible.builtin.set_fact:
+    gitops_install_vault_status: "{{ gitops_install_vault_status_raw.stdout | from_json }}"
+
+# -----------------------------------------------------------------------------
+# Initialize (only when not yet initialized). The init Job writes the keys to a
+# short-lived Secret; we copy them to a gitignored local file, then delete it.
+# -----------------------------------------------------------------------------
+- name: Initialize Vault
+  when: not gitops_install_vault_status.initialized
+  block:
+    - name: Apply Vault init Job
+      kubernetes.core.k8s:
+        kubeconfig: "{{ gitops_install_kubeconfig_local_path }}"
+        namespace: vault
+        state: present
+        src: "vault/init_job.yaml"
+
+    - name: Wait for the vault-unseal-keys Secret
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ gitops_install_kubeconfig_local_path }}"
+        api_version: v1
+        kind: Secret
+        namespace: vault
+        name: vault-unseal-keys
+      register: gitops_install_vault_keys_secret
+      failed_when: gitops_install_vault_keys_secret.resources | length == 0
+      retries: 30
+      delay: 10
+
+    - name: Ensure the local keys directory exists
+      ansible.builtin.file:
+        path: "{{ gitops_install_workdir }}/{{ gitops_install_cluster_name }}"
+        state: directory
+        mode: "0700"
+
+    - name: Save the cluster keys + root token locally (gitignored)
+      ansible.builtin.copy:
+        content: "{{ gitops_install_vault_keys_secret.resources[0].data['cluster-keys.json'] | b64decode }}"
+        dest: "{{ gitops_install_workdir }}/{{ gitops_install_cluster_name }}/{{ gitops_install_vault_cluster_keys_file }}"
+        mode: "0600"
+      no_log: true
+
+    - name: Remove the keys Secret from the cluster
+      kubernetes.core.k8s:
+        kubeconfig: "{{ gitops_install_kubeconfig_local_path }}"
+        api_version: v1
+        kind: Secret
+        namespace: vault
+        name: vault-unseal-keys
+        state: absent
+
+    - name: Remove the init Job
+      kubernetes.core.k8s:
+        kubeconfig: "{{ gitops_install_kubeconfig_local_path }}"
+        namespace: vault
+        src: "vault/init_job.yaml"
+        state: absent
+
+# Re-reads status (fresh, post-init) and unseals if sealed; sets the root token.
+- name: Unseal Vault and expose the root token
+  ansible.builtin.include_tasks: unseal_vault.yml
