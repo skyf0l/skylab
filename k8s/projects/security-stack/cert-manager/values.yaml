@@ -4,5 +4,13 @@ cert-manager:
     enabled: true
     keep: true
 
+  # Default issuer: any Ingress with a `tls` block (incl. a secretName) but no
+  # explicit cert-manager.io/cluster-issuer annotation auto-gets a cert from
+  # this issuer. This is the "auto-resolve certs for everything" behaviour.
+  ingressShim:
+    defaultIssuerName: letsencrypt-prod
+    defaultIssuerKind: ClusterIssuer
+    defaultIssuerGroup: cert-manager.io
+
   # Runs on the VPS control-plane; the Pi light node is tainted NoSchedule so
   # nothing here needs a toleration.

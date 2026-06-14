@@ -10,8 +10,12 @@ spec:
     privateKeySecretRef:
       name: {{ $name }}-account-key
     solvers:
-      - http01:
-          ingress:
-            class: {{ $.Values.ingressClass }}
+      # DNS-01 via Cloudflare — works behind the Cloudflare proxy and ignores
+      # Traefik's HTTP->HTTPS redirect (both of which break HTTP-01).
+      - dns01:
+          cloudflare:
+            apiTokenSecretRef:
+              name: {{ $.Values.cloudflare.tokenSecretName }}
+              key: {{ $.Values.cloudflare.tokenSecretKey }}
 ---
 {{- end }}

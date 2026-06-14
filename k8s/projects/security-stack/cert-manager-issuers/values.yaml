@@ -1,10 +1,18 @@
-# Let's Encrypt ClusterIssuers. HTTP-01 solved through the Traefik ingress.
-# Use letsencrypt-staging first to avoid rate limits, then switch ingress
-# annotations to letsencrypt-prod once the handshake is proven.
-ingressClass: traefik
+# Let's Encrypt ClusterIssuers using DNS-01 via Cloudflare. HTTP-01 does NOT work
+# here: the Cloudflare proxy + Traefik's HTTP->HTTPS redirect break the
+# /.well-known/acme-challenge self-check. DNS-01 sidesteps both.
 issuers:
   letsencrypt-staging: https://acme-staging-v02.api.letsencrypt.org/directory
   letsencrypt-prod: https://acme-v02.api.letsencrypt.org/directory
 
 # ACME registration email — set per cluster in values/<cluster>.yaml
 email: ""
+
+# Cloudflare API token Secret, read from the cert-manager namespace.
+# The token needs Zone:DNS:Edit + Zone:Zone:Read on the zone. Create it once:
+#   kubectl -n cert-manager create secret generic cloudflare-api-token \
+#     --from-literal=api-token='<CLOUDFLARE_TOKEN>'
+# (later: source it from Vault via ESO instead of a manual secret)
+cloudflare:
+  tokenSecretName: cloudflare-api-token
+  tokenSecretKey: api-token

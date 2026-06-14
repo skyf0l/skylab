@@ -11,7 +11,7 @@ ingress:
   enabled: true
   className: traefik
   # Use letsencrypt-staging first to avoid rate limits, then switch to prod.
-  clusterIssuer: letsencrypt-staging
+  clusterIssuer: letsencrypt-prod
   tlsSecretName: authelia-tls
 
 storage:

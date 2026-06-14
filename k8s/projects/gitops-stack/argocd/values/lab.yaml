@@ -6,9 +6,13 @@ argo-cd:
     ingress:
       enabled: true
       ingressClassName: traefik
+      annotations:
+        cert-manager.io/cluster-issuer: letsencrypt-prod
+      # secretName makes cert-manager issue a real cert for this host.
       extraTls:
         - hosts:
             - argocd.skyf0l.dev
+          secretName: argocd-server-tls
 
   configs:
     params:
