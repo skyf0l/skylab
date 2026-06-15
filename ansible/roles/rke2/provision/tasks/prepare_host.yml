@@ -8,3 +8,20 @@
     path: /etc/fstab
     regexp: '^(\s*[^#]\S+\s+\S+\s+swap\s+\S+.*)$'
     replace: '# \1'
+
+# A busy k8s node (Cilium, Prometheus, controllers, fsnotify watchers like
+# Headscale's extra_records) exhausts the low default inotify limits, which
+# surfaces as "too many open files: creating watcher". Raise them.
+- name: Raise inotify limits for the Kubernetes node
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/99-kubernetes-inotify.conf
+    mode: "0644"
+    content: |
+      fs.inotify.max_user_instances = {{ inotify_max_user_instances | default(512) }}
+      fs.inotify.max_user_watches = {{ inotify_max_user_watches | default(524288) }}
+  register: inotify_sysctl
+
+- name: Apply sysctl settings
+  ansible.builtin.command: sysctl --system
+  when: inotify_sysctl.changed
+  changed_when: true

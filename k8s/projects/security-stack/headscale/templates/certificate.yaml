@@ -1,0 +1,17 @@
+{{- if .Values.ingress.enabled }}
+# TLS for the public coordination endpoint. cert-manager fills headscale-tls
+# (DNS-01 via the cluster issuer); the IngressRoute references it.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: headscale
+  labels:
+    app: headscale
+spec:
+  secretName: {{ .Values.ingress.tlsSecretName }}
+  issuerRef:
+    name: {{ .Values.ingress.clusterIssuer }}
+    kind: ClusterIssuer
+  dnsNames:
+    - "{{ .Values.host }}"
+{{- end }}

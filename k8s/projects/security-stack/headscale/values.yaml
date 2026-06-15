@@ -1,14 +1,16 @@
 image:
   repository: docker.io/headscale/headscale
-  tag: "0.26.1"
+  tag: "0.28.0"
   pullPolicy: IfNotPresent
 
 # Public coordination endpoint (used for both the Ingress host and server_url).
 host: headscale.skyf0l.dev
 
+# Public coordination endpoint, exposed via a Traefik IngressRoute (NOT a k8s
+# Ingress — see templates/ingressroute.yaml for why) + a cert-manager Certificate.
 ingress:
   enabled: true
-  className: traefik
+  entryPoint: websecure
   clusterIssuer: letsencrypt-prod
   tlsSecretName: headscale-tls
 
