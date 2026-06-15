@@ -34,8 +34,6 @@ data:
           {{- range .Values.config.dns.nameservers }}
           - {{ . | quote }}
           {{- end }}
-      # Maintained at runtime by the resolver sidecar (Traefik's live ClusterIP).
-      extra_records_path: {{ .Values.resolver.recordsPath | quote }}
     derp:
       server:
         enabled: {{ .Values.config.derp.serverEnabled }}
@@ -48,25 +46,3 @@ data:
     ephemeral_node_inactivity_timeout: 30m
   acl.json: |
 {{ .Values.config.acl | toJson | indent 4 }}
-  resolve.sh: |
-    #!/bin/sh
-    # Resolve Traefik's ClusterIP and write the .tail A-records to a file that
-    # Headscale hot-reloads (dns.extra_records_path). No hardcoded IP, no RBAC.
-    set -eu
-    OUT="{{ .Values.resolver.recordsPath }}"
-    FQDN="{{ .Values.resolver.traefikService }}"
-    BASE="{{ .Values.tailBaseDomain }}"
-    HOSTS="{{ range .Values.tailHosts }}{{ . }} {{ end }}"
-    ip="$(nslookup "$FQDN" 2>/dev/null | awk '/^Address/{ if ($0 !~ /:53/) a=$NF } END{ print a }')"
-    if [ -z "$ip" ]; then echo "resolve $FQDN failed" >&2; exit 1; fi
-    records=""
-    add() { [ -z "$records" ] || records="$records,"; records="$records$1"; }
-    for h in $HOSTS; do
-      add "{\"name\":\"$h.$BASE\",\"type\":\"A\",\"value\":\"$ip\"}"
-    done
-    {{- range .Values.config.dns.extraRecords }}
-    add '{"name":"{{ .name }}","type":"{{ .type }}","value":"{{ .value }}"}'
-    {{- end }}
-    printf '[%s]\n' "$records" > "$OUT.tmp" && mv "$OUT.tmp" "$OUT"
-    chmod 0644 "$OUT"
-    echo "wrote $OUT ($ip)"

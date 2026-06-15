@@ -7,5 +7,5 @@ resources:
   - apps/external-secrets-stores.yaml
   - apps/authelia.yaml
   - apps/headscale.yaml
-  - apps/tailscale-router.yaml
+  - apps/headscale-proxy.yaml
   - apps/tail-ingress.yaml

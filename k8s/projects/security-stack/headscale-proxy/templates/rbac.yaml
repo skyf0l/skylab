@@ -1,18 +1,19 @@
+# Shared SA for all proxy pods: tailscaled persists each node's identity in its
+# own TS_KUBE_SECRET (tail-proxy-<name>-state), so it needs secrets RW.
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: tailscale-router
+  name: headscale-proxy
   labels:
-    app: tailscale-router
+    app: headscale-proxy
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: tailscale-router
+  name: headscale-proxy
   labels:
-    app: tailscale-router
+    app: headscale-proxy
 rules:
-  # tailscaled persists node state in a Secret (TS_KUBE_SECRET).
   - apiGroups: [""]
     resources: ["secrets"]
     verbs: ["get", "create", "update", "patch", "list"]
@@ -20,13 +21,13 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: tailscale-router
+  name: headscale-proxy
   labels:
-    app: tailscale-router
+    app: headscale-proxy
 subjects:
   - kind: ServiceAccount
-    name: tailscale-router
+    name: headscale-proxy
 roleRef:
   kind: Role
-  name: tailscale-router
+  name: headscale-proxy
   apiGroup: rbac.authorization.k8s.io

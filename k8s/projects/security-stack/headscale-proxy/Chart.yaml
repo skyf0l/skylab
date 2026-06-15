@@ -1,0 +1,15 @@
+apiVersion: v2
+name: headscale-proxy
+type: application
+version: 0.1.0
+# Per-service tailnet entrypoints: each proxy is a Headscale node named after a
+# service that forwards tailnet traffic to Traefik (which terminates TLS and
+# routes by Host via the tail-ingress IngressRoutes).
+#
+# Why not the Tailscale Kubernetes Operator? It needs Tailscale-SaaS OAuth, which
+# Headscale doesn't implement. So we reproduce its model with Headscale primitives.
+#
+# Why socat instead of TS_DEST_IP (kernel DNAT)? Under Cilium kube-proxy-replacement
+# a ClusterIP is NOT translated for traffic *forwarded* through a pod (it gets
+# masqueraded to "world"). socat opens its OWN socket to the ClusterIP, which IS
+# translated. (TS_DEST_IP works on standard kube-proxy clusters like GKE; not here.)

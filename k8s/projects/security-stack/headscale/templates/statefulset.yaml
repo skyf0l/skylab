@@ -19,18 +19,6 @@ spec:
     spec:
       securityContext:
         fsGroup: 1000
-      initContainers:
-        # Seed the extra-records file before Headscale starts (so it never boots
-        # with a missing dns.extra_records_path).
-        - name: seed-records
-          image: {{ .Values.resolver.image }}
-          command: ["sh", "/etc/headscale/resolve.sh"]
-          volumeMounts:
-            - name: config
-              mountPath: /etc/headscale
-              readOnly: true
-            - name: shared
-              mountPath: /shared
       containers:
         - name: headscale
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -65,27 +53,6 @@ spec:
               readOnly: true
             - name: data
               mountPath: {{ .Values.dataPath }}
-            - name: shared
-              mountPath: /shared
-        # Keeps the .tail records pointed at Traefik's live ClusterIP.
-        - name: records-resolver
-          image: {{ .Values.resolver.image }}
-          command:
-            - sh
-            - -c
-            - "while true; do sh /etc/headscale/resolve.sh || true; sleep {{ .Values.resolver.intervalSeconds }}; done"
-          resources:
-            requests:
-              cpu: 10m
-              memory: 16Mi
-            limits:
-              memory: 32Mi
-          volumeMounts:
-            - name: config
-              mountPath: /etc/headscale
-              readOnly: true
-            - name: shared
-              mountPath: /shared
       volumes:
         - name: config
           configMap:
@@ -93,5 +60,3 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: headscale-data
-        - name: shared
-          emptyDir: {}

@@ -9,6 +9,16 @@ traefik:
   deployment:
     kind: DaemonSet
 
+  # hostPort 80/443 means only one Traefik pod can exist per node. The chart
+  # default (maxSurge 1 / maxUnavailable 0) tries to start the new pod BEFORE
+  # killing the old one, so on a single node the new pod is stuck Pending on a
+  # port conflict and the rollout deadlocks. Delete-then-create instead.
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+
   # Run the ingress DaemonSet on the tainted light (Pi) node too, so ingress
   # is reachable on every node.
   tolerations:

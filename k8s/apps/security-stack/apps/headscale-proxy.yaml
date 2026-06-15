@@ -1,9 +1,9 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: tailscale-router
+  name: headscale-proxy
   annotations:
-    # After Headscale is up (it joins the in-cluster control server).
+    # After Headscale is up (the proxies register against the in-cluster control server).
     argocd.argoproj.io/sync-wave: "2"
 spec:
   goTemplate: true
@@ -22,7 +22,7 @@ spec:
                 - path: clusters/{{.name }}/config.json
   template:
     metadata:
-      name: "{{.name}}-tailscale-router"
+      name: "{{.name}}-headscale-proxy"
       annotations:
         argocd.argoproj.io/sync-wave: "2"
     spec:
@@ -30,9 +30,9 @@ spec:
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"
-        path: k8s/projects/security-stack/tailscale-router
+        path: k8s/projects/security-stack/headscale-proxy
         helm:
-          releaseName: tailscale-router
+          releaseName: headscale-proxy
           valueFiles:
             - values.yaml
       destination:

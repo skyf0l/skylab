@@ -1,0 +1,41 @@
+image:
+  # tailnet node (kernel mode — needs NET_ADMIN + /dev/net/tun).
+  tailscale: tailscale/tailscale:v1.78.1
+  # socket proxy: listens on the pod's tailnet interface and dials Traefik from
+  # its own socket (so the ClusterIP is translated under Cilium KPR).
+  socat: alpine/socat:1.8.0.0
+
+# In-cluster Headscale control server (internal Service — no public round-trip).
+loginServer: http://headscale.headscale.svc.cluster.local
+
+# Traefik endpoint every proxy forwards to. Traefik terminates TLS with the
+# *.tail.skyf0l.dev wildcard cert and routes by Host via the tail-ingress
+# IngressRoutes. The proxy is a pure L4 passthrough to :443.
+traefikService: traefik.traefik.svc.cluster.local
+traefikPort: 443
+
+# Shared reusable pre-auth key (tagged tag:tail-proxy), auto-minted by the
+# PreSync Job below and consumed by every proxy pod.
+authKeySecret: tail-proxy-authkey
+tag: "tag:tail-proxy"
+
+# Auto-mint the shared key — execs Headscale, mints a REUSABLE key for `user`
+# WITH --tags (authkey nodes can't self-request tags), writes authKeySecret.
+# Idempotent: skips if the secret is already populated. PreSync so the secret
+# exists before the proxy Deployments roll.
+authkeyMint:
+  enabled: true
+  user: infra@skyf0l.dev
+  headscaleNamespace: headscale
+  headscalePod: headscale-0
+  jobImage: alpine/kubectl:1.36.1
+  expiration: 999d
+
+# One tailnet node per entry. The name IS the MagicDNS hostname and the .tail
+# subdomain that must match a Traefik IngressRoute Host (tail-ingress). Add a
+# name here to expose another admin UI on the tailnet.
+proxies:
+  - argocd
+  - vault
+  - grafana
+  - hubble

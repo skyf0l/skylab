@@ -1,0 +1,87 @@
+{{- $traefik := printf "%s" .Values.traefikService }}
+{{- $port := .Values.traefikPort }}
+{{- range $name := .Values.proxies }}
+# Tailnet node "{{ $name }}" -> MagicDNS {{ $name }}.tail.skyf0l.dev (headscale base_domain).
+# Inbound tailnet :{{ $port }} is delivered to socat (a local socket), which dials
+# Traefik from its own socket so the ClusterIP is translated under Cilium KPR.
+# Traefik terminates TLS (*.tail wildcard) and routes by Host (tail-ingress).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: headscale-proxy-{{ $name }}
+  labels:
+    app: headscale-proxy
+    app.kubernetes.io/name: headscale-proxy-{{ $name }}
+    app.kubernetes.io/component: headscale-proxy
+spec:
+  replicas: 1
+  strategy:
+    # hostNetwork-free, but the node identity lives in one TS_KUBE_SECRET; never
+    # run two pods for the same node at once.
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: headscale-proxy-{{ $name }}
+  template:
+    metadata:
+      labels:
+        app: headscale-proxy
+        app.kubernetes.io/name: headscale-proxy-{{ $name }}
+        app.kubernetes.io/component: headscale-proxy
+    spec:
+      serviceAccountName: headscale-proxy
+      containers:
+        - name: tailscale
+          image: {{ $.Values.image.tailscale | quote }}
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: TS_AUTHKEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.authKeySecret | quote }}
+                  key: authkey
+            - name: TS_HOSTNAME
+              value: {{ $name | quote }}
+            - name: TS_USERSPACE
+              value: "false"
+            - name: TS_KUBE_SECRET
+              value: "tail-proxy-{{ $name }}-state"
+            - name: TS_EXTRA_ARGS
+              # Tags come from the pre-auth key (--tags), NOT --advertise-tags
+              # (authkey nodes can't self-request tags reliably).
+              value: "--login-server={{ $.Values.loginServer }} --accept-dns=false"
+          securityContext:
+            capabilities:
+              add: ["NET_ADMIN"]
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - 'tailscale status --json --peers=false 2>/dev/null | grep -q ''"BackendState": *"Running"'''
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests: { cpu: 20m, memory: 32Mi }
+            limits: { memory: 128Mi }
+          volumeMounts:
+            - name: dev-net-tun
+              mountPath: /dev/net/tun
+        - name: socat
+          image: {{ $.Values.image.socat | quote }}
+          command: ["socat"]
+          args:
+            - "TCP-LISTEN:{{ $port }},fork,reuseaddr"
+            - "TCP:{{ $traefik }}:{{ $port }}"
+          resources:
+            requests: { cpu: 10m, memory: 16Mi }
+            limits: { memory: 64Mi }
+      volumes:
+        - name: dev-net-tun
+          hostPath:
+            path: /dev/net/tun
+            type: CharDevice
+---
+{{- end }}
