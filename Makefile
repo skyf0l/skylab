@@ -16,7 +16,7 @@ ANSIBLE_DIR := ansible
 LAB_INV     := inventories/lab/hosts.local.ini
 LAB_SECRETS := inventories/lab/secrets.local.yml
 
-.PHONY: help deps deploy preview preview-apps template bootstrap vault-unseal upgrade add-node
+.PHONY: help deps deploy preview preview-apps template bootstrap vault-unseal upgrade add-node refresh
 
 help:
 	@echo "make bootstrap             provision cluster + ArgoCD + Vault (init+unseal) + root app"
@@ -24,6 +24,7 @@ help:
 	@echo "make add-node              join new node(s) added to hosts.local.ini"
 	@echo "make vault-unseal          unseal Vault from local keys (after a Vault pod restart)"
 	@echo "make deploy   [MSG=...]   commit + push to GitHub; ArgoCD auto-syncs"
+	@echo "make refresh               force ArgoCD to re-pull GitHub now (hard refresh all apps)"
 	@echo "make preview  [CLUSTER=lab] helm template + kubectl diff (needs a live cluster)"
 	@echo "make preview-apps          kubectl diff the app-of-apps (ApplicationSets)"
 	@echo "make template [CLUSTER=lab] render every chart to validate values (no cluster)"
@@ -48,6 +49,11 @@ add-node:
 # Run this after a reboot / Vault pod restart re-seals it. Does not touch Helm.
 vault-unseal:
 	cd $(ANSIBLE_DIR) && ansible-playbook -i $(LAB_INV) playbooks/lab/unseal.yml
+
+# Force ArgoCD to re-pull GitHub immediately (hard refresh every app), instead of
+# waiting for the per-tier ~3min reconcile to cascade through the app-of-apps.
+refresh:
+	kubectl -n argocd annotate applications.argoproj.io --all argocd.argoproj.io/refresh=hard --overwrite
 
 # Vendored subcharts (charts/*.tgz) need their deps resolved before templating.
 deps:

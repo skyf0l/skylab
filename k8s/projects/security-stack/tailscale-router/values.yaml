@@ -11,10 +11,16 @@ advertiseRoutes: "10.43.0.0/16"
 # route auto-approve (autoApprovers).
 advertiseTags: "tag:k8s-router"
 
-# Headscale pre-auth key. Created AFTER Headscale is up:
-#   kubectl -n headscale exec deploy/headscale -- \
-#     headscale preauthkeys create -u <user> --reusable --expiration 999d
-# then store it:
-#   kubectl -n tailscale create secret generic tailscale-authkey --from-literal=authkey='<KEY>'
 authKeySecret: tailscale-authkey
 authKeySecretKey: authkey
+
+# Auto-mint the router's pre-auth key into authKeySecret — no manual step.
+# A post-install/upgrade Job execs Headscale (via the headscale-exec ClusterRole),
+# mints a REUSABLE key for `user`, and writes the Secret. Skips if already populated.
+authkeyMint:
+  enabled: true
+  user: infra@skyf0l.dev
+  headscaleNamespace: headscale
+  headscalePod: headscale-0   # exec RBAC is pinned to this pod only
+  jobImage: alpine/kubectl:1.36.1
+  expiration: 999d

@@ -19,6 +19,12 @@ storage:
 # State/db live here (PVC mount).
 dataPath: /var/lib/headscale
 
+# Image for the in-cluster bootstrap Jobs (needs kubectl + sh). Matches vault-init.
+jobImage: alpine/kubectl:1.36.1
+
+# Stable pod name (StatefulSet ordinal-0) — exec RBAC is pinned to it.
+podName: headscale-0
+
 # Admin UIs published on the tailnet via Traefik: Headscale serves A-records for
 # <host>.<tailBaseDomain>. The IP is resolved at runtime by the resolver sidecar
 # (no hardcoded ClusterIP).
@@ -36,6 +42,13 @@ resolver:
   traefikService: traefik.traefik.svc.cluster.local
   recordsPath: /shared/extra_records.json
   intervalSeconds: 60
+
+# Declarative tailnet users. A post-install/upgrade Job creates these and PRUNES
+# any Headscale user not in this list. skypwn = personal devices; infra = owns
+# the router tag + mints the router key. Pre-auth keys are minted by Jobs too.
+users:
+  - skypwn@skyf0l.dev
+  - infra@skyf0l.dev
 
 # ---- Headscale server config (rendered into config.yaml) ----
 config:
@@ -63,19 +76,16 @@ config:
     autoUpdate: true
 
   acl:
-    # skypwn owns the router tag; routes advertised by tagged routers auto-approve
-    # (no manual `headscale routes enable`).
+    # infra owns the router tag (keeps it off your personal identity); routes
+    # advertised by tagged routers auto-approve (no manual `headscale routes enable`).
     tagOwners:
-      "tag:k8s-router": ["skypwn@skyf0l.dev"]
+      "tag:k8s-router": ["infra@skyf0l.dev"]
     autoApprovers:
       routes:
         "10.43.0.0/16": ["tag:k8s-router"]
-    # Tight by identity: only skypwn's devices originate traffic. Full access to
-    # what's needed — the in-cluster service CIDR (via the subnet router) and
-    # skypwn's own devices.
+    # Tight: skypwn's devices may reach ONLY the in-cluster service CIDR (via the subnet router).
     acls:
       - action: accept
         src: ["skypwn@skyf0l.dev"]
         dst:
           - "10.43.0.0/16:*"
-          - "skypwn@skyf0l.dev:*"

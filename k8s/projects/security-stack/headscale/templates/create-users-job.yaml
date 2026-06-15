@@ -1,0 +1,97 @@
+{{- if .Values.users }}
+# Reconciles Headscale users to match .Values.users: creates the declared ones
+# and PRUNES any user not in the list. Runs as a post-install/upgrade hook.
+# NOTE: destroying a user also removes its nodes — that's the point of prune,
+# but be deliberate about what's in .Values.users.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: headscale-create-users
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "0"
+    helm.sh/hook-delete-policy: hook-succeeded,before-hook-creation
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: headscale-create-users
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "0"
+    helm.sh/hook-delete-policy: hook-succeeded,before-hook-creation
+rules:
+  # Scoped to the single Headscale pod only.
+  - apiGroups: [""]
+    resources: ["pods"]
+    resourceNames: [{{ .Values.podName | quote }}]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    resourceNames: [{{ .Values.podName | quote }}]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: headscale-create-users
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "0"
+    helm.sh/hook-delete-policy: hook-succeeded,before-hook-creation
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: headscale-create-users
+subjects:
+  - kind: ServiceAccount
+    name: headscale-create-users
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: headscale-create-users
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "1"
+    helm.sh/hook-delete-policy: hook-succeeded,before-hook-creation
+spec:
+  backoffLimit: 5
+  activeDeadlineSeconds: 600
+  template:
+    spec:
+      serviceAccountName: headscale-create-users
+      restartPolicy: Never
+      containers:
+        - name: create-users
+          image: {{ .Values.jobImage | quote }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -eu
+              hs() { kubectl exec {{ .Values.podName }} -c headscale -- headscale "$@"; }
+              echo "Waiting for the Headscale CLI to respond..."
+              i=0
+              until hs users list >/dev/null 2>&1; do
+                i=$((i+1)); [ "$i" -ge 30 ] && { echo "headscale not responding" >&2; exit 1; }
+                sleep 2
+              done
+              DECLARED="{{ range .Values.users }}{{ . }} {{ end }}"
+              echo "Ensuring declared users exist..."
+              for u in $DECLARED; do
+                echo "  + $u"; hs users create "$u" >/dev/null 2>&1 || true
+              done
+              echo "Pruning users not in the declared list..."
+              CURRENT=$(hs users list -o json 2>/dev/null | grep '"name"' | sed -e 's/.*"name":[[:space:]]*"//' -e 's/".*//')
+              for u in $CURRENT; do
+                keep=0; for d in $DECLARED; do [ "$u" = "$d" ] && keep=1; done
+                if [ "$keep" = 0 ]; then
+                  echo "  - $u (prune; removes its nodes)"
+                  hs users destroy --name "$u" --force >/dev/null 2>&1 || true
+                fi
+              done
+              echo "Done."
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { memory: 128Mi }
+{{- end }}
