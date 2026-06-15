@@ -15,8 +15,9 @@ authKeySecret: tailscale-authkey
 authKeySecretKey: authkey
 
 # Auto-mint the router's pre-auth key into authKeySecret — no manual step.
-# A post-install/upgrade Job execs Headscale (via the headscale-exec ClusterRole),
-# mints a REUSABLE key for `user`, and writes the Secret. Skips if already populated.
+# A PreSync Job execs Headscale (scoped Role on the headscale-0 pod), mints a
+# REUSABLE key for `user`, and writes the Secret. Skips if already populated.
+# PreSync (not PostSync) so the secret exists before the router Deployment starts.
 authkeyMint:
   enabled: true
   user: infra@skyf0l.dev

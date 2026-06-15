@@ -30,8 +30,13 @@ spec:
               value: "false"
             - name: TS_ROUTES
               value: "{{ .Values.advertiseRoutes }}"
+            # NOTE: tags come from the pre-auth key (minted with --tags), NOT
+            # --advertise-tags here. A node registering via an authkey cannot
+            # self-request tags — Headscale rejects it ("requested tags ...
+            # invalid or not permitted") even when the user owns the tag. The
+            # key's ACL tags are authoritative.
             - name: TS_EXTRA_ARGS
-              value: "--login-server={{ .Values.loginServer }} --hostname={{ .Values.hostname }} --accept-dns=false --advertise-tags={{ .Values.advertiseTags }}"
+              value: "--login-server={{ .Values.loginServer }} --hostname={{ .Values.hostname }} --accept-dns=false"
           securityContext:
             capabilities:
               add: ["NET_ADMIN"]
