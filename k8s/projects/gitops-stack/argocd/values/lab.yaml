@@ -3,16 +3,10 @@ argo-cd:
     domain: argocd.skyf0l.dev
 
   server:
+    # Not publicly exposed. Reached on the tailnet via argocd.tail.skyf0l.dev
+    # (Traefik IngressRoute in the tail-ingress chart).
     ingress:
-      enabled: true
-      ingressClassName: traefik
-      annotations:
-        cert-manager.io/cluster-issuer: letsencrypt-prod
-      # secretName makes cert-manager issue a real cert for this host.
-      extraTls:
-        - hosts:
-            - argocd.skyf0l.dev
-          secretName: argocd-server-tls
+      enabled: false
 
   configs:
     params:

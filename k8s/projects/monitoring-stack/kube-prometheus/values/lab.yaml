@@ -1,12 +1,9 @@
 kube-prometheus-stack:
   grafana:
+    # Not publicly exposed. Reached on the tailnet via grafana.tail.skyf0l.dev
+    # (Traefik IngressRoute in the tail-ingress chart).
     ingress:
-      ingressClassName: traefik
-      hosts:
-        - grafana.skyf0l.dev
-      tls:
-        - hosts:
-            - grafana.skyf0l.dev
+      enabled: false
     # Persist dashboards/settings across restarts.
     persistence:
       enabled: true

@@ -1,0 +1,5 @@
+apiVersion: v2
+name: headscale
+type: application
+version: 0.1.0
+# Self-hosted Tailscale control server, in-cluster + config-as-code.

@@ -1,0 +1,20 @@
+image: tailscale/tailscale:v1.78.1
+
+# In-cluster Headscale (use the internal Service to avoid the public round-trip).
+loginServer: http://headscale.headscale.svc.cluster.local
+hostname: lab-subnet-router
+
+# Advertise the service CIDR so tailnet members reach ClusterIPs (incl. Traefik).
+advertiseRoutes: "10.43.0.0/16"
+
+# Tag owned by skypwn@skyf0l.dev in the Headscale ACL — makes the advertised
+# route auto-approve (autoApprovers).
+advertiseTags: "tag:k8s-router"
+
+# Headscale pre-auth key. Created AFTER Headscale is up:
+#   kubectl -n headscale exec deploy/headscale -- \
+#     headscale preauthkeys create -u <user> --reusable --expiration 999d
+# then store it:
+#   kubectl -n tailscale create secret generic tailscale-authkey --from-literal=authkey='<KEY>'
+authKeySecret: tailscale-authkey
+authKeySecretKey: authkey

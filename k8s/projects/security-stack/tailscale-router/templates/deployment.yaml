@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tailscale-router
+  labels:
+    app: tailscale-router
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tailscale-router
+  template:
+    metadata:
+      labels:
+        app: tailscale-router
+    spec:
+      serviceAccountName: tailscale-router
+      containers:
+        - name: tailscale
+          image: {{ .Values.image }}
+          env:
+            - name: TS_AUTHKEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.authKeySecret }}
+                  key: {{ .Values.authKeySecretKey }}
+            - name: TS_KUBE_SECRET
+              value: tailscale-router-state
+            - name: TS_USERSPACE
+              value: "false"
+            - name: TS_ROUTES
+              value: "{{ .Values.advertiseRoutes }}"
+            - name: TS_EXTRA_ARGS
+              value: "--login-server={{ .Values.loginServer }} --hostname={{ .Values.hostname }} --accept-dns=false --advertise-tags={{ .Values.advertiseTags }}"
+          securityContext:
+            capabilities:
+              add: ["NET_ADMIN"]
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              memory: 128Mi

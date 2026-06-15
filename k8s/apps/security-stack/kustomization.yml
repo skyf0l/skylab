@@ -6,3 +6,6 @@ resources:
   - apps/external-secrets.yaml
   - apps/external-secrets-stores.yaml
   - apps/authelia.yaml
+  - apps/headscale.yaml
+  - apps/tailscale-router.yaml
+  - apps/tail-ingress.yaml

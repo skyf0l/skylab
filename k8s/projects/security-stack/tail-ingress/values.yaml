@@ -1,0 +1,34 @@
+# Admin UIs published ONLY on the tailnet at <name>.tail.skyf0l.dev, with real
+# TLS (wildcard via cert-manager DNS-01) and a Traefik ipAllowList that drops any
+# source outside the tailnet / cluster.
+baseDomain: tail.skyf0l.dev
+clusterIssuer: letsencrypt-prod
+tlsSecretName: tail-wildcard-tls
+middlewareName: tailnet-only
+
+# Only these source IPs may reach the .tail hosts (everything else -> 403).
+allowedSourceRanges:
+  - 100.64.0.0/10   # Headscale tailnet (default CGNAT range)
+  - 10.42.0.0/16    # pod CIDR
+  - 10.43.0.0/16    # service CIDR
+  # - 192.168.0.0/16  # add your home LAN if you want direct access too
+
+# Each entry -> an IngressRoute Host(`<name>.<baseDomain>`) -> the Service (cross-ns).
+services:
+  - name: hubble
+    service: hubble-ui
+    namespace: kube-system
+    port: 80
+  - name: grafana
+    service: kube-prometheus-grafana
+    namespace: monitoring
+    port: 80
+  - name: argocd
+    service: argocd-server
+    namespace: argocd
+    port: 80
+  - name: vault
+    service: vault
+    namespace: vault
+    port: 8200
+    scheme: http   # vault listener is http internally; set https if you enable TLS on it

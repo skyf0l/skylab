@@ -1,0 +1,81 @@
+image:
+  repository: docker.io/headscale/headscale
+  tag: "0.26.1"
+  pullPolicy: IfNotPresent
+
+# Public coordination endpoint (used for both the Ingress host and server_url).
+host: headscale.skyf0l.dev
+
+ingress:
+  enabled: true
+  className: traefik
+  clusterIssuer: letsencrypt-prod
+  tlsSecretName: headscale-tls
+
+storage:
+  size: 1Gi
+  storageClassName: local-path
+
+# State/db live here (PVC mount).
+dataPath: /var/lib/headscale
+
+# Admin UIs published on the tailnet via Traefik: Headscale serves A-records for
+# <host>.<tailBaseDomain>. The IP is resolved at runtime by the resolver sidecar
+# (no hardcoded ClusterIP).
+tailBaseDomain: tail.skyf0l.dev
+tailHosts:
+  - hubble
+  - grafana
+  - argocd
+  - vault
+
+# Resolver sidecar: looks up Traefik's live ClusterIP via in-cluster DNS and
+# writes the .tail A-records to a file Headscale hot-reloads (dns.extra_records_path).
+resolver:
+  image: alpine:3.20
+  traefikService: traefik.traefik.svc.cluster.local
+  recordsPath: /shared/extra_records.json
+  intervalSeconds: 60
+
+# ---- Headscale server config (rendered into config.yaml) ----
+config:
+  logLevel: info
+
+  ipPrefixes:
+    v4: 100.64.0.0/10
+    v6: fd7a:115c:a1e0::/48
+
+  dns:
+    magicDns: true
+    # MagicDNS base for tailnet DEVICES (distinct from the .tail ingress names).
+    baseDomain: ts.skyf0l.dev
+    nameservers:
+      - 1.1.1.1
+      - 9.9.9.9
+    # Extra static records merged into the file alongside the dynamic .tail ones.
+    extraRecords: []
+    # - { name: "example.tail.skyf0l.dev", type: "A", value: "10.43.0.1" }
+
+  derp:
+    serverEnabled: false
+    urls:
+      - https://controlplane.tailscale.com/derpmap/default
+    autoUpdate: true
+
+  acl:
+    # skypwn owns the router tag; routes advertised by tagged routers auto-approve
+    # (no manual `headscale routes enable`).
+    tagOwners:
+      "tag:k8s-router": ["skypwn@skyf0l.dev"]
+    autoApprovers:
+      routes:
+        "10.43.0.0/16": ["tag:k8s-router"]
+    # Tight by identity: only skypwn's devices originate traffic. Full access to
+    # what's needed — the in-cluster service CIDR (via the subnet router) and
+    # skypwn's own devices.
+    acls:
+      - action: accept
+        src: ["skypwn@skyf0l.dev"]
+        dst:
+          - "10.43.0.0/16:*"
+          - "skypwn@skyf0l.dev:*"

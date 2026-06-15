@@ -1,4 +1,10 @@
 traefik:
+  # Allow IngressRoutes (in the tail-ingress namespace) to reference Services and
+  # Middlewares in other namespaces (used by the tailnet-only admin routes).
+  providers:
+    kubernetesCRD:
+      allowCrossNamespace: true
+
   # Listen on all nodes
   deployment:
     kind: DaemonSet

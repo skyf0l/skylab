@@ -1,0 +1,6 @@
+apiVersion: v2
+name: tailscale-router
+type: application
+version: 0.1.0
+# In-cluster Tailscale subnet router: joins the Headscale tailnet and advertises
+# the service CIDR so tailnet members reach in-cluster ClusterIPs (incl. Traefik).
