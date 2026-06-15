@@ -1,6 +1,0 @@
-apiVersion: v2
-name: tail-ingress
-type: application
-version: 0.1.0
-# Tailnet-only TLS access to admin UIs: a wildcard *.tail.<domain> cert (DNS-01),
-# a Traefik ipAllowList middleware, and one IngressRoute per service (cross-namespace).

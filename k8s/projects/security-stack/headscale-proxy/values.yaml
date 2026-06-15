@@ -31,11 +31,38 @@ authkeyMint:
   jobImage: alpine/kubectl:1.36.1
   expiration: 999d
 
-# One tailnet node per entry. The name IS the MagicDNS hostname and the .tail
-# subdomain that must match a Traefik IngressRoute Host (tail-ingress). Add a
-# name here to expose another admin UI on the tailnet.
-proxies:
-  - argocd
-  - vault
-  - grafana
-  - hubble
+# ---- TLS + routing (folded in from the old tail-ingress chart) ----
+# Traefik terminates TLS with a wildcard cert and routes by Host; the proxies
+# forward to it. Rendered in THIS namespace so the IngressRoutes reference the
+# cert secret + middleware locally (service refs are cross-ns → needs traefik
+# allowCrossNamespace=true).
+baseDomain: tail.skyf0l.dev
+clusterIssuer: letsencrypt-prod
+tlsSecretName: tail-wildcard-tls
+middlewareName: tailnet-only
+# Only the proxy pods reach Traefik for these hosts (socat connects from the
+# proxy pod IP). Anything else -> 403. This is what makes them tailnet-only.
+allowedSourceRanges:
+  - 10.42.0.0/16    # pod CIDR (proxy-pod source)
+
+# One entry per admin UI. Each renders BOTH a tailnet proxy node
+# (<name>.tail.skyf0l.dev) AND a Traefik IngressRoute Host(<name>.tail...) ->
+# service.namespace:port. Add a UI = add one entry.
+services:
+  - name: argocd
+    service: argocd-server
+    namespace: argocd
+    port: 80
+  - name: vault
+    service: vault
+    namespace: vault
+    port: 8200
+    scheme: http   # vault listener is http internally; set https if you enable TLS on it
+  - name: grafana
+    service: kube-prometheus-grafana
+    namespace: monitoring
+    port: 80
+  - name: hubble
+    service: hubble-ui
+    namespace: kube-system
+    port: 80

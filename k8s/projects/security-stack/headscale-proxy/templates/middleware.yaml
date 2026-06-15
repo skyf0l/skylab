@@ -1,0 +1,12 @@
+# Drops any source outside the proxy-pod CIDR (-> 403). Combined with the
+# tailnet-only proxy nodes, this keeps the admin UIs reachable only via the tailnet.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ .Values.middlewareName }}
+  labels:
+    app: headscale-proxy
+spec:
+  ipAllowList:
+    sourceRange:
+{{ .Values.allowedSourceRanges | toYaml | indent 6 }}

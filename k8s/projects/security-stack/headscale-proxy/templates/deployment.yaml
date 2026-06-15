@@ -1,6 +1,7 @@
 {{- $traefik := printf "%s" .Values.traefikService }}
 {{- $port := .Values.traefikPort }}
-{{- range $name := .Values.proxies }}
+{{- range $svc := .Values.services }}
+{{- $name := $svc.name }}
 # Tailnet node "{{ $name }}" -> MagicDNS {{ $name }}.tail.skyf0l.dev (headscale base_domain).
 # Inbound tailnet :{{ $port }} is delivered to socat (a local socket), which dials
 # Traefik from its own socket so the ClusterIP is translated under Cilium KPR.
