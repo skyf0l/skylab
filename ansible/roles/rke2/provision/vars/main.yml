@@ -1,6 +1,12 @@
 # Note: variables defined here will be passed to lablabs.rke2 role
 rke2_api_ip: "{{ hostvars[groups['masters'][0]]['ansible_host'] }}"
 
+# Extra SANs on the apiserver serving cert, so kubectl can reach the API by these
+# names and still validate TLS. `apiserver.tail.<domain>` is the tailnet endpoint
+# exposed by the headscale-proxy 'apiserver' passthrough node.
+rke2_additional_sans:
+  - "apiserver.tail.{{ domain_name }}"
+
 # We use cilium as CNI, so we disable kube-proxy
 disable_kube_proxy: true
 rke2_disable:

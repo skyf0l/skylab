@@ -16,10 +16,11 @@ ANSIBLE_DIR := ansible
 LAB_INV     := inventories/skylab/hosts.local.ini
 LAB_SECRETS := inventories/skylab/secrets.local.yml
 
-.PHONY: help deps deploy preview preview-apps template bootstrap vault-unseal upgrade add-node refresh
+.PHONY: help deps deploy preview preview-apps template bootstrap delete vault-unseal upgrade add-node refresh
 
 help:
 	@echo "make bootstrap             provision cluster + ArgoCD + Vault (init+unseal) + root app"
+	@echo "make delete                DESTRUCTIVE: uninstall RKE2 on every node (wipes all data)"
 	@echo "make upgrade               rolling RKE2 upgrade (bump rke2_version first) + re-unseal"
 	@echo "make add-node              join new node(s) added to hosts.local.ini"
 	@echo "make vault-unseal          unseal Vault from local keys (after a Vault pod restart)"
@@ -34,6 +35,13 @@ help:
 # (deploy/init/unseal) + applies the root ApplicationSet. Idempotent.
 bootstrap:
 	cd $(ANSIBLE_DIR) && ansible-playbook -i $(LAB_INV) -e @$(LAB_SECRETS) playbooks/skylab/start.yml
+
+# Tear the cluster down: runs rke2-uninstall on every node. DESTRUCTIVE — wipes
+# all workloads, PVCs, and Vault data. For a clean rebuild: `make delete bootstrap`.
+delete:
+	@read -r -p "Delete the $(CLUSTER) cluster — uninstall RKE2 and wipe ALL data? [y/N] " ok; \
+	  [ "$$ok" = y ] || [ "$$ok" = Y ] || { echo "aborted"; exit 1; }
+	cd $(ANSIBLE_DIR) && ansible-playbook -i $(LAB_INV) -e @$(LAB_SECRETS) playbooks/skylab/delete.yml
 
 # Rolling RKE2 upgrade. Bump `rke2_version` in ansible/playbooks/skylab/vars.yml
 # first (one minor at a time). Skips the one-time Helm bootstrap; re-unseals Vault.

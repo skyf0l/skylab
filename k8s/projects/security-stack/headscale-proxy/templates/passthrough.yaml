@@ -1,0 +1,83 @@
+{{- range $p := .Values.passthrough }}
+# Tailnet node "{{ $p.name }}" -> MagicDNS {{ $p.name }}.{{ $.Values.baseDomain }}.
+# Raw L4 passthrough (NOT via Traefik): tailnet :{{ $p.listenPort }} is delivered
+# to socat, which dials {{ $p.backend }}:{{ $p.backendPort }} directly. No TLS
+# termination and no Host routing — the backend (e.g. the kube-apiserver) presents
+# its own cert and does its own auth, end-to-end with the client.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: headscale-proxy-{{ $p.name }}
+  labels:
+    app: headscale-proxy
+    app.kubernetes.io/name: headscale-proxy-{{ $p.name }}
+    app.kubernetes.io/component: headscale-proxy
+spec:
+  replicas: 1
+  strategy:
+    # node identity lives in one TS_KUBE_SECRET; never run two pods for it at once.
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: headscale-proxy-{{ $p.name }}
+  template:
+    metadata:
+      labels:
+        app: headscale-proxy
+        app.kubernetes.io/name: headscale-proxy-{{ $p.name }}
+        app.kubernetes.io/component: headscale-proxy
+    spec:
+      serviceAccountName: headscale-proxy
+      containers:
+        - name: tailscale
+          image: {{ $.Values.image.tailscale | quote }}
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: TS_AUTHKEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.authKeySecret | quote }}
+                  key: authkey
+            - name: TS_HOSTNAME
+              value: {{ $p.name | quote }}
+            - name: TS_USERSPACE
+              value: "false"
+            - name: TS_KUBE_SECRET
+              value: "tail-proxy-{{ $p.name }}-state"
+            - name: TS_EXTRA_ARGS
+              value: "--login-server={{ $.Values.loginServer }} --accept-dns=false"
+          securityContext:
+            capabilities:
+              add: ["NET_ADMIN"]
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - 'tailscale status --json --peers=false 2>/dev/null | grep -q ''"BackendState": *"Running"'''
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests: { cpu: 20m, memory: 32Mi }
+            limits: { memory: 128Mi }
+          volumeMounts:
+            - name: dev-net-tun
+              mountPath: /dev/net/tun
+        - name: socat
+          image: {{ $.Values.image.socat | quote }}
+          command: ["socat"]
+          args:
+            - "TCP-LISTEN:{{ $p.listenPort }},fork,reuseaddr"
+            - "TCP:{{ $p.backend }}:{{ $p.backendPort }}"
+          resources:
+            requests: { cpu: 10m, memory: 16Mi }
+            limits: { memory: 64Mi }
+      volumes:
+        - name: dev-net-tun
+          hostPath:
+            path: /dev/net/tun
+            type: CharDevice
+---
+{{- end }}

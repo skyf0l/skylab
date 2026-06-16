@@ -68,3 +68,13 @@ services:
     service: hubble-ui
     namespace: kube-system
     port: 80
+
+# Raw L4 TCP passthrough nodes — no Traefik, no TLS termination. For non-HTTP
+# endpoints that present their own cert and do their own auth (e.g. the
+# Kubernetes API). Each registers as <name>.<baseDomain> and pipes <listenPort>
+# straight to <backend>:<backendPort>. Add an entry = add a passthrough node.
+passthrough:
+  - name: apiserver
+    listenPort: 6443
+    backend: kubernetes.default.svc.cluster.local
+    backendPort: 443

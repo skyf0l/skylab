@@ -13,3 +13,91 @@
     namespace: argocd
     state: present
     src: "{{ repo_root }}/clusters/{{ cluster_name }}/application.yml"
+
+# Save a kubeconfig under artifacts/ (gitignored) pointed at the tailnet API
+# endpoint, so you can `export KUBECONFIG=ansible/artifacts/<cluster>/<cluster>.kubeconfig`
+# and reach the cluster over the tailnet (no open :6443). Requires the
+# headscale-proxy 'apiserver' node to be up and your machine on the tailnet.
+- name: Ensure cluster artifacts dir exists
+  ansible.builtin.file:
+    path: "{{ gitops_install_workdir }}/{{ gitops_install_cluster_name }}"
+    state: directory
+    mode: "0700"
+
+- name: Copy the kubeconfig into artifacts
+  ansible.builtin.copy:
+    src: "{{ gitops_install_kubeconfig_local_path | regex_replace('^~', ansible_env.HOME) }}"
+    dest: "{{ gitops_install_workdir }}/{{ gitops_install_cluster_name }}/{{ gitops_install_cluster_name }}.kubeconfig"
+    remote_src: true
+    mode: "0600"
+
+- name: Point the artifacts kubeconfig at the tailnet API endpoint
+  ansible.builtin.replace:
+    path: "{{ gitops_install_workdir }}/{{ gitops_install_cluster_name }}/{{ gitops_install_cluster_name }}.kubeconfig"
+    regexp: '^(\s*server:\s*)https://\S+'
+    replace: '\1https://apiserver.tail.{{ domain_name }}:6443'
+
+# Mint a 24h single-use Headscale pre-auth key for the personal user and drop a
+# ready `tailscale up` join script in artifacts/. Headscale is ArgoCD-synced, so
+# it comes up AFTER this handoff — wait for it best-effort; if it isn't ready in
+# time, skip with a note (re-run `make bootstrap` to retry just this).
+# Headscale 0.28 quirks (mirrored from headscale-proxy/authkey-mint-job): JSON is
+# tab-indented, `preauthkeys create` needs the numeric user id, and the key is
+# grepped from the output.
+- name: Wait for headscale + the skypwn user (ArgoCD-synced)
+  ansible.builtin.shell: >-
+    kubectl -n headscale exec headscale-0 -c headscale -- headscale users list -o json 2>/dev/null
+    | tr -d ' \t\n' | grep -q '"name":"skypwn@{{ domain_name }}"'
+  args:
+    executable: /bin/bash
+  environment:
+    KUBECONFIG: "{{ kubeconfig_local_path | regex_replace('^~', ansible_env.HOME) }}"
+  register: gitops_install_hs_ready
+  changed_when: false
+  failed_when: false
+  retries: 30
+  delay: 20
+  until: gitops_install_hs_ready.rc == 0
+
+- name: Mint the tailnet key + write the join script
+  when: gitops_install_hs_ready.rc == 0
+  environment:
+    KUBECONFIG: "{{ kubeconfig_local_path | regex_replace('^~', ansible_env.HOME) }}"
+  block:
+    - name: Mint a 24h single-use pre-auth key for skypwn
+      ansible.builtin.shell: |
+        set -euo pipefail
+        hs() { kubectl -n headscale exec headscale-0 -c headscale -- headscale "$@"; }
+        uid=$(hs users list -o json 2>/dev/null | tr -d ' \t\n' \
+          | grep -oE '\{"id":"?[0-9]+"?,"name":"skypwn@{{ domain_name }}"' | grep -oE '[0-9]+' | head -1)
+        [ -n "${uid:-}" ] || { echo "skypwn user not found" >&2; exit 1; }
+        hs preauthkeys create --user "$uid" --expiration 24h 2>&1 \
+          | grep -oE '[a-z]+key-[A-Za-z0-9_.-]+|[a-f0-9]{48,}' | head -1
+      args:
+        executable: /bin/bash
+      register: gitops_install_hs_key
+      changed_when: true
+
+    - name: Write the tailnet join script to artifacts
+      ansible.builtin.copy:
+        dest: "{{ gitops_install_workdir }}/{{ gitops_install_cluster_name }}/tailscale-join.sh"
+        mode: "0700"
+        content: |
+          #!/usr/bin/env bash
+          # One-time tailnet join for THIS machine (headscale user skypwn@{{ domain_name }}).
+          # Single-use pre-auth key, 24h TTL. Re-run `make bootstrap` to mint a fresh one.
+          #
+          # Manual fallback (interactive — needs `headscale nodes register` on the server):
+          #   sudo tailscale login --login-server=https://headscale.{{ domain_name }}
+          #   sudo tailscale up --accept-dns --accept-routes --login-server=https://headscale.{{ domain_name }}
+          sudo tailscale up \
+            --login-server=https://headscale.{{ domain_name }} \
+            --authkey {{ gitops_install_hs_key.stdout | trim }} \
+            --accept-dns --accept-routes
+
+- name: Note when the tailnet key was skipped (headscale not ready in time)
+  when: gitops_install_hs_ready.rc != 0
+  ansible.builtin.debug:
+    msg: >-
+      headscale wasn't ready in time, so artifacts/{{ cluster_name }}/tailscale-join.sh
+      was not generated. Re-run `make bootstrap` once headscale has synced.
