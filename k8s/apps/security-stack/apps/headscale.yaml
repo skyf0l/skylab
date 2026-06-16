@@ -36,6 +36,10 @@ spec:
           valueFiles:
             - values.yaml
             - values/{{.name}}.yaml
+          # host/users/baseDomain/ACLs all derive from this via the chart's tpl calls.
+          parameters:
+            - name: "global.domain"
+              value: "{{.global.domain}}"
       destination:
         server: https://kubernetes.default.svc
         namespace: headscale

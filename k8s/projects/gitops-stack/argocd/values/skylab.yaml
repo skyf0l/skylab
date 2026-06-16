@@ -1,9 +1,8 @@
 argo-cd:
-  global:
-    domain: argocd.skyf0l.dev
+  # global.domain (argocd.<global.domain>) is injected by the ApplicationSet.
 
   server:
-    # Not publicly exposed. Reached on the tailnet via argocd.tail.skyf0l.dev
+    # Not publicly exposed. Reached on the tailnet via argocd.tail.<domain>
     # (Traefik IngressRoute in the tail-ingress chart).
     ingress:
       enabled: false

@@ -35,6 +35,11 @@ spec:
           valueFiles:
             - values.yaml
             - values/{{.name}}.yaml
+          # ACME contact derived from the cluster's global.domain. Override in
+          # values/<cluster>.yaml if you want a real mailbox instead.
+          parameters:
+            - name: "email"
+              value: "admin@{{.global.domain}}"
       destination:
         server: https://kubernetes.default.svc
         namespace: cert-manager

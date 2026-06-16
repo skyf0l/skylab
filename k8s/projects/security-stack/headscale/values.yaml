@@ -3,8 +3,14 @@ image:
   tag: "0.28.0"
   pullPolicy: IfNotPresent
 
+# Cluster domain, injected by the ApplicationSet from clusters/<name>/config.json.
+# Every hostname/identity below derives from it via the chart's `tpl` calls — so
+# the domain is never hardcoded. A new cluster only changes global.domain.
+global:
+  domain: ""
+
 # Public coordination endpoint (used for both the Ingress host and server_url).
-host: headscale.skyf0l.dev
+host: 'headscale.{{ .Values.global.domain }}'
 
 # Public coordination endpoint, exposed via a Traefik IngressRoute (NOT a k8s
 # Ingress — see templates/ingressroute.yaml for why) + a cert-manager Certificate.
@@ -36,8 +42,8 @@ podName: headscale-0
 # any Headscale user not in this list. skypwn = personal devices; infra = owns
 # the router tag + mints the router key. Pre-auth keys are minted by Jobs too.
 users:
-  - skypwn@skyf0l.dev
-  - infra@skyf0l.dev
+  - 'skypwn@{{ .Values.global.domain }}'
+  - 'infra@{{ .Values.global.domain }}'
 
 # ---- Headscale server config (rendered into config.yaml) ----
 config:
@@ -51,9 +57,9 @@ config:
     magicDns: true
     # MagicDNS suffix for tailnet nodes. The headscale-proxy nodes are named
     # after the service (argocd, vault, ...) so they resolve as
-    # <svc>.tail.skyf0l.dev — matching the Traefik IngressRoute hosts and the
-    # *.tail.skyf0l.dev wildcard cert.
-    baseDomain: tail.skyf0l.dev
+    # <svc>.tail.<domain> — matching the Traefik IngressRoute hosts and the
+    # *.tail.<domain> wildcard cert.
+    baseDomain: 'tail.{{ .Values.global.domain }}'
     nameservers:
       - 1.1.1.1
       - 9.9.9.9
@@ -67,10 +73,10 @@ config:
   acl:
     # infra owns the proxy tag (keeps it off your personal identity).
     tagOwners:
-      "tag:tail-proxy": ["infra@skyf0l.dev"]
+      "tag:tail-proxy": ['infra@{{ .Values.global.domain }}']
     acls:
       # skypwn reaches the per-service admin proxies (argocd/vault/grafana/hubble).
       - action: accept
-        src: ["skypwn@skyf0l.dev"]
+        src: ['skypwn@{{ .Values.global.domain }}']
         dst:
           - "tag:tail-proxy:*"

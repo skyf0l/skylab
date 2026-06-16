@@ -1,2 +1,3 @@
-# TODO: set a real address that can receive Let's Encrypt expiry notices.
-email: admin@skyf0l.dev
+# ACME email defaults to admin@<global.domain> (injected by the ApplicationSet).
+# Uncomment to use a real mailbox that can receive Let's Encrypt expiry notices:
+# email: you@example.com

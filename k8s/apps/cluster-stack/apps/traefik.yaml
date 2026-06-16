@@ -31,6 +31,10 @@ spec:
           valueFiles:
             - values.yaml
             - values/{{.name}}.yaml
+          # Dashboard host derived from the cluster's global.domain.
+          parameters:
+            - name: "traefik.ingressRoute.dashboard.matchRule"
+              value: "Host(`traefik.{{.global.domain}}`) && (PathPrefix(`/dashboard`) || PathPrefix(`/api`))"
       destination:
         server: https://kubernetes.default.svc
         namespace: traefik

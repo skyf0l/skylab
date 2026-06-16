@@ -6,7 +6,7 @@ metadata:
     app: headscale
 data:
   config.yaml: |
-    server_url: https://{{ .Values.host }}
+    server_url: https://{{ tpl .Values.host . }}
     listen_addr: 0.0.0.0:8080
     metrics_listen_addr: 127.0.0.1:9090
     grpc_listen_addr: 0.0.0.0:50443
@@ -28,7 +28,7 @@ data:
       path: /etc/headscale/acl.json
     dns:
       magic_dns: {{ .Values.config.dns.magicDns }}
-      base_domain: {{ .Values.config.dns.baseDomain | quote }}
+      base_domain: {{ tpl .Values.config.dns.baseDomain . | quote }}
       nameservers:
         global:
           {{- range .Values.config.dns.nameservers }}
@@ -45,4 +45,4 @@ data:
       update_frequency: 24h
     ephemeral_node_inactivity_timeout: 30m
   acl.json: |
-{{ .Values.config.acl | toJson | indent 4 }}
+{{ tpl (.Values.config.acl | toJson) . | indent 4 }}

@@ -9,7 +9,7 @@ image:
 loginServer: http://headscale.headscale.svc.cluster.local
 
 # Traefik endpoint every proxy forwards to. Traefik terminates TLS with the
-# *.tail.skyf0l.dev wildcard cert and routes by Host via the tail-ingress
+# *.tail.<domain> wildcard cert and routes by Host via the tail-ingress
 # IngressRoutes. The proxy is a pure L4 passthrough to :443.
 traefikService: traefik.traefik.svc.cluster.local
 traefikPort: 443
@@ -25,7 +25,8 @@ tag: "tag:tail-proxy"
 # exists before the proxy Deployments roll.
 authkeyMint:
   enabled: true
-  user: infra@skyf0l.dev
+  # Injected by the ApplicationSet as infra@<global.domain>.
+  user: ""
   headscaleNamespace: headscale
   headscalePod: headscale-0
   jobImage: alpine/kubectl:1.36.1
@@ -36,7 +37,8 @@ authkeyMint:
 # forward to it. Rendered in THIS namespace so the IngressRoutes reference the
 # cert secret + middleware locally (service refs are cross-ns → needs traefik
 # allowCrossNamespace=true).
-baseDomain: tail.skyf0l.dev
+# Injected by the ApplicationSet as tail.<global.domain>.
+baseDomain: ""
 clusterIssuer: letsencrypt-prod
 tlsSecretName: tail-wildcard-tls
 middlewareName: tailnet-only
@@ -46,7 +48,7 @@ allowedSourceRanges:
   - 10.42.0.0/16    # pod CIDR (proxy-pod source)
 
 # One entry per admin UI. Each renders BOTH a tailnet proxy node
-# (<name>.tail.skyf0l.dev) AND a Traefik IngressRoute Host(<name>.tail...) ->
+# (<name>.tail.<domain>) AND a Traefik IngressRoute Host(<name>.tail...) ->
 # service.namespace:port. Add a UI = add one entry.
 services:
   - name: argocd

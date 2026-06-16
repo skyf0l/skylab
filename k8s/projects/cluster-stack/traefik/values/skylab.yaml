@@ -49,6 +49,5 @@ traefik:
   ingressRoute:
     dashboard:
       enabled: true
-      # Custom match rule with host domain
-      matchRule: Host(`traefik.skyf0l.dev`) && (PathPrefix(`/dashboard`) || PathPrefix(`/api`))
+      # matchRule (Host) is injected by the ApplicationSet from global.domain.
       entryPoints: ["websecure"]

@@ -1,6 +1,6 @@
 kube-prometheus-stack:
   grafana:
-    # Not publicly exposed. Reached on the tailnet via grafana.tail.skyf0l.dev
+    # Not publicly exposed. Reached on the tailnet via grafana.tail.<domain>
     # (Traefik IngressRoute in the tail-ingress chart).
     ingress:
       enabled: false

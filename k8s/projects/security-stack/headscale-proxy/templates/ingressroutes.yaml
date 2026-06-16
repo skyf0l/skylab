@@ -1,5 +1,5 @@
 {{- range .Values.services }}
-# Traefik routes Host(<name>.tail.skyf0l.dev) -> the backend Service (cross-ns),
+# Traefik routes Host(<name>.tail.<domain>) -> the backend Service (cross-ns),
 # terminating TLS with the wildcard cert and enforcing the tailnet-only middleware.
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute

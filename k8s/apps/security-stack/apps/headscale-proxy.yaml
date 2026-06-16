@@ -35,6 +35,12 @@ spec:
           releaseName: headscale-proxy
           valueFiles:
             - values.yaml
+          # Tailnet base domain + key-minting user derived from global.domain.
+          parameters:
+            - name: "baseDomain"
+              value: "tail.{{.global.domain}}"
+            - name: "authkeyMint.user"
+              value: "infra@{{.global.domain}}"
       destination:
         server: https://kubernetes.default.svc
         namespace: tailscale

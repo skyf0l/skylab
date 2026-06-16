@@ -36,6 +36,14 @@ spec:
           valueFiles:
             - values.yaml
             - values/{{.name}}.yaml
+          # Domain-derived values from the cluster's global.domain. `global.domain`
+          # is fed to the pod as the DOMAIN env var; configuration.yml resolves it
+          # via Authelia's {{ env "DOMAIN" }} filter. `host` drives the ingress.
+          parameters:
+            - name: "global.domain"
+              value: "{{.global.domain}}"
+            - name: "host"
+              value: "auth.{{.global.domain}}"
       destination:
         server: https://kubernetes.default.svc
         namespace: authelia

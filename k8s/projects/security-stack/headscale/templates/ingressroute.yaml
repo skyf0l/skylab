@@ -1,5 +1,5 @@
 {{- if .Values.ingress.enabled }}
-# Public coordination endpoint for tailnet clients (headscale.skyf0l.dev).
+# Public coordination endpoint for tailnet clients (headscale.<domain>).
 # A Traefik IngressRoute (CRD), NOT a k8s Ingress: the cluster's only ingress is
 # Traefik (ClusterIP svc, no LB status), so a k8s Ingress never gets
 # status.loadBalancer populated and ArgoCD wedges it on "Progressing" forever —
@@ -16,7 +16,7 @@ spec:
     - {{ .Values.ingress.entryPoint }}
   routes:
     - kind: Rule
-      match: Host(`{{ .Values.host }}`)
+      match: Host(`{{ tpl .Values.host . }}`)
       services:
         - name: headscale
           port: http

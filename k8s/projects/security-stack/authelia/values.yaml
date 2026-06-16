@@ -4,8 +4,12 @@ image:
   tag: 4.39.20
   pullPolicy: IfNotPresent
 
-# Public OIDC issuer host (Authelia derives the issuer from this).
-host: auth.skyf0l.dev
+# Injected by the ApplicationSet from the cluster's global.domain:
+#   global.domain -> bare domain, fed to the pod as $DOMAIN (used in configuration.yml)
+#   host          -> auth.<domain>, used by the ingress
+global:
+  domain: ""
+host: ""
 
 ingress:
   enabled: true

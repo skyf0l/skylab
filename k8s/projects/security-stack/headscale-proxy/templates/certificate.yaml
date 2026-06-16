@@ -1,4 +1,4 @@
-# Wildcard TLS for *.tail.skyf0l.dev (cert-manager DNS-01). Traefik presents this
+# Wildcard TLS for *.tail.<domain> (cert-manager DNS-01). Traefik presents this
 # when terminating the proxied connections. Rendered in this namespace so the
 # IngressRoutes below can reference the secret locally.
 apiVersion: cert-manager.io/v1

@@ -1,1 +1,2 @@
-host: headscale.skyf0l.dev
+# Per-cluster overrides for skylab.
+# host/users/baseDomain/ACLs all derive from global.domain — nothing to set here.

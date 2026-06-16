@@ -76,7 +76,7 @@ spec:
                 i=$((i+1)); [ "$i" -ge 30 ] && { echo "headscale not responding" >&2; exit 1; }
                 sleep 2
               done
-              DECLARED="{{ range .Values.users }}{{ . }} {{ end }}"
+              DECLARED="{{ range .Values.users }}{{ tpl . $ }} {{ end }}"
               echo "Ensuring declared users exist..."
               for u in $DECLARED; do
                 echo "  + $u"; hs users create "$u" >/dev/null 2>&1 || true

@@ -4,6 +4,8 @@
 # template filter (enabled via X_AUTHELIA_CONFIG_FILTERS=template); it reads files
 # mounted from the ESO-managed `authelia-secrets` Secret at /secrets/ at runtime.
 # This file is included verbatim via Helm `.Files.Get`, so these stay literal.
+# `{{ env "DOMAIN" }}` is the same filter reading the DOMAIN env var (set from the
+# cluster's global.domain), so the domain is never hardcoded here.
 
 theme: dark
 
@@ -14,7 +16,7 @@ log:
   level: info
 
 totp:
-  issuer: skyf0l.dev
+  issuer: '{{ env "DOMAIN" }}'
 
 identity_validation:
   reset_password:
@@ -32,8 +34,8 @@ access_control:
 session:
   secret: '{{ secret "/secrets/session" }}'
   cookies:
-    - domain: skyf0l.dev
-      authelia_url: https://auth.skyf0l.dev
+    - domain: '{{ env "DOMAIN" }}'
+      authelia_url: 'https://auth.{{ env "DOMAIN" }}'
 
 storage:
   encryption_key: '{{ secret "/secrets/storage.encryption" }}'
