@@ -15,11 +15,11 @@ ingress:
   tlsSecretName: authelia-tls
 
 storage:
-  # SQLite on a small PVC + in-memory sessions (single replica) — light for the lab.
+  # SQLite on a small PVC + in-memory sessions (single replica) — light for the skylab.
   size: 1Gi
   storageClassName: local-path
 
-# ESO pulls these from Vault at: kvv2/cluster/lab/authelia
+# ESO pulls these from Vault at: kvv2/cluster/skylab/apps/authelia
 # Fields the user must populate in that Vault secret:
 #   jwt_secret              random >=64 chars
 #   session_secret          random >=64 chars
@@ -30,4 +30,4 @@ storage:
 externalSecret:
   enabled: true
   storeName: vault-backend
-  vaultKey: cluster/lab/authelia
+  vaultKey: cluster/skylab/apps/authelia

@@ -1,5 +1,5 @@
-# Global variables for the lab cluster (VPS control-plane + Pi light worker)
-cluster_name: lab
+# Global variables for the skylab cluster (VPS control-plane + Pi light worker)
+cluster_name: skylab
 domain_name: skyf0l.dev
 kubeconfig_local_path: "{{ rke2_download_kubeconf_path }}/{{ rke2_download_kubeconf_file_name }}"
 repo_root: "{{ playbook_dir }}/../../.."

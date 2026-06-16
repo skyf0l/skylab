@@ -1,6 +1,6 @@
 # Read Vault status and unseal it if sealed, then expose the root token.
 # Self-contained + idempotent: runs both at the end of bootstrap (tasks/vault.yml)
-# and standalone (playbooks/lab/unseal.yml) after a Vault pod restart re-seals it.
+# and standalone (playbooks/skylab/unseal.yml) after a Vault pod restart re-seals it.
 # Does NOT touch Helm — ArgoCD owns the Vault release.
 
 - name: Get Vault server pods

@@ -1,5 +1,5 @@
 ---
-# Role-scoped aliases. The playbook (playbooks/lab/vars.yml) defines the
+# Role-scoped aliases. The playbook (playbooks/skylab/vars.yml) defines the
 # unprefixed cluster vars; this maps them into clearly-scoped role names.
 gitops_install_kubeconfig_local_path: "{{ kubeconfig_local_path }}"
 gitops_install_cluster_name: "{{ cluster_name }}"

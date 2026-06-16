@@ -13,6 +13,12 @@ permissions:
   id-token: write # OIDC
   pull-requests: write
 
+# Serialize applies — the R2 backend has no state locking, so two concurrent
+# runs could corrupt state.
+concurrency:
+  group: vault-terraform
+  cancel-in-progress: false
+
 env:
   VAULT_ADDR: https://vault.skyf0l.dev:8200
   TF_IN_AUTOMATION: "1"
@@ -20,12 +26,62 @@ env:
   WORKING_DIRECTORY: vault/terraform
 
 jobs:
-  vault:
+  # PR plan — authenticates with the read-only `tf-plan` role (any branch).
+  plan:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: ${{ env.WORKING_DIRECTORY }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: hashicorp/setup-terraform@v3
 
+      - name: Install Vault's Root CA
+        run: |
+          echo "${{ secrets.VAULT_CA_CERT }}" | sudo tee /usr/local/share/ca-certificates/vault-root.crt >/dev/null
+          sudo update-ca-certificates
+
+      - name: Import Secrets
+        uses: hashicorp/vault-action@v3
+        with:
+          url: ${{ env.VAULT_ADDR }}
+          caCertificate: ${{ secrets.VAULT_CA_CERT_B64 }}
+          exportToken: true # Required by terraform
+          method: jwt
+          role: tf-plan
+          secrets: |
+            kvv2/data/cicd/cloudflare-tfstates AWS_ACCESS_KEY_ID ;
+            kvv2/data/cicd/cloudflare-tfstates AWS_SECRET_ACCESS_KEY ;
+
+      - run: terraform init -input=false
+      - run: terraform validate
+      - name: Plan
+        run: terraform plan -out .planfile
+
+      - name: Comment plan
+        uses: borchero/terraform-plan-comment@v2
+        with:
+          token: ${{ github.token }}
+          header: Vault Plan
+          planfile: .planfile
+          working-directory: ${{ env.WORKING_DIRECTORY }}
+
+      - name: Revoke token
+        if: always()
+        run: |
+          curl -X POST -sv -H "X-Vault-Token: ${{ env.VAULT_TOKEN }}" ${{ env.VAULT_ADDR }}/v1/auth/token/revoke-self
+
+  # Apply — only from the protected `production` Environment (push to main).
+  # The admin Vault role is bound to the `environment=production` OIDC claim,
+  # so only this job can mint an admin token.
+  apply:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    defaults:
+      run:
+        working-directory: ${{ env.WORKING_DIRECTORY }}
     steps:
       - uses: actions/checkout@v6
       - uses: hashicorp/setup-terraform@v3
@@ -46,28 +102,10 @@ jobs:
           secrets: |
             kvv2/data/cicd/cloudflare-tfstates AWS_ACCESS_KEY_ID ;
             kvv2/data/cicd/cloudflare-tfstates AWS_SECRET_ACCESS_KEY ;
-            kvv2/data/cicd/kubernetes_auth_backend_config KUBERNETES_CA_CERT | TF_VAR_kubernetes_auth_backend_ca_cert ;
-            kvv2/data/cicd/kubernetes_auth_backend_config TOKEN_REVIEWER_JWT | TF_VAR_kubernetes_auth_backend_token_reviewer_jwt ;
 
       - run: terraform init -input=false
       - run: terraform validate
-
-      - name: Plan (PR)
-        if: github.event_name == 'pull_request'
-        run: terraform plan -out .planfile
-
-      - name: Comment plan
-        if: github.event_name == 'pull_request'
-
-        uses: borchero/terraform-plan-comment@v2
-        with:
-          token: ${{ github.token }}
-          header: Vault Plan
-          planfile: .planfile
-          working-directory: ${{ env.WORKING_DIRECTORY }}
-
-      - name: Apply (push to main)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - name: Apply
         run: terraform apply
         env:
           TF_CLI_ARGS_apply: "-auto-approve"

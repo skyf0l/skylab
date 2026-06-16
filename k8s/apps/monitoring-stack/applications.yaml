@@ -13,7 +13,7 @@ spec:
           # Auto updated by parent ApplicationSet
           - list:
               elements:
-                - name: lab
+                - name: skylab
           - git:
               repoURL: https://github.com/skyf0l/skylab.git
               revision: main

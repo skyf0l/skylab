@@ -6,15 +6,15 @@
 # `make deploy` just commits + pushes; ArgoCD reconciles the cluster from GitHub.
 
 SHELL    := /bin/bash
-CLUSTER  ?= lab
+CLUSTER  ?= skylab
 MSG      ?= deploy
 # Every helm-wrapper chart (a directory containing a Chart.yaml under k8s/projects).
 PROJECTS := $(shell find k8s/projects -name Chart.yaml -exec dirname {} \;)
 
-# Ansible bootstrap (local-only inventory + secrets; see ansible/inventories/lab/).
+# Ansible bootstrap (local-only inventory + secrets; see ansible/inventories/skylab/).
 ANSIBLE_DIR := ansible
-LAB_INV     := inventories/lab/hosts.local.ini
-LAB_SECRETS := inventories/lab/secrets.local.yml
+LAB_INV     := inventories/skylab/hosts.local.ini
+LAB_SECRETS := inventories/skylab/secrets.local.yml
 
 .PHONY: help deps deploy preview preview-apps template bootstrap vault-unseal upgrade add-node refresh
 
@@ -25,30 +25,30 @@ help:
 	@echo "make vault-unseal          unseal Vault from local keys (after a Vault pod restart)"
 	@echo "make deploy   [MSG=...]   commit + push to GitHub; ArgoCD auto-syncs"
 	@echo "make refresh               force ArgoCD to re-pull GitHub now (hard refresh all apps)"
-	@echo "make preview  [CLUSTER=lab] helm template + kubectl diff (needs a live cluster)"
+	@echo "make preview  [CLUSTER=skylab] helm template + kubectl diff (needs a live cluster)"
 	@echo "make preview-apps          kubectl diff the app-of-apps (ApplicationSets)"
-	@echo "make template [CLUSTER=lab] render every chart to validate values (no cluster)"
+	@echo "make template [CLUSTER=skylab] render every chart to validate values (no cluster)"
 	@echo "make deps                  helm dependency build/update for every chart"
 
 # One-shot cluster bootstrap: RKE2 + Cilium + Traefik + ArgoCD + Vault
 # (deploy/init/unseal) + applies the root ApplicationSet. Idempotent.
 bootstrap:
-	cd $(ANSIBLE_DIR) && ansible-playbook -i $(LAB_INV) -e @$(LAB_SECRETS) playbooks/lab/start.yml
+	cd $(ANSIBLE_DIR) && ansible-playbook -i $(LAB_INV) -e @$(LAB_SECRETS) playbooks/skylab/start.yml
 
-# Rolling RKE2 upgrade. Bump `rke2_version` in ansible/playbooks/lab/vars.yml
+# Rolling RKE2 upgrade. Bump `rke2_version` in ansible/playbooks/skylab/vars.yml
 # first (one minor at a time). Skips the one-time Helm bootstrap; re-unseals Vault.
 upgrade:
-	cd $(ANSIBLE_DIR) && ansible-playbook -i $(LAB_INV) -e @$(LAB_SECRETS) playbooks/lab/upgrade.yml
+	cd $(ANSIBLE_DIR) && ansible-playbook -i $(LAB_INV) -e @$(LAB_SECRETS) playbooks/skylab/upgrade.yml
 
 # Join new node(s) added to hosts.local.ini (reuse the same rke2_token). Skips
 # the one-time Helm bootstrap — Cilium's DaemonSet covers the new node.
 add-node:
-	cd $(ANSIBLE_DIR) && ansible-playbook -i $(LAB_INV) -e @$(LAB_SECRETS) playbooks/lab/add-node.yml
+	cd $(ANSIBLE_DIR) && ansible-playbook -i $(LAB_INV) -e @$(LAB_SECRETS) playbooks/skylab/add-node.yml
 
 # Unseal Vault from the locally-saved keys. Idempotent: no-op if already unsealed.
 # Run this after a reboot / Vault pod restart re-seals it. Does not touch Helm.
 vault-unseal:
-	cd $(ANSIBLE_DIR) && ansible-playbook -i $(LAB_INV) playbooks/lab/unseal.yml
+	cd $(ANSIBLE_DIR) && ansible-playbook -i $(LAB_INV) playbooks/skylab/unseal.yml
 
 # Force ArgoCD to re-pull GitHub immediately (hard refresh every app), instead of
 # waiting for the per-tier ~3min reconcile to cascade through the app-of-apps.

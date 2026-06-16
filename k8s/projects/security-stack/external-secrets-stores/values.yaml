@@ -4,7 +4,7 @@
 #   1. Enable the KV v2 engine at `kvv2/` (already used by cloudflare-ddns).
 #   2. Enable Kubernetes auth:  vault auth enable kubernetes
 #   3. Policy granting read on the paths ESO needs, e.g.
-#        path "kvv2/data/cluster/lab/*" { capabilities = ["read"] }
+#        path "kvv2/data/cluster/skylab/*" { capabilities = ["read"] }
 #   4. Role binding the ESO service account to that policy:
 #        vault write auth/kubernetes/role/external-secrets \
 #          bound_service_account_names=external-secrets \

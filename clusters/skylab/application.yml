@@ -11,7 +11,7 @@ spec:
         repoURL: https://github.com/skyf0l/skylab.git
         revision: main
         files:
-          - path: clusters/lab/config.json
+          - path: clusters/skylab/config.json
   template:
     metadata:
       name: "{{.name}}-apps"

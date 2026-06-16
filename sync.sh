@@ -5,12 +5,12 @@
 # (clusters/<cluster>/application.yml), which reads clusters/<cluster>/config.json
 # and fans out every stack. Idempotent — safe to re-run.
 #
-# Usage: ./sync.sh [cluster]   (default: lab)
+# Usage: ./sync.sh [cluster]   (default: skylab)
 
 set -eE
 
 repoDir=$(git rev-parse --show-toplevel)
-cluster="${1:-lab}"
+cluster="${1:-skylab}"
 rootApplicationPath="${repoDir}/clusters/${cluster}/application.yml"
 
 if [[ ! -f "${rootApplicationPath}" ]]; then
