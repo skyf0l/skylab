@@ -20,6 +20,9 @@ spec:
         # Roll the pod when the config changes.
         checksum/config: {{ .Files.Get "files/configuration.yml" | sha256sum }}
     spec:
+      # k8s injects <SVC>_* env vars (e.g. AUTHELIA_PORT=tcp://...) that collide
+      # with Authelia's AUTHELIA_* config-env convention and break config load.
+      enableServiceLinks: false
       securityContext:
         fsGroup: 1000
       containers:

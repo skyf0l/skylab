@@ -1,11 +1,13 @@
 # Authelia configuration — config-as-code.
 #
-# Secrets are NOT in this file. `{{ secret "/secrets/<key>" }}` is Authelia's own
-# template filter (enabled via X_AUTHELIA_CONFIG_FILTERS=template); it reads files
-# mounted from the ESO-managed `authelia-secrets` Secret at /secrets/ at runtime.
-# This file is included verbatim via Helm `.Files.Get`, so these stay literal.
-# `{{ env "DOMAIN" }}` is the same filter reading the DOMAIN env var (set from the
-# cluster's global.domain), so the domain is never hardcoded here.
+# Secrets are NOT in this file. Authelia's own template filter (enabled via
+# X_AUTHELIA_CONFIG_FILTERS=template) resolves them at runtime: the secret function
+# reads files from the ESO-managed authelia-secrets Secret mounted at /secrets/,
+# and the env function reads env vars (e.g. DOMAIN, set from the cluster's
+# global.domain — so the domain is never hardcoded here). This file is included
+# verbatim via Helm .Files.Get.
+# NOTE: the filter templates the ENTIRE file, comments included — so never write a
+# literal template directive in a comment (a bad key fails the whole config load).
 
 theme: dark
 
