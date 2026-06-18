@@ -13,5 +13,5 @@ spec:
     name: {{ .Values.ingress.clusterIssuer }}
     kind: ClusterIssuer
   dnsNames:
-    - "{{ .Values.host }}"
+    - "{{ tpl .Values.host . }}"
 {{- end }}
