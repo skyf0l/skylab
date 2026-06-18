@@ -1,0 +1,144 @@
+{{- if .Values.authkeyMint.enabled }}
+# Mints a REUSABLE Headscale pre-auth key (tagged .Values.tag = tag:tail-exit) for
+# the exit node and writes it into authKeySecret. Reusable + skip-if-present so it
+# doesn't pile up keys. PreSync hook (NOT PostSync): the exit Deployment can't go
+# Healthy without this secret, and PostSync waits for Healthy. SA/RBAC weight 0, Job 1.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: headscale-exit-mint
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "0"
+    helm.sh/hook-delete-policy: before-hook-creation
+---
+# Write the auth-key Secret in this namespace.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: headscale-exit-mint
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "0"
+    helm.sh/hook-delete-policy: before-hook-creation
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: headscale-exit-mint
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "0"
+    helm.sh/hook-delete-policy: before-hook-creation
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: headscale-exit-mint
+subjects:
+  - kind: ServiceAccount
+    name: headscale-exit-mint
+---
+# Scoped exec into ONLY the Headscale pod: a Role in the headscale namespace
+# pinned to the headscale-0 pod.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: headscale-exit-mint-exec
+  namespace: {{ .Values.authkeyMint.headscaleNamespace }}
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "0"
+    helm.sh/hook-delete-policy: before-hook-creation
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    resourceNames: [{{ .Values.authkeyMint.headscalePod | quote }}]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    resourceNames: [{{ .Values.authkeyMint.headscalePod | quote }}]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: headscale-exit-mint-exec
+  namespace: {{ .Values.authkeyMint.headscaleNamespace }}
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "0"
+    helm.sh/hook-delete-policy: before-hook-creation
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: headscale-exit-mint-exec
+subjects:
+  - kind: ServiceAccount
+    name: headscale-exit-mint
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: headscale-exit-mint
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "1"
+    helm.sh/hook-delete-policy: hook-succeeded,before-hook-creation
+spec:
+  backoffLimit: 3
+  activeDeadlineSeconds: 300
+  template:
+    spec:
+      serviceAccountName: headscale-exit-mint
+      restartPolicy: Never
+      containers:
+        - name: mint
+          image: {{ .Values.authkeyMint.jobImage | quote }}
+          command: ["/bin/sh", "-c"]
+          env:
+            - name: SECRET
+              value: {{ .Values.authKeySecret | quote }}
+            - name: HS_NS
+              value: {{ .Values.authkeyMint.headscaleNamespace | quote }}
+            - name: HS_POD
+              value: {{ .Values.authkeyMint.headscalePod | quote }}
+            - name: HS_USER
+              value: {{ .Values.authkeyMint.user | quote }}
+            - name: EXP
+              value: {{ .Values.authkeyMint.expiration | quote }}
+            - name: TAGS
+              value: {{ .Values.tag | quote }}
+          args:
+            - |
+              set -eu
+              # Idempotent: skip if the key Secret is already populated (reusable key).
+              if kubectl get secret "$SECRET" -o jsonpath='{.data.authkey}' 2>/dev/null | grep -q .; then
+                echo "$SECRET already populated; nothing to mint."; exit 0
+              fi
+              hs() { kubectl -n "$HS_NS" exec "$HS_POD" -c headscale -- headscale "$@"; }
+              echo "Waiting for the Headscale CLI..."
+              i=0; until hs users list >/dev/null 2>&1; do
+                i=$((i+1)); [ "$i" -ge 30 ] && { echo "headscale not responding" >&2; exit 1; }
+                sleep 2
+              done
+              # Resolve the numeric user id for HS_USER (tabs stripped — 0.28 JSON is tab-indented).
+              UID_=$(hs users list -o json 2>/dev/null \
+                | tr -d ' \t\n' | grep -oE '\{"id":"?[0-9]+"?,"name":"'"$HS_USER"'"' | grep -oE '[0-9]+' | head -1)
+              if [ -z "${UID_:-}" ]; then echo "user $HS_USER not found" >&2; hs users list >&2; exit 1; fi
+              echo "minting reusable key for $HS_USER (id $UID_) with tags [$TAGS]..."
+              # Tags MUST be baked into the key: authkey-registered nodes can't self-request tags.
+              KEY=$(hs preauthkeys create --user "$UID_" --reusable --expiration "$EXP" ${TAGS:+--tags "$TAGS"} 2>&1 \
+                | grep -oE '[a-z]+key-[A-Za-z0-9_.-]+|[a-f0-9]{48,}' | head -1)
+              [ -n "${KEY:-}" ] || { echo "could not extract pre-auth key" >&2; exit 1; }
+              kubectl create secret generic "$SECRET" --from-literal=authkey="$KEY" \
+                --dry-run=client -o yaml | kubectl apply -f -
+              echo "wrote $SECRET."
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { memory: 128Mi }
+{{- end }}

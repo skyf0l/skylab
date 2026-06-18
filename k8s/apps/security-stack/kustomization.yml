@@ -8,3 +8,4 @@ resources:
   - apps/authelia.yaml
   - apps/headscale.yaml
   - apps/headscale-proxy.yaml
+  - apps/headscale-exit.yaml

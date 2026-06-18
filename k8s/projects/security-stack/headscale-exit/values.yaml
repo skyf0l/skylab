@@ -1,0 +1,39 @@
+image:
+  # tailnet node (kernel mode — needs NET_ADMIN + /dev/net/tun).
+  tailscale: tailscale/tailscale:v1.78.1
+
+# In-cluster Headscale control server (internal Service — no public round-trip).
+loginServer: http://headscale.headscale.svc.cluster.local
+
+# Reusable pre-auth key (tagged tag:tail-exit), auto-minted by the PreSync Job
+# below and consumed by the exit-node pod. State (node identity) persists in its
+# own Secret so tailscaled keeps the same node across restarts.
+authKeySecret: tail-exit-authkey
+stateSecret: tail-exit-state
+tag: "tag:tail-exit"
+
+# UDP port tailscaled binds for NAT traversal. With hostNetwork this binds to the
+# host's public IP, so peers connect DIRECTLY here (no DERP relay). If you ever
+# enable a host firewall, allow this port (udp).
+port: 41641
+
+# Scheduling. There is intentionally NO toleration for the Pi "light" taint
+# (node-role.skylab/light:NoSchedule), so the exit node can only schedule on an
+# untainted node (the VPS control-plane — the one with the public egress IP).
+# Optionally pin harder, e.g. nodeSelector: { kubernetes.io/hostname: skymaster }.
+nodeSelector: {}
+tolerations: []
+
+# Auto-mint the pre-auth key — execs Headscale, mints a REUSABLE key for `user`
+# WITH --tags (authkey nodes can't self-request tags), writes authKeySecret.
+# Idempotent: skips if the secret is already populated. PreSync so the secret
+# exists before the exit Deployment rolls. The exit-node route (0.0.0.0/0 + ::/0)
+# is auto-approved by autoApprovers.exitNode (tag:tail-exit) in the Headscale ACL.
+authkeyMint:
+  enabled: true
+  # Injected by the ApplicationSet as infra@<global.domain>.
+  user: ""
+  headscaleNamespace: headscale
+  headscalePod: headscale-0
+  jobImage: alpine/kubectl:1.36.1
+  expiration: 999d

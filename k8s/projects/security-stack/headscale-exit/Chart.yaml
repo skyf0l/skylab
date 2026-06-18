@@ -1,0 +1,13 @@
+apiVersion: v2
+name: headscale-exit
+type: application
+version: 0.1.0
+# Tailnet EXIT NODE: a single Headscale node that advertises 0.0.0.0/0 (+ ::/0)
+# so tailnet clients can route ALL their traffic out through this cluster's public
+# egress — a full VPN. The opposite direction of headscale-proxy (which exposes
+# in-cluster services TO the tailnet); this routes client traffic OUT.
+#
+# Runs with hostNetwork=true so tailscaled binds straight to the host's public
+# interface: peers get a DIRECT connection (no DERP relay). It deliberately does
+# NOT tolerate the Pi "light" taint (node-role.skylab/light) so it can only land
+# on an untainted node — the VPS control-plane, which is the one with the public IP.

@@ -1,0 +1,33 @@
+# SA for the exit pod: tailscaled persists the node's identity in its
+# TS_KUBE_SECRET (tail-exit-state), so it needs secrets RW in this namespace.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: headscale-exit
+  labels:
+    app: headscale-exit
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: headscale-exit
+  labels:
+    app: headscale-exit
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "create", "update", "patch", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: headscale-exit
+  labels:
+    app: headscale-exit
+subjects:
+  - kind: ServiceAccount
+    name: headscale-exit
+roleRef:
+  kind: Role
+  name: headscale-exit
+  apiGroup: rbac.authorization.k8s.io

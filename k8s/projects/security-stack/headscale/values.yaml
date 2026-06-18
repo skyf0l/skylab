@@ -71,12 +71,25 @@ config:
     autoUpdate: true
 
   acl:
-    # infra owns the proxy tag (keeps it off your personal identity).
+    # infra owns the proxy + exit tags (keeps them off your personal identity).
     tagOwners:
       "tag:tail-proxy": ['infra@{{ .Values.global.domain }}']
+      "tag:tail-exit": ['infra@{{ .Values.global.domain }}']
+    # Auto-approve the exit-node route (0.0.0.0/0 + ::/0) advertised by any node
+    # tagged tag:tail-exit (chart: headscale-exit) — no manual
+    # `headscale nodes approve-routes` step needed.
+    autoApprovers:
+      exitNode: ['tag:tail-exit']
     acls:
       # skypwn reaches the per-service admin proxies (argocd/vault/grafana/hubble).
       - action: accept
         src: ['skypwn@{{ .Values.global.domain }}']
         dst:
           - "tag:tail-proxy:*"
+      # skypwn may route ALL its traffic out through the exit node (full VPN):
+      # `tailscale up --exit-node=exit.tail.<domain>`. Using an exit node requires
+      # an explicit dst of autogroup:internet.
+      - action: accept
+        src: ['skypwn@{{ .Values.global.domain }}']
+        dst:
+          - "autogroup:internet:*"

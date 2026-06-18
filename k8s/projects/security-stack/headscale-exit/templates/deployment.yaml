@@ -1,0 +1,95 @@
+# Tailnet EXIT NODE "exit" -> MagicDNS exit.tail.<domain>. Advertises 0.0.0.0/0
+# (+ ::/0) so tailnet clients can `tailscale up --exit-node=exit...` and route ALL
+# their traffic out through this VPS's public IP (a full VPN).
+#
+# hostNetwork=true: tailscaled binds to the host's public interface, so peers get
+# a DIRECT (no-DERP) data path. dnsPolicy keeps cluster DNS so it can still resolve
+# the in-cluster Headscale Service for the login-server. v4 forwarding is already on
+# on the host; v6 exit additionally needs net.ipv6.conf.all.forwarding=1.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: headscale-exit
+  labels:
+    app: headscale-exit
+    app.kubernetes.io/name: headscale-exit
+    app.kubernetes.io/component: headscale-exit
+spec:
+  replicas: 1
+  strategy:
+    # Node identity lives in one TS_KUBE_SECRET; never run two pods at once.
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: headscale-exit
+  template:
+    metadata:
+      labels:
+        app: headscale-exit
+        app.kubernetes.io/name: headscale-exit
+        app.kubernetes.io/component: headscale-exit
+    spec:
+      serviceAccountName: headscale-exit
+      # Bind tailscaled to the host's public IP for direct (no-DERP) connections.
+      hostNetwork: true
+      # hostNetwork defaults DNS to the host resolver, which can't resolve the
+      # in-cluster Headscale Service — keep cluster DNS.
+      dnsPolicy: ClusterFirstWithHostNet
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: tailscale
+          image: {{ .Values.image.tailscale | quote }}
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: TS_AUTHKEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.authKeySecret | quote }}
+                  key: authkey
+            - name: TS_HOSTNAME
+              value: "exit"
+            - name: TS_USERSPACE
+              value: "false"
+            - name: TS_KUBE_SECRET
+              value: {{ .Values.stateSecret | quote }}
+            - name: TS_EXTRA_ARGS
+              # Advertise as an exit node (0.0.0.0/0 + ::/0). The route is auto-
+              # approved by autoApprovers.exitNode (tag:tail-exit) in the Headscale
+              # ACL. Tags come from the pre-auth key (--tags), NOT --advertise-tags
+              # (authkey nodes can't self-request tags reliably).
+              value: "--login-server={{ .Values.loginServer }} --accept-dns=false --advertise-exit-node"
+            - name: TS_TAILSCALED_EXTRA_ARGS
+              # Fixed UDP port on the host's public IP -> stable direct endpoint.
+              value: "--port={{ .Values.port }}"
+          securityContext:
+            capabilities:
+              add: ["NET_ADMIN"]
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - 'tailscale status --json --peers=false 2>/dev/null | grep -q ''"BackendState": *"Running"'''
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            # Higher than a service proxy: this node carries all client traffic.
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { memory: 256Mi }
+          volumeMounts:
+            - name: dev-net-tun
+              mountPath: /dev/net/tun
+      volumes:
+        - name: dev-net-tun
+          hostPath:
+            path: /dev/net/tun
+            type: CharDevice
