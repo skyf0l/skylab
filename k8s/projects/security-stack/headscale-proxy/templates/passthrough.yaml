@@ -69,7 +69,9 @@ spec:
           image: {{ $.Values.image.socat | quote }}
           command: ["socat"]
           args:
-            - "TCP-LISTEN:{{ $p.listenPort }},fork,reuseaddr"
+            # Dual-stack listen (IPv4 + IPv6 via ipv6only=0) so clients that try the
+            # node's IPv6 tailnet address don't stall on Happy-Eyeballs fallback.
+            - "TCP6-LISTEN:{{ $p.listenPort }},fork,reuseaddr,ipv6only=0"
             - "TCP:{{ $p.backend }}:{{ $p.backendPort }}"
           resources:
             requests: { cpu: 10m, memory: 16Mi }
