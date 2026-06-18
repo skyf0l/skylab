@@ -43,6 +43,14 @@ spec:
       destination:
         server: https://kubernetes.default.svc
         namespace: vault
+      # The vault-agent-injector self-patches caBundle into its webhook at runtime;
+      # let it own that field so ArgoCD (ServerSideApply) doesn't fight it.
+      ignoreDifferences:
+        - group: admissionregistration.k8s.io
+          kind: MutatingWebhookConfiguration
+          name: vault-agent-injector-cfg
+          jqPathExpressions:
+            - '.webhooks[]?.clientConfig.caBundle'
       syncPolicy:
         automated:
           prune: true
