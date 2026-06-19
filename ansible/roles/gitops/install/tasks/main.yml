@@ -1,23 +1,25 @@
-- name: Install ArgoCD
-  ansible.builtin.include_tasks: argocd.yml
-
-- name: Install Vault
-  ansible.builtin.include_tasks: vault.yml
-
-# ArgoCD is the source of truth from here on: apply the root ApplicationSet,
-# which reads clusters/{{ cluster_name }}/config.json (pointing at GitHub) and
-# fans out every stack. Replaces the old in-cluster Gitea push (sync.sh).
-- name: Bootstrap ArgoCD root ApplicationSet (GitHub source of truth)
-  kubernetes.core.k8s:
-    kubeconfig: "{{ kubeconfig_local_path }}"
-    namespace: argocd
-    state: present
-    src: "{{ repo_root }}/clusters/{{ cluster_name }}/application.yml"
+# Bootstrap prerequisites for the Vault configure + seed step (which runs LAST).
+# Checked up-front so a missing CLI/secret fails fast, before the long cluster work.
+- name: Check bootstrap prerequisites (CLIs + R2 state creds)
+  ansible.builtin.assert:
+    that:
+      - lookup('ansible.builtin.pipe', 'command -v terraform || true') | length > 0
+      - lookup('ansible.builtin.pipe', 'command -v vault || true') | length > 0
+      - lookup('ansible.builtin.pipe', 'command -v openssl || true') | length > 0
+      - r2_access_key_id | default('') | length > 0
+      - r2_secret_access_key | default('') | length > 0
+      - cf_api_token | default('') | length > 0
+    fail_msg: >-
+      Bootstrap prerequisites missing. Need these CLIs on PATH: terraform, vault,
+      openssl; and in secrets.local.yml: r2_access_key_id / r2_secret_access_key
+      (Cloudflare R2 token for the Terraform state backend) + cf_api_token
+      (Cloudflare DNS API token for cert-manager DNS-01).
+    quiet: true
 
 # Save a kubeconfig under artifacts/ (gitignored) pointed at the tailnet API
-# endpoint, so you can `export KUBECONFIG=ansible/artifacts/<cluster>/<cluster>.kubeconfig`
-# and reach the cluster over the tailnet (no open :6443). Requires the
-# headscale-proxy 'apiserver' node to be up and your machine on the tailnet.
+# endpoint. Done FIRST (no dependencies) so it always lands, regardless of any
+# later step. Usable once the headscale-proxy 'apiserver' node is up and you're
+# on the tailnet; `export KUBECONFIG=ansible/artifacts/<cluster>/<cluster>.kubeconfig`.
 - name: Ensure cluster artifacts dir exists
   ansible.builtin.file:
     path: "{{ gitops_install_workdir }}/{{ gitops_install_cluster_name }}"
@@ -37,9 +39,57 @@
     regexp: '^(\s*server:\s*)https://\S+'
     replace: '\1https://apiserver.tail.{{ domain_name }}:6443'
 
+- name: Install ArgoCD
+  ansible.builtin.include_tasks: argocd.yml
+
+- name: Install Vault
+  ansible.builtin.include_tasks: vault.yml
+
+# ArgoCD is the source of truth from here on: apply the root ApplicationSet,
+# which reads clusters/{{ cluster_name }}/config.json (pointing at GitHub) and
+# fans out every stack. Replaces the old in-cluster Gitea push (sync.sh).
+# Applied BEFORE the Vault config below so a Terraform/seed failure can never
+# block the GitOps handoff.
+- name: Bootstrap ArgoCD root ApplicationSet (GitHub source of truth)
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig_local_path }}"
+    namespace: argocd
+    state: present
+    src: "{{ repo_root }}/clusters/{{ cluster_name }}/application.yml"
+
+# cert-manager solves DNS-01 with a Cloudflare API token. It's a bootstrap secret
+# (not GitOps-managed, kept out of git), created here from secrets.local.yml so
+# certs issue without a manual `kubectl create secret`. Created early so it's
+# present before cert-manager-issuers + the Certificates sync. ArgoCD adopts the
+# namespace; the secret is referenced by name from cert-manager-issuers.
+- name: Ensure cert-manager namespace exists
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig_local_path }}"
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: cert-manager
+
+- name: Create the Cloudflare DNS-01 API token secret
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig_local_path }}"
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: cloudflare-api-token
+        namespace: cert-manager
+      type: Opaque
+      stringData:
+        api-token: "{{ cf_api_token }}"
+  no_log: true
+
 # Mint a 24h single-use Headscale pre-auth key for the personal user and drop a
 # ready `tailscale up` join script in artifacts/. Headscale is ArgoCD-synced, so
-# it comes up AFTER this handoff — wait for it best-effort; if it isn't ready in
+# it comes up AFTER the handoff — wait for it best-effort; if it isn't ready in
 # time, skip with a note (re-run `make bootstrap` to retry just this).
 # Headscale 0.28 quirks (mirrored from headscale-proxy/authkey-mint-job): JSON is
 # tab-indented, `preauthkeys create` needs the numeric user id, and the key is
@@ -101,3 +151,9 @@
     msg: >-
       headscale wasn't ready in time, so artifacts/{{ cluster_name }}/tailscale-join.sh
       was not generated. Re-run `make bootstrap` once headscale has synced.
+
+# Apply the Vault Terraform (mounts/auth/policies/roles) + seed bootstrap secrets,
+# in-cluster via a port-forward (no public ingress / tailnet needed). LAST, so any
+# failure here leaves ArgoCD running + the artifacts already written.
+- name: Configure + seed Vault
+  ansible.builtin.include_tasks: vault_configure.yml

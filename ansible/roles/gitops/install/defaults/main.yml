@@ -10,5 +10,9 @@ gitops_install_repo_root: "{{ repo_root }}"
 gitops_install_workdir: "{{ repo_root }}/ansible/artifacts"
 gitops_install_vault_cluster_keys_file: "vault-cluster-keys.json"
 
+# Local port for the bootstrap-time `kubectl port-forward` to in-cluster Vault,
+# used to apply the Vault Terraform + seed secrets without public ingress.
+gitops_install_vault_local_port: 8200
+
 # Public Vault address (Traefik ingress). Used by downstream tasks if needed.
 gitops_install_vault_address: "https://vault.{{ domain_name }}"

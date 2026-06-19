@@ -1,0 +1,92 @@
+# Configure Vault structure (Terraform) and seed bootstrap secret values, all
+# IN-CLUSTER via a port-forward — so it works at bootstrap before any public
+# ingress / tailnet exists. The root token comes from unseal_vault.yml.
+#
+# Terraform state lives in Cloudflare R2; its creds can't come from Vault yet
+# (chicken-and-egg), so they're read from secrets.local.yml as r2_access_key_id /
+# r2_secret_access_key and exported as AWS_* for the S3 backend.
+
+- name: Require the R2 (Terraform state) credentials
+  ansible.builtin.assert:
+    that:
+      - r2_access_key_id | default('') | length > 0
+      - r2_secret_access_key | default('') | length > 0
+    fail_msg: >-
+      Set r2_access_key_id and r2_secret_access_key in
+      inventories/{{ cluster_name }}/secrets.local.yml (Cloudflare R2 token for the
+      Terraform state backend). See inventories/{{ cluster_name }}/secrets.example.yml.
+
+- name: Start a port-forward to in-cluster Vault
+  ansible.builtin.shell: |
+    nohup kubectl -n vault port-forward svc/vault {{ gitops_install_vault_local_port }}:8200 \
+      >/tmp/vault-pf-{{ cluster_name }}.log 2>&1 &
+    echo $! > /tmp/vault-pf-{{ cluster_name }}.pid
+  environment:
+    KUBECONFIG: "{{ gitops_install_kubeconfig_local_path | regex_replace('^~', ansible_env.HOME) }}"
+  changed_when: true
+
+- name: Configure + seed Vault (always tear the port-forward down after)
+  vars:
+    gitops_install_vault_local_addr: "http://127.0.0.1:{{ gitops_install_vault_local_port }}"
+  block:
+    - name: Wait for the port-forward to accept connections
+      ansible.builtin.wait_for:
+        host: 127.0.0.1
+        port: "{{ gitops_install_vault_local_port }}"
+        timeout: 30
+
+    - name: Terraform init (R2 backend)
+      ansible.builtin.command:
+        cmd: terraform init -input=false
+        chdir: "{{ repo_root }}/vault/terraform"
+      environment:
+        AWS_ACCESS_KEY_ID: "{{ r2_access_key_id }}"
+        AWS_SECRET_ACCESS_KEY: "{{ r2_secret_access_key }}"
+      changed_when: true
+
+    - name: Terraform apply (Vault mounts / auth / policies / roles)
+      ansible.builtin.command:
+        cmd: terraform apply -input=false -auto-approve
+        chdir: "{{ repo_root }}/vault/terraform"
+      environment:
+        AWS_ACCESS_KEY_ID: "{{ r2_access_key_id }}"
+        AWS_SECRET_ACCESS_KEY: "{{ r2_secret_access_key }}"
+        VAULT_ADDR: "{{ gitops_install_vault_local_addr }}"
+        VAULT_TOKEN: "{{ gitops_install_vault_token }}"
+      changed_when: true
+
+    - name: Seed bootstrap secrets (idempotent — skips fields already set)
+      ansible.builtin.command:
+        cmd: ./seed-secrets.sh
+        chdir: "{{ repo_root }}/vault"
+      environment:
+        VAULT_ADDR: "{{ gitops_install_vault_local_addr }}"
+        VAULT_TOKEN: "{{ gitops_install_vault_token }}"
+        CLUSTER: "{{ cluster_name }}"
+      changed_when: true
+
+    # Override the Authelia users database with your REAL login(s) from
+    # secrets.local.yml, so the argon2 hash never lands in the (public) repo. Runs
+    # after the seed (which created the key + a disabled placeholder); patches just
+    # this field. Skipped if authelia_users_yaml is unset — the placeholder stays.
+    - name: Seed the Authelia users database from secrets.local.yml
+      ansible.builtin.command:
+        argv:
+          - vault
+          - kv
+          - patch
+          - -mount=kvv2
+          - "cluster/{{ cluster_name }}/apps/authelia"
+          - "users_yaml={{ authelia_users_yaml }}"
+      environment:
+        VAULT_ADDR: "{{ gitops_install_vault_local_addr }}"
+        VAULT_TOKEN: "{{ gitops_install_vault_token }}"
+      when: authelia_users_yaml | default('') | length > 0
+      no_log: true
+      changed_when: true
+  always:
+    - name: Stop the Vault port-forward
+      ansible.builtin.shell: >-
+        kill "$(cat /tmp/vault-pf-{{ cluster_name }}.pid 2>/dev/null)" 2>/dev/null || true;
+        rm -f /tmp/vault-pf-{{ cluster_name }}.pid
+      changed_when: true

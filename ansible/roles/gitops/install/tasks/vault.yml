@@ -7,6 +7,18 @@
 # Requires `kubectl` on the control host. Idempotent (re-runnable).
 # =============================================================================
 
+# Helm 4 applies server-side. The vault-agent-injector self-patches caBundle into
+# its MutatingWebhookConfiguration (field manager "vault-k8s"), which conflicts with
+# a helm UPGRADE re-applying that object. Drop it first so helm recreates it cleanly
+# (the injector re-populates caBundle on next reconcile). No-op on a fresh cluster.
+- name: Clear the injector webhook to avoid a Helm 4 SSA caBundle conflict
+  kubernetes.core.k8s:
+    kubeconfig: "{{ gitops_install_kubeconfig_local_path }}"
+    state: absent
+    api_version: admissionregistration.k8s.io/v1
+    kind: MutatingWebhookConfiguration
+    name: vault-agent-injector-cfg
+
 - name: Deploy Vault chart (managed later by ArgoCD)
   kubernetes.core.helm:
     kubeconfig: "{{ gitops_install_kubeconfig_local_path }}"
