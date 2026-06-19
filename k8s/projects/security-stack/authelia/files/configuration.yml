@@ -12,7 +12,7 @@
 theme: dark
 
 server:
-  address: 'tcp://:9091'
+  address: "tcp://:9091"
 
 log:
   level: info
@@ -52,15 +52,15 @@ identity_providers:
   oidc:
     hmac_secret: '{{ secret "/secrets/oidc.hmac" }}'
     jwks:
-      - key: {{ secret "/secrets/oidc.jwks.key" | mindent 10 "|" | msquote }}
+      - key: {{secret "/secrets/oidc.jwks.key" | mindent 10 "|" | msquote}}
     # Two public PKCE clients (no client secret) — one per assistant.
     clients:
       - client_id: claude
         client_name: Claude
         public: true
         require_pkce: true
-        pkce_challenge_method: 'S256'
-        token_endpoint_auth_method: 'none'
+        pkce_challenge_method: "S256"
+        token_endpoint_auth_method: "none"
         authorization_policy: one_factor
         # RFC 8707 resource the MCP gateway advertises and Claude requests as the
         # token audience — must be whitelisted or the authorization is rejected.
@@ -85,14 +85,13 @@ identity_providers:
         client_name: ChatGPT
         public: true
         require_pkce: true
-        pkce_challenge_method: 'S256'
-        token_endpoint_auth_method: 'none'
+        pkce_challenge_method: "S256"
+        token_endpoint_auth_method: "none"
         authorization_policy: one_factor
         audience:
           - 'https://mcp.{{ env "DOMAIN" }}/garmin/mcp'
-        # TODO: confirm ChatGPT's exact MCP OAuth callback URL and replace.
         redirect_uris:
-          - https://chatgpt.com/connector_platform_oauth_redirect
+          - '{{ secret "/secrets/chatgpt.redirect" }}'
         scopes:
           - openid
           - profile

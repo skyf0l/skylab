@@ -62,6 +62,16 @@ users:
 YAML
 }
 
+# ChatGPT MCP connector OAuth callback — PLACEHOLDER. ChatGPT uses a
+# per-connector callback https://chatgpt.com/connector/oauth/<id> that Authelia
+# must match exactly (no wildcards). Grab <id> from the Authelia auth-request
+# error log and patch it, then restart Authelia:
+#   vault kv patch -mount=kvv2 cluster/<cluster>/apps/authelia \
+#     chatgpt_redirect_uri="https://chatgpt.com/connector/oauth/<id>"
+chatgpt_redirect_placeholder() {
+  printf '%s' 'https://chatgpt.com/connector/oauth/REPLACE_ME'
+}
+
 # garth (Garmin Connect) combined token — a PLACEHOLDER so the garmin-mcp
 # ExternalSecret can sync and the pod can start before you supply a real token. It
 # is NOT functional: the MCP can't reach Garmin until you overwrite it. The upstream
@@ -107,6 +117,7 @@ seed_field "$authelia" storage_encryption_key rand_secret
 seed_field "$authelia" oidc_hmac_secret       rand_secret
 seed_field "$authelia" oidc_jwks_key          rsa_key
 seed_field "$authelia" users_yaml             authelia_users_placeholder
+seed_field "$authelia" chatgpt_redirect_uri   chatgpt_redirect_placeholder
 
 # garmin-mcp — kvv2/cluster/<cluster>/apps/garmin-mcp
 # Placeholder garth token so the app deploys clean; overwrite with the REAL token.
