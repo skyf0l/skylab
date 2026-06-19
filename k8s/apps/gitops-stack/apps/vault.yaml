@@ -51,6 +51,16 @@ spec:
           name: vault-agent-injector-cfg
           jqPathExpressions:
             - '.webhooks[]?.clientConfig.caBundle'
+        # StatefulSet volumeClaimTemplates are immutable AND the API server defaults
+        # them (apiVersion/kind, volumeMode: Filesystem, status.phase) which the Vault
+        # Helm chart doesn't render — ArgoCD's normalizers don't strip these, so it
+        # sits OutOfSync forever despite no real drift. Ignore the templates (can't be
+        # changed in place anyway).
+        - group: apps
+          kind: StatefulSet
+          name: vault
+          jsonPointers:
+            - /spec/volumeClaimTemplates
       syncPolicy:
         automated:
           prune: true
