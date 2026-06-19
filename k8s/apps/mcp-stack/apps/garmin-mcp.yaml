@@ -57,9 +57,9 @@ spec:
                 value: "false"
         - repoURL: "{{.repo.url}}"
           targetRevision: "{{.repo.revision}}"
-          path: k8s/projects/mcp-stack/garmin-gateway
+          path: k8s/projects/mcp-stack/garmin-mcp-gateway
           helm:
-            releaseName: garmin-gateway
+            releaseName: garmin-mcp-gateway
             valueFiles:
               - values.yaml
               - values/{{.name}}.yaml

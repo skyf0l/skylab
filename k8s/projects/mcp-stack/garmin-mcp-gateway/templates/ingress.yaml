@@ -2,9 +2,9 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: garmin-gateway
+  name: garmin-mcp-gateway
   labels:
-    app: garmin-gateway
+    app: garmin-mcp-gateway
   annotations:
     cert-manager.io/cluster-issuer: {{ .Values.ingress.clusterIssuer }}
 spec:
@@ -21,7 +21,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: garmin-gateway
+                name: garmin-mcp-gateway
                 port:
                   name: http
 {{- end }}

@@ -1,18 +1,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: garmin-gateway
+  name: garmin-mcp-gateway
   labels:
-    app: garmin-gateway
+    app: garmin-mcp-gateway
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: garmin-gateway
+      app: garmin-mcp-gateway
   template:
     metadata:
       labels:
-        app: garmin-gateway
+        app: garmin-mcp-gateway
       annotations:
         checksum/nginx: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
     spec:
@@ -44,4 +44,4 @@ spec:
       volumes:
         - name: nginx-config
           configMap:
-            name: garmin-gateway-nginx
+            name: garmin-mcp-gateway-nginx

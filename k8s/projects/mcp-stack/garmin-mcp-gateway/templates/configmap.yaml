@@ -1,9 +1,9 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: garmin-gateway-nginx
+  name: garmin-mcp-gateway-nginx
   labels:
-    app: garmin-gateway
+    app: garmin-mcp-gateway
 data:
   nginx.conf: |
     worker_processes 1;
