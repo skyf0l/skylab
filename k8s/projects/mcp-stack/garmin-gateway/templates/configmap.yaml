@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: garmin-gateway-nginx
+  labels:
+    app: garmin-gateway
+data:
+  nginx.conf: |
+    worker_processes 1;
+    events { worker_connections 1024; }
+    http {
+      access_log /dev/stdout;
+      error_log  /dev/stderr;
+
+      # Upstream MCP (deployed by the upstream garmin_mcp chart, same namespace).
+      upstream mcp {
+        server {{ .Values.mcp.service }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.mcp.port }};
+      }
+
+      server {
+        listen 8080;
+
+        # --- OAuth discovery (RFC 9728): tell clients which AS protects us ---
+        location = /.well-known/oauth-protected-resource {
+          default_type application/json;
+          return 200 '{"resource":"https://{{ .Values.host }}{{ .Values.pathPrefix }}","authorization_servers":["https://{{ .Values.authelia.publicHost }}"],"scopes_supported":["openid","profile","email"],"bearer_methods_supported":["header"]}';
+        }
+        # Path-suffixed variant some clients request.
+        location = /.well-known/oauth-protected-resource{{ .Values.pathPrefix }} {
+          default_type application/json;
+          return 200 '{"resource":"https://{{ .Values.host }}{{ .Values.pathPrefix }}","authorization_servers":["https://{{ .Values.authelia.publicHost }}"],"scopes_supported":["openid","profile","email"],"bearer_methods_supported":["header"]}';
+        }
+        # AS metadata lives on Authelia — redirect clients that probe the resource host.
+        location = /.well-known/oauth-authorization-server {
+          return 302 https://{{ .Values.authelia.publicHost }}/.well-known/oauth-authorization-server;
+        }
+        location = /.well-known/openid-configuration {
+          return 302 https://{{ .Values.authelia.publicHost }}/.well-known/openid-configuration;
+        }
+
+        # --- Bearer validation against Authelia's userinfo endpoint ---
+        location = /_authelia_userinfo {
+          internal;
+          proxy_pass {{ .Values.authelia.internalUrl }}/api/oidc/userinfo;
+          proxy_pass_request_body off;
+          proxy_set_header Content-Length "";
+          proxy_set_header Authorization $http_authorization;
+        }
+
+        # --- The MCP endpoint, gated by a valid bearer ---
+        location {{ .Values.pathPrefix }} {
+          auth_request /_authelia_userinfo;
+          error_page 401 = @unauthorized;
+          proxy_pass http://mcp{{ .Values.mcp.path }};
+          proxy_http_version 1.1;
+          proxy_set_header Host $host;
+          proxy_set_header Connection "";
+          proxy_set_header Authorization $http_authorization;
+          proxy_buffering off;
+          proxy_read_timeout 3600s;
+          proxy_send_timeout 3600s;
+        }
+
+        # 401s carry the pointer Claude needs to start the OAuth flow.
+        location @unauthorized {
+          add_header WWW-Authenticate 'Bearer resource_metadata="https://{{ .Values.host }}/.well-known/oauth-protected-resource"' always;
+          return 401;
+        }
+
+        location = /healthz { default_type text/plain; return 200 'ok'; }
+      }
+    }

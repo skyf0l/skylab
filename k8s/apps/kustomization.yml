@@ -5,3 +5,4 @@ resources:
   - security-stack/applications.yaml
   - gitops-stack/applications.yaml
   - monitoring-stack/applications.yaml
+  - mcp-stack/applications.yaml

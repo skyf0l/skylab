@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: garmin-gateway
+  labels:
+    app: garmin-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: garmin-gateway
+  template:
+    metadata:
+      labels:
+        app: garmin-gateway
+      annotations:
+        checksum/nginx: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      containers:
+        # OAuth gateway: serves .well-known, validates bearer via Authelia, proxies
+        # to the upstream garmin-mcp Service.
+        - name: nginx
+          image: {{ .Values.nginx.image }}
+          ports:
+            - name: http
+              containerPort: 8080
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              memory: 64Mi
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+              readOnly: true
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: garmin-gateway-nginx

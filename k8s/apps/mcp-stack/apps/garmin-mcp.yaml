@@ -1,0 +1,85 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: garmin-mcp
+  annotations:
+    # After the security-stack (Authelia/ESO) is up.
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          # Auto updated by parent ApplicationSet
+          - list:
+              elements:
+                - name: skylab
+          - git:
+              repoURL: https://github.com/skyf0l/skylab.git
+              revision: main
+              files:
+                - path: clusters/{{.name }}/config.json
+  template:
+    metadata:
+      name: "{{.name}}-garmin-mcp"
+      annotations:
+        argocd.argoproj.io/sync-wave: "2"
+    spec:
+      project: default
+      # One app, two sources:
+      #  1. the auth-AGNOSTIC upstream garmin_mcp chart (the MCP server + GHCR image),
+      #     consumed straight from its repo — never modified here;
+      #  2. the skylab garmin-gateway chart — the OAuth resource-server (Authelia
+      #     bearer validation + RFC 9728 discovery), ingress/TLS, and token
+      #     ExternalSecret that front the MCP. Auth lives here, not in the fork.
+      sources:
+        - repoURL: https://github.com/skyf0l/garmin_mcp.git
+          targetRevision: feat/helm-chart
+          path: chart/garmin-mcp
+          helm:
+            releaseName: garmin-mcp
+            parameters:
+              - name: "image.repository"
+                value: "ghcr.io/skyf0l/garmin_mcp"
+              - name: "image.tag"
+                value: "1.0.0"
+              - name: "transport.mode"
+                value: "streamable-http"
+              # Tokens come from Vault via the gateway's ESO secret.
+              - name: "garmin.existingSecret"
+                value: "garmin-mcp-tokens"
+              # existingSecret provides GARMINTOKENS; the PVC path would override it.
+              - name: "persistence.enabled"
+                value: "false"
+              # Exposure is the gateway's job, not this chart's.
+              - name: "ingress.enabled"
+                value: "false"
+        - repoURL: "{{.repo.url}}"
+          targetRevision: "{{.repo.revision}}"
+          path: k8s/projects/mcp-stack/garmin-gateway
+          helm:
+            releaseName: garmin-gateway
+            valueFiles:
+              - values.yaml
+              - values/{{.name}}.yaml
+            parameters:
+              - name: "host"
+                value: "mcp.{{.global.domain}}"
+              - name: "authelia.publicHost"
+                value: "auth.{{.global.domain}}"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: mcp
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - Validate=true
+          - PrunePropagationPolicy=foreground
+          - PruneLast=true
+          - RespectIgnoreDifferences=true
+        retry:
+          limit: 5

@@ -1,0 +1,10 @@
+apiVersion: v2
+name: garmin-gateway
+description: >-
+  OAuth resource-server gateway (nginx) in front of the garmin_mcp server. Serves
+  RFC 9728 discovery so Claude/ChatGPT find Authelia, validates the OAuth bearer
+  against Authelia, and proxies to the garmin-mcp Service. The MCP itself is
+  deployed separately from the upstream garmin_mcp Helm chart.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

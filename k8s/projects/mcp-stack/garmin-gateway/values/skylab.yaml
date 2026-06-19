@@ -1,0 +1,2 @@
+# Per-cluster overrides for skylab.
+# host/publicHost are derived from global.domain by the ApplicationSet — nothing to set here.

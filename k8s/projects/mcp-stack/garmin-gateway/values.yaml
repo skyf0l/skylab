@@ -1,0 +1,45 @@
+# Public endpoint Claude/ChatGPT connect to: https://{host}{pathPrefix}
+# host is injected by the ApplicationSet as mcp.<global.domain>.
+host: ""
+pathPrefix: /garmin/mcp
+
+# Upstream MCP server — deployed by the upstream garmin_mcp Helm chart (separate
+# ApplicationSet) into THIS namespace. The gateway proxies to its Service.
+mcp:
+  service: garmin-mcp
+  port: 8000
+  # FastMCP streamable-http endpoint path inside the MCP container.
+  path: /mcp
+
+authelia:
+  # Cluster-internal userinfo endpoint used to validate bearer tokens.
+  internalUrl: http://authelia.authelia.svc.cluster.local:80
+  # Public issuer host advertised to clients.
+  # Injected by the ApplicationSet as auth.<global.domain>.
+  publicHost: ""
+
+nginx:
+  image: nginx:1.27-alpine
+
+ingress:
+  enabled: true
+  className: traefik
+  # Must be the PROD issuer — staging certs are untrusted, so Claude/ChatGPT would
+  # reject the TLS handshake to the MCP endpoint.
+  clusterIssuer: letsencrypt-prod
+  tlsSecretName: mcp-tls
+
+# ESO pulls the garth token from Vault and exposes it to the upstream MCP chart as
+# an existingSecret. The MCP chart consumes a SINGLE combined token (the contents
+# of ~/.garminconnect/garmin_tokens.json) via $GARMINTOKENS — so we store one field
+# and project it to the secret key GARMINTOKENS.
+#   Generate locally once: `garmin-mcp-auth` (handles MFA), then store the contents
+#   of ~/.garminconnect/garmin_tokens.json into the Vault field below.
+externalSecret:
+  enabled: true
+  storeName: vault-backend
+  vaultKey: cluster/skylab/apps/garmin-mcp
+  # The Secret the upstream MCP chart references via garmin.existingSecret.
+  secretName: garmin-mcp-tokens
+  # Vault field holding the combined garmin_tokens.json contents.
+  tokenProperty: garmin_tokens
