@@ -8,6 +8,11 @@ argo-cd:
       enabled: false
 
   configs:
+    cm:
+      # Poll git every 60s instead of the 3-min default, so a push syncs within
+      # ~1 min. ArgoCD is tailnet-only, so a GitHub webhook can't reach it for
+      # true push-triggered (instant) sync — this is the no-exposure alternative.
+      timeout.reconciliation: 60s
     params:
       # Traefik terminates TLS in front of ArgoCD.
       server.insecure: true
