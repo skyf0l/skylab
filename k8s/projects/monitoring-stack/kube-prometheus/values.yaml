@@ -10,16 +10,61 @@ kube-prometheus-stack:
     ingress:
       enabled: true
 
-    # persistence:
-    #   enabled: true
-    #   size: 5Gi
+    # Persist dashboards/settings across restarts. storageClass + enable are the
+    # cluster-agnostic defaults; the SIZE is tuned per-cluster in values/<c>.yaml.
+    persistence:
+      enabled: true
+      storageClassName: local-path
+      size: 2Gi
+    # RWO volume: replace the pod in place so a config change can't leave two pods
+    # contending for the PVC (fsGroup 472 already sets ownership at mount, so the
+    # chown init is redundant — drop it).
+    deploymentStrategy:
+      type: Recreate
+    initChownData:
+      enabled: false
 
-  # prometheus:
-  #   storageSpec:
-  #     volumeClaimTemplate:
-  #       spec:
-  #         storageClassName: local-path
-  #         accessModes: ["ReadWriteOnce"]
-  #         resources:
-  #           requests:
-  #             storage: 15Gi
+    # Auto-provision community dashboards. Grafana's download-dashboards init pulls
+    # them at startup, so it needs egress to grafana.com.
+    dashboardProviders:
+      dashboardproviders.yaml:
+        apiVersion: 1
+        providers:
+          - name: default
+            orgId: 1
+            folder: ""
+            type: file
+            disableDeletion: false
+            editable: true
+            options:
+              path: /var/lib/grafana/dashboards/default
+    dashboards:
+      default:
+        vault:
+          gnetId: 12904
+          revision: 2
+          datasource: Prometheus
+        trivy-operator:
+          gnetId: 16337
+          revision: 16
+          datasource: Prometheus
+        prometheus:
+          gnetId: 19268
+          revision: 1
+          datasource: Prometheus
+
+  prometheus:
+    prometheusSpec:
+      # Select ALL ServiceMonitors/PodMonitors.
+      serviceMonitorSelectorNilUsesHelmValues: false
+      podMonitorSelectorNilUsesHelmValues: false
+      # Defaults; retention + storage size are tuned per-cluster (disk-bound).
+      retention: 15d
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: local-path
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 15Gi

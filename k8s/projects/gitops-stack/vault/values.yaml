@@ -14,9 +14,43 @@ vault:
       replicas: 3
       raft:
         enabled: true
+        # Overriding config REPLACES the chart default wholesale, so this is the
+        # chart's default raft config + Prometheus telemetry: unauthenticated
+        # metrics on the listener (so the ServiceMonitor scrapes without a token)
+        # and a 24h-retention telemetry stanza. listener/storage/service_registration
+        # are byte-for-byte the chart default — only telemetry is added.
+        config: |
+          ui = true
+
+          listener "tcp" {
+            tls_disable = 1
+            address = "[::]:8200"
+            cluster_address = "[::]:8201"
+            telemetry {
+              unauthenticated_metrics_access = "true"
+            }
+          }
+
+          storage "raft" {
+            path = "/vault/data"
+          }
+
+          service_registration "kubernetes" {}
+
+          telemetry {
+            prometheus_retention_time = "24h"
+            disable_hostname = true
+          }
 
     ingress:
       enabled: true
 
   ui:
     enabled: true
+
+  # Prometheus Operator ServiceMonitor scraping /v1/sys/metrics?format=prometheus.
+  # Top-level (sibling of server). Paired with the unauthenticated_metrics_access
+  # telemetry in server.ha.raft.config above.
+  serverTelemetry:
+    serviceMonitor:
+      enabled: true

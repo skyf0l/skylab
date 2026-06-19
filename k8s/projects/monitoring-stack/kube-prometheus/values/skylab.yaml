@@ -4,32 +4,6 @@ kube-prometheus-stack:
     # (Traefik IngressRoute in the tail-ingress chart).
     ingress:
       enabled: false
-    # Persist dashboards/settings across restarts.
-    persistence:
-      enabled: true
-      size: 2Gi
-      storageClassName: local-path
-    # RWO volume: replace the pod in place so a config change can't leave two pods
-    # contending for the same PVC (the new pod's chown init fails while the old
-    # one holds it). fsGroup (472) already sets volume ownership at mount, so the
-    # chown init is redundant — drop it.
-    deploymentStrategy:
-      type: Recreate
-    initChownData:
-      enabled: false
-
-  prometheus:
-    prometheusSpec:
-      # Sized for the VPS disk; raise retention/storage as the disk allows.
-      retention: 15d
-      storageSpec:
-        volumeClaimTemplate:
-          spec:
-            storageClassName: local-path
-            accessModes: ["ReadWriteOnce"]
-            resources:
-              requests:
-                storage: 15Gi
 
   # node-exporter is a DaemonSet — must tolerate the light (Pi) node taint.
   prometheus-node-exporter:
