@@ -4,13 +4,13 @@ terraform {
   required_providers {
     vault = {
       source  = "hashicorp/vault"
-      version = "~> 4.5"  # pin as you like
+      version = "~> 4.5" # pin as you like
     }
   }
 
   backend "s3" {
-    bucket  = "tfstates"
-    key     = "vault.tfstate"
+    bucket = "tfstates"
+    key    = "vault.tfstate"
     endpoints = {
       s3 = "https://2620dc6ee3d578b27347d8e5efd95f32.r2.cloudflarestorage.com"
     }

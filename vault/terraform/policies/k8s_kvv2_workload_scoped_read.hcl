@@ -1,18 +1,19 @@
-# Allow a workload to read its own area and the shared area:
-#   kvv2/data/cluster/<ns>/<sa>/*
-#   kvv2/data/cluster/<ns>/_shared/*
-path "kvv2/data/cluster/{{identity.entity.aliases.${k8s_accessor}.metadata.service_account_namespace}}/{{identity.entity.aliases.${k8s_accessor}.metadata.service_account_name}}/*" {
+# A workload reads its own area and its namespace's shared area, under the
+# cluster-scoped workloads tree:
+#   kvv2/data/cluster/<cluster>/workloads/<ns>/<sa>/*
+#   kvv2/data/cluster/<cluster>/workloads/<ns>/_shared/*
+path "kvv2/data/cluster/${cluster_name}/workloads/{{identity.entity.aliases.${k8s_accessor}.metadata.service_account_namespace}}/{{identity.entity.aliases.${k8s_accessor}.metadata.service_account_name}}/*" {
   capabilities = ["read"]
 }
 
-path "kvv2/metadata/cluster/{{identity.entity.aliases.${k8s_accessor}.metadata.service_account_namespace}}/{{identity.entity.aliases.${k8s_accessor}.metadata.service_account_name}}/*" {
+path "kvv2/metadata/cluster/${cluster_name}/workloads/{{identity.entity.aliases.${k8s_accessor}.metadata.service_account_namespace}}/{{identity.entity.aliases.${k8s_accessor}.metadata.service_account_name}}/*" {
   capabilities = ["list"]
 }
 
-path "kvv2/data/cluster/{{identity.entity.aliases.${k8s_accessor}.metadata.service_account_namespace}}/_shared/*" {
+path "kvv2/data/cluster/${cluster_name}/workloads/{{identity.entity.aliases.${k8s_accessor}.metadata.service_account_namespace}}/_shared/*" {
   capabilities = ["read"]
 }
 
-path "kvv2/metadata/cluster/{{identity.entity.aliases.${k8s_accessor}.metadata.service_account_namespace}}/_shared/*" {
+path "kvv2/metadata/cluster/${cluster_name}/workloads/{{identity.entity.aliases.${k8s_accessor}.metadata.service_account_namespace}}/_shared/*" {
   capabilities = ["list"]
 }

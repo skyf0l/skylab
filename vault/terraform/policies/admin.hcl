@@ -85,38 +85,9 @@ path "sys/mounts" {
   capabilities = ["read"]
 }
 
-## PKI - Intermediate CA
+## Audit
 
-path "pki/config/urls" {
-  capabilities = ["read"]
-}
-
-# Create, update roles
-path "pki_int/roles/*" {
-  capabilities = ["create", "read", "update", "delete", "list", "sudo"]
-}
-
-# List roles
-path "pki_int/roles" {
-  capabilities = ["list"]
-}
-
-# Issue certs
-path "pki_int/issue/*" {
-  capabilities = ["create", "update"]
-}
-
-# Read certs
-path "pki_int/cert/*" {
-  capabilities = ["read"]
-}
-
-# Revoke certs
-path "pki_int/revoke" {
-  capabilities = ["create", "update", "read"]
-}
-
-# List certs
-path "pki_int/certs" {
-  capabilities = ["list"]
+# Manage audit devices
+path "sys/audit/*" {
+  capabilities = ["create", "read", "update", "delete", "sudo"]
 }

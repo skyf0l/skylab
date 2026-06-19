@@ -3,11 +3,18 @@ resource "vault_policy" "admin" {
   policy = file("policies/admin.hcl")
 }
 
+# Read-only mirror of admin, for PR `terraform plan` (the tf-plan JWT role).
+resource "vault_policy" "tf_readonly" {
+  name   = "tf-readonly"
+  policy = file("policies/tf_readonly.hcl")
+}
+
 resource "vault_policy" "k8s_kvv2_workload_scoped_read" {
   name = "k8s-kvv2-workload-scoped-read"
 
   policy = templatefile("policies/k8s_kvv2_workload_scoped_read.hcl", {
     k8s_accessor = vault_auth_backend.kubernetes.accessor
+    cluster_name = var.cluster_name
   })
 }
 
@@ -16,5 +23,14 @@ resource "vault_policy" "k8s_kvv2_dropzone_rw" {
 
   policy = templatefile("policies/k8s_kvv2_dropzone_rw.hcl", {
     k8s_accessor = vault_auth_backend.kubernetes.accessor
+    cluster_name = var.cluster_name
+  })
+}
+
+resource "vault_policy" "external_secrets" {
+  name = "external-secrets"
+
+  policy = templatefile("policies/external_secrets_read.hcl", {
+    cluster_name = var.cluster_name
   })
 }

@@ -1,42 +1,14 @@
-variable "local_vault_address" {
+variable "cluster_name" {
   type        = string
-  description = "Vault address"
-  default     = "https://localhost:8200"
+  description = "Cluster name; top-level prefix for secret paths (kvv2/data/cluster/<cluster_name>/...). Scopes the ESO and workload read policies."
+  default     = "skylab"
 }
 
-variable "vault_domain" {
-  type        = string
-  description = "Vault domain"
-  default     = "vault.skyf0l.dev"
-}
-
-variable "vault_address" {
-  type        = string
-  description = "Vault address"
-  default     = "https://vault.skyf0l.dev:8200"
-}
-
+# In-cluster Kubernetes API server, as reached from the Vault pods. Vault uses
+# its own pod ServiceAccount token + the in-cluster CA to call TokenReview
+# (no static reviewer JWT/CA needed — see auth.tf).
 variable "kubernetes_auth_backend_kubernetes_host" {
   type        = string
-  description = "Host must be a host string, a host:port pair, or a URL to the base of the Kubernetes API server."
-  default     = "https://127.0.0.1:6443"
-}
-
-# PEM encoded CA cert for use by the TLS client used to talk with the Kubernetes API.
-# Retrieve with `kubectl config view --raw --minify -o jsonpath='{.clusters[0].cluster.certificate-authority-data}' | base64 -d`
-variable "kubernetes_auth_backend_ca_cert" {
-  type        = string
-  description = "PEM encoded CA cert for use by the TLS client used to talk with the Kubernetes API."
-}
-
-# JWT token used by the Vault Kubernetes auth backend to validate service account tokens.
-# Retrieve with `kubectl -n vault-injector create token vault-auth --duration=8760h`
-variable "kubernetes_auth_backend_token_reviewer_jwt" {
-  type        = string
-  description = "A service account JWT used as a bearer token to access the TokenReview API to validate other JWTs during login."
-}
-
-locals {
-  one_year  = 31536000
-  ten_years = 315360000
+  description = "URL to the base of the Kubernetes API server, as reached from the Vault pods."
+  default     = "https://kubernetes.default.svc"
 }
