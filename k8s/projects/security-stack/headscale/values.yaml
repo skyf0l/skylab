@@ -65,10 +65,44 @@ config:
       - 9.9.9.9
 
   derp:
-    serverEnabled: false
-    urls:
-      - https://controlplane.tailscale.com/derpmap/default
-    autoUpdate: true
+    # Self-hosted DERP relay, embedded in this headscale process (no extra app, no
+    # third-party image). DERP is the FALLBACK path used when two peers can't reach
+    # each other directly — e.g. a phone on a strict office/corporate WiFi whose NAT
+    # blocks UDP hole-punching. Without a self-hosted DERP, that fallback relays
+    # through Tailscale's PUBLIC DERP servers (cross-region, not ours, flaky); with
+    # it, the fallback is one controlled hop through this VPS.
+    #
+    # Reachability: the relay is served over headscale's HTTP listener, so it rides
+    # the EXISTING public endpoint headscale.<domain>:443 (same Traefik route + cert)
+    # — office-firewall-friendly. STUN is UDP/3478 (see statefulset hostPort).
+    server:
+      enabled: true
+      regionId: 900
+      regionCode: skylab
+      regionName: "Skylab VPS"
+      # Only nodes registered in THIS headscale may relay (rejects strangers using it
+      # as an open bandwidth relay). On by default; kept explicit.
+      verifyClients: true
+      stunListenAddr: "0.0.0.0:3478"
+      privateKeyPath: /var/lib/headscale/derp_server_private.key
+      # Auto-publish this region into the derpmap clients receive — no hand-written map.
+      automaticallyAddRegion: true
+      # Optional STUN/DERP IP hints. LEFT EMPTY ON PURPOSE: headscale always sets the
+      # region node's HostName to headscale.<domain>, so clients resolve that A/AAAA
+      # record (which already points at the node for the control endpoint) for both
+      # DERP :443 and STUN :3478 — nothing to hardcode, and it auto-follows DNS if the
+      # node/IP ever changes. Only set these to PIN a specific IP, e.g. if the control
+      # record is Cloudflare-proxied and you need clients to bypass the proxy.
+      ipv4: ""
+      ipv6: ""
+    # Drop the public Tailscale derpmap. If kept, a far client (e.g. you on mobile in
+    # another region) picks a nearer PUBLIC relay by latency and never uses ours, so
+    # nothing improves. Empty => our region is the ONLY relay and all fallback traffic
+    # goes through the VPS we control. (Our DERP shares fate with headscale itself, so
+    # it's no worse a single point of failure than the control server already is.)
+    urls: []
+    paths: []
+    autoUpdate: false
 
   acl:
     # infra owns the proxy + exit tags (keeps them off your personal identity).

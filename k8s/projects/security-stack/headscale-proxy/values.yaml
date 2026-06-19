@@ -5,7 +5,11 @@ image:
   # its own socket (so the ClusterIP is translated under Cilium KPR).
   socat: alpine/socat:1.8.0.0
 
-# In-cluster Headscale control server (internal Service — no public round-trip).
+# Headscale control server. MUST be the public HTTPS URL (TLS on :443): tailscale
+# forces a TLS :443 dial for the persistent noise/map connection, so the in-cluster
+# http Service (ports 80/50443, no 443) lets the node REGISTER but then fails to
+# hold the map session — containerboot SIGKILLs `tailscale up` at 60s → crashloop.
+# Injected by the ApplicationSet as https://headscale.<global.domain>.
 loginServer: http://headscale.headscale.svc.cluster.local
 
 # Traefik endpoint every proxy forwards to. Traefik terminates TLS with the

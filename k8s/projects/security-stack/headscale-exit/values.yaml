@@ -1,8 +1,13 @@
 image:
   # tailnet node (kernel mode — needs NET_ADMIN + /dev/net/tun).
   tailscale: tailscale/tailscale:v1.78.1
+  # Tiny image for the privileged init step that enables host IP forwarding.
+  init: busybox:1.37.0
 
-# In-cluster Headscale control server (internal Service — no public round-trip).
+# Headscale control server. MUST be the public HTTPS URL (TLS :443): tailscale
+# forces a TLS :443 dial for the persistent noise/map session, so the in-cluster
+# http svc (80/50443, no 443) lets the node register but then drops the session and
+# crash-loops on restart. Injected by the ApplicationSet as https://headscale.<domain>.
 loginServer: http://headscale.headscale.svc.cluster.local
 
 # Reusable pre-auth key (tagged tag:tail-exit), auto-minted by the PreSync Job

@@ -41,6 +41,12 @@ spec:
               value: "tail.{{.global.domain}}"
             - name: "authkeyMint.user"
               value: "infra@{{.global.domain}}"
+            # Tailscale requires the control connection over TLS:443; the public
+            # headscale URL (what server_url advertises) is the only endpoint that
+            # satisfies that. The in-cluster http svc has no 443 and breaks the
+            # persistent noise/map dial ("forcing port 443 dial").
+            - name: "loginServer"
+              value: "https://headscale.{{.global.domain}}"
       destination:
         server: https://kubernetes.default.svc
         namespace: tailscale

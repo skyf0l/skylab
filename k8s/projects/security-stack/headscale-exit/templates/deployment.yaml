@@ -4,8 +4,8 @@
 #
 # hostNetwork=true: tailscaled binds to the host's public interface, so peers get
 # a DIRECT (no-DERP) data path. dnsPolicy keeps cluster DNS so it can still resolve
-# the in-cluster Headscale Service for the login-server. v4 forwarding is already on
-# on the host; v6 exit additionally needs net.ipv6.conf.all.forwarding=1.
+# headscale for the login-server. Host IPv4 + IPv6 forwarding is enabled by the
+# privileged init container below (required for the advertised 0.0.0.0/0 + ::/0).
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -43,6 +43,30 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      initContainers:
+        # Enable IP forwarding on the HOST. Because this pod is hostNetwork, these
+        # are the host's (non-namespaced) sysctls — they can't be set via pod-level
+        # securityContext.sysctls, and tailscaled can't set them itself (/proc/sys is
+        # read-only for the unprivileged tailscale container). Without v6 forwarding
+        # the node advertises ::/0 but silently DROPS all IPv6 traffic, so clients on
+        # dual-stack networks stall on Happy-Eyeballs before falling back to IPv4
+        # ("works on 4G, random on WiFi"). Re-applied on every pod start; resets on
+        # host reboot (which also restarts this pod).
+        - name: enable-forwarding
+          image: {{ .Values.image.init | quote }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              echo 1 > /proc/sys/net/ipv4/ip_forward
+              echo 1 > /proc/sys/net/ipv6/conf/all/forwarding
+              echo 1 > /proc/sys/net/ipv6/conf/default/forwarding
+              echo "IP forwarding enabled (v4 + v6)."
+          securityContext:
+            privileged: true
+          resources:
+            requests: { cpu: 10m, memory: 16Mi }
+            limits: { memory: 32Mi }
       containers:
         - name: tailscale
           image: {{ .Values.image.tailscale | quote }}

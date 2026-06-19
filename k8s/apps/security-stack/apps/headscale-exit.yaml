@@ -39,6 +39,12 @@ spec:
           parameters:
             - name: "authkeyMint.user"
               value: "infra@{{.global.domain}}"
+            # Tailscale forces a TLS :443 dial for the persistent noise/map session,
+            # so the in-cluster http svc (80/50443, no 443) lets the node register
+            # but then fails to hold the session and crash-loops on restart. The
+            # public HTTPS URL is the only endpoint that satisfies it.
+            - name: "loginServer"
+              value: "https://headscale.{{.global.domain}}"
       destination:
         server: https://kubernetes.default.svc
         namespace: tailscale

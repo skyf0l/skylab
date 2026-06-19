@@ -36,11 +36,24 @@ data:
           {{- end }}
     derp:
       server:
-        enabled: {{ .Values.config.derp.serverEnabled }}
-      urls:
-        {{- range .Values.config.derp.urls }}
-        - {{ . | quote }}
+        enabled: {{ .Values.config.derp.server.enabled }}
+        {{- if .Values.config.derp.server.enabled }}
+        region_id: {{ .Values.config.derp.server.regionId }}
+        region_code: {{ .Values.config.derp.server.regionCode | quote }}
+        region_name: {{ .Values.config.derp.server.regionName | quote }}
+        verify_clients: {{ .Values.config.derp.server.verifyClients }}
+        stun_listen_addr: {{ .Values.config.derp.server.stunListenAddr | quote }}
+        private_key_path: {{ .Values.config.derp.server.privateKeyPath }}
+        automatically_add_embedded_derp_region: {{ .Values.config.derp.server.automaticallyAddRegion }}
+        {{- with .Values.config.derp.server.ipv4 }}
+        ipv4: {{ . | quote }}
         {{- end }}
+        {{- with .Values.config.derp.server.ipv6 }}
+        ipv6: {{ . | quote }}
+        {{- end }}
+        {{- end }}
+      urls: {{ .Values.config.derp.urls | toJson }}
+      paths: {{ .Values.config.derp.paths | toJson }}
       auto_update_enabled: {{ .Values.config.derp.autoUpdate }}
       update_frequency: 24h
     ephemeral_node_inactivity_timeout: 30m

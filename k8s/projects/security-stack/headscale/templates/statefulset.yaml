@@ -29,6 +29,17 @@ spec:
               containerPort: 8080
             - name: grpc
               containerPort: 50443
+            {{- if .Values.config.derp.server.enabled }}
+            # Embedded DERP STUN endpoint. hostPort binds it to the VPS's public IP
+            # (Cilium kube-proxy-replacement implements hostPort) so clients can STUN
+            # for NAT discovery. REQUIRES inbound UDP 3478 open in the VPS firewall.
+            # The DERP relay itself needs no port here — it rides the existing
+            # headscale.<domain>:443 Traefik route.
+            - name: stun
+              containerPort: 3478
+              hostPort: 3478
+              protocol: UDP
+            {{- end }}
           livenessProbe:
             httpGet:
               path: /health

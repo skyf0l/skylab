@@ -1,2 +1,4 @@
 # Per-cluster overrides for skylab.
 # host/users/baseDomain/ACLs all derive from global.domain — nothing to set here.
+# The embedded DERP advertises itself by hostname (headscale.<domain>), so even its
+# STUN IP follows DNS — no per-cluster host IP to hardcode.
