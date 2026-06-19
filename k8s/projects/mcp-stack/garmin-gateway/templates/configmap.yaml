@@ -39,11 +39,17 @@ data:
         }
 
         # --- Bearer validation against Authelia's userinfo endpoint ---
+        # Host + X-Forwarded-* must present the PUBLIC Authelia URL so Authelia can
+        # resolve its issuer (it matches the request domain to a session cookie
+        # config); the internal svc host would fail issuer discovery.
         location = /_authelia_userinfo {
           internal;
           proxy_pass {{ .Values.authelia.internalUrl }}/api/oidc/userinfo;
           proxy_pass_request_body off;
           proxy_set_header Content-Length "";
+          proxy_set_header Host {{ .Values.authelia.publicHost | quote }};
+          proxy_set_header X-Forwarded-Host {{ .Values.authelia.publicHost | quote }};
+          proxy_set_header X-Forwarded-Proto https;
           proxy_set_header Authorization $http_authorization;
         }
 

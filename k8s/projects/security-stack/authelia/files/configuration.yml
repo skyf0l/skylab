@@ -62,6 +62,10 @@ identity_providers:
         pkce_challenge_method: 'S256'
         token_endpoint_auth_method: 'none'
         authorization_policy: one_factor
+        # RFC 8707 resource the MCP gateway advertises and Claude requests as the
+        # token audience — must be whitelisted or the authorization is rejected.
+        audience:
+          - 'https://mcp.{{ env "DOMAIN" }}/garmin/mcp'
         redirect_uris:
           - https://claude.ai/api/mcp/auth_callback
           - http://localhost/callback
@@ -84,6 +88,8 @@ identity_providers:
         pkce_challenge_method: 'S256'
         token_endpoint_auth_method: 'none'
         authorization_policy: one_factor
+        audience:
+          - 'https://mcp.{{ env "DOMAIN" }}/garmin/mcp'
         # TODO: confirm ChatGPT's exact MCP OAuth callback URL and replace.
         redirect_uris:
           - https://chatgpt.com/connector_platform_oauth_redirect
