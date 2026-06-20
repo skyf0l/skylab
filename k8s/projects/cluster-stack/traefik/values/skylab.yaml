@@ -4,6 +4,14 @@ traefik:
   providers:
     kubernetesCRD:
       allowCrossNamespace: true
+    kubernetesIngress:
+      # This is a hostPort DaemonSet behind a ClusterIP Service, so there is no
+      # LoadBalancer status to copy. Disable publishedService and instead stamp a
+      # static ingressEndpoint hostname via additionalArguments (injected from
+      # global.domain by the traefik ApplicationSet), so Ingresses get a non-empty
+      # .status and Argo reports them Healthy (also unblocks PruneLast cleanups).
+      publishedService:
+        enabled: false
 
   # Listen on all nodes
   deployment:

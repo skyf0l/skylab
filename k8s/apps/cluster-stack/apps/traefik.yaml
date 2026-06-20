@@ -35,6 +35,13 @@ spec:
           parameters:
             - name: "traefik.ingressRoute.dashboard.matchRule"
               value: "Host(`traefik.{{.global.domain}}`) && (PathPrefix(`/dashboard`) || PathPrefix(`/api`))"
+            # Traefik runs as a hostPort DaemonSet behind a ClusterIP Service, so the
+            # chart's default publishedService has no LoadBalancer status to copy and
+            # every Ingress stays addressless -> Argo reports it Progressing forever,
+            # which also blocks PruneLast cleanups. Stamp a static hostname onto every
+            # Ingress .status instead (see additionalArguments in values/skylab.yaml).
+            - name: "traefik.additionalArguments[0]"
+              value: "--providers.kubernetesingress.ingressendpoint.hostname={{.global.domain}}"
       destination:
         server: https://kubernetes.default.svc
         namespace: traefik
