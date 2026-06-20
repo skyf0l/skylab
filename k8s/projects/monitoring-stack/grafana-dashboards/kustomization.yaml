@@ -1,0 +1,24 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: monitoring
+
+# Community dashboards vendored as JSON (fetched once from grafana.com, datasource
+# pinned to uid "prometheus"). The Grafana dashboard sidecar watches for ConfigMaps
+# labelled grafana_dashboard=1 cluster-wide and hot-loads them — no pod restart and
+# no grafana.com egress at boot. Add a new dashboard: drop its JSON in json/ and add
+# one configMapGenerator entry below.
+generatorOptions:
+  disableNameSuffixHash: true
+  labels:
+    grafana_dashboard: "1"
+
+configMapGenerator:
+  - name: grafana-dashboard-vault
+    files:
+      - json/vault.json
+  - name: grafana-dashboard-trivy-operator
+    files:
+      - json/trivy-operator.json
+  - name: grafana-dashboard-prometheus
+    files:
+      - json/prometheus.json

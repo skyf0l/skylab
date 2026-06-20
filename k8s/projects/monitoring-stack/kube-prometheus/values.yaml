@@ -34,34 +34,9 @@ kube-prometheus-stack:
     initChownData:
       enabled: false
 
-    # Auto-provision community dashboards. Grafana's download-dashboards init pulls
-    # them at startup, so it needs egress to grafana.com.
-    dashboardProviders:
-      dashboardproviders.yaml:
-        apiVersion: 1
-        providers:
-          - name: default
-            orgId: 1
-            folder: ""
-            type: file
-            disableDeletion: false
-            editable: true
-            options:
-              path: /var/lib/grafana/dashboards/default
-    dashboards:
-      default:
-        vault:
-          gnetId: 12904
-          revision: 2
-          datasource: Prometheus
-        trivy-operator:
-          gnetId: 16337
-          revision: 16
-          datasource: Prometheus
-        prometheus:
-          gnetId: 19268
-          revision: 1
-          datasource: Prometheus
+    # Community dashboards are vendored as JSON ConfigMaps under
+    # k8s/projects/monitoring-stack/grafana-dashboards and hot-loaded by the
+    # dashboard sidecar (no init container, no grafana.com egress at boot).
 
   prometheus:
     prometheusSpec:
