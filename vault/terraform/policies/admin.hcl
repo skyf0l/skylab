@@ -8,6 +8,11 @@ path "sys/audit" {
   capabilities = ["read", "create", "sudo"]
 }
 
+# Client-count / activity tracking config (the "Client Usage" dashboard).
+path "sys/internal/counters/config" {
+  capabilities = ["read", "update"]
+}
+
 # Manage leases
 path "sys/leases/*" {
   capabilities = ["create", "read", "update", "delete", "list", "sudo"]
