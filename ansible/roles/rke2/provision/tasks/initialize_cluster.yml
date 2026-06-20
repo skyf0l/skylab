@@ -12,6 +12,12 @@
     state: present
     src: "local-path-provisioner.yaml"
 
+- name: Alias kube-dns to RKE2 CoreDNS (for charts that hardcode kube-dns)
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig_local_path }}"
+    state: present
+    src: "kube-dns-alias.yaml"
+
 - name: Setup cilium
   ansible.builtin.include_tasks: init/cilium.yml
 
