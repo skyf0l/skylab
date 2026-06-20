@@ -10,6 +10,27 @@ kube-prometheus-stack:
     ingress:
       enabled: true
 
+    # Datasources (Prometheus default + Alertmanager + Loki below) are written by
+    # the grafana_datasource sidecar into an emptyDir shared with the main grafana
+    # container. By default the watch sidecar writes that file a few seconds AFTER
+    # grafana has already run its one-shot provisioning, and it skips the reload on
+    # its initial sync — so only the DB-persisted Prometheus shows and Loki/
+    # Alertmanager never load. Run the sidecar ALSO as a native initContainer
+    # (restartPolicy: Always, k8s >=1.29) so the file is written before grafana
+    # provisions; the startupProbe gates grafana on the sidecar's initial sync
+    # being complete (kiwigrid serves /healthz on 8081 — 8080 is already taken by
+    # the dashboards sidecar's health server).
+    sidecar:
+      datasources:
+        initDatasources: true
+        restartPolicy: Always
+        startupProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          periodSeconds: 2
+          failureThreshold: 30
+
     # Loki as a log datasource (Explore → logs). Points at the in-cluster Loki
     # gateway; Prometheus stays the default metrics datasource.
     additionalDataSources:
