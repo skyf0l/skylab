@@ -11,6 +11,12 @@ cilium:
 
   hubble:
     enable: true
+    # In-memory ring buffer of recent flows shown when the UI opens (default 4095 =
+    # only seconds of traffic). 65535 (the max, must be 2^n-1) holds several minutes
+    # on a low-traffic cluster — count-based, not time, so the window shrinks under
+    # bursts. RAM-only (~10-15MB/agent) and cleared on cilium-agent restart; for
+    # durable history, export flows to Loki instead.
+    eventBufferCapacity: "65535"
     relay:
       enabled: true
     ui:
