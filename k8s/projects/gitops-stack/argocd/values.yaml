@@ -1,0 +1,23 @@
+argo-cd:
+  # Prometheus metrics + ServiceMonitors for the ArgoCD dashboard.
+  # Scraped automatically (Prometheus selects all ServiceMonitors).
+  controller:
+    metrics:
+      enabled: true
+      serviceMonitor:
+        enabled: true
+  server:
+    metrics:
+      enabled: true
+      serviceMonitor:
+        enabled: true
+  repoServer:
+    metrics:
+      enabled: true
+      serviceMonitor:
+        enabled: true
+  applicationSet:
+    metrics:
+      enabled: true
+      serviceMonitor:
+        enabled: true

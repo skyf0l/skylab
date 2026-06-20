@@ -4,6 +4,12 @@ cert-manager:
     enabled: true
     keep: true
 
+  # Prometheus metrics + ServiceMonitor for the cert-manager dashboard, certificate expiry / renewal visibility.
+  prometheus:
+    enabled: true
+    servicemonitor:
+      enabled: true
+
   # Default issuer: any Ingress with a `tls` block (incl. a secretName) but no
   # explicit cert-manager.io/cluster-issuer annotation auto-gets a cert from
   # this issuer. This is the "auto-resolve certs for everything" behaviour.

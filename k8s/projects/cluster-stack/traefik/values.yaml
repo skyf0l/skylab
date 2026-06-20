@@ -1,0 +1,12 @@
+traefik:
+  # Prometheus metrics + ServiceMonitor for the Traefik dashboard.
+  # entry-point / router / service labels enrich the per-route panels.
+  metrics:
+    prometheus:
+      addEntryPointsLabels: true
+      addRoutersLabels: true
+      addServicesLabels: true
+      service:
+        enabled: true
+      serviceMonitor:
+        enabled: true

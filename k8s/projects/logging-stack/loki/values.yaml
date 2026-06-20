@@ -29,7 +29,7 @@ loki:
         s3ForcePathStyle: true
         insecure: false
     limits_config:
-      retention_period: 720h          # 30 days
+      retention_period: 720h # 30 days
       ingestion_rate_mb: 8
       ingestion_burst_size_mb: 16
       # Generous label/stream limits for a whole-cluster scrape.
@@ -80,6 +80,11 @@ loki:
     enabled: false
   test:
     enabled: false
+
+  # ServiceMonitor so Prometheus scrapes Loki's own metrics.
+  monitoring:
+    serviceMonitor:
+      enabled: true
 
 # ESO: project the R2 token from Vault into the loki-r2 Secret as env-var-named
 # keys (R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY) consumed above.
