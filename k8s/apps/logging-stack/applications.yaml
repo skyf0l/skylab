@@ -1,0 +1,58 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: logging-stack
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          # Auto updated by parent ApplicationSet
+          - list:
+              elements:
+                - name: skylab
+          - git:
+              repoURL: https://github.com/skyf0l/skylab.git
+              revision: main
+              files:
+                - path: clusters/{{.name}}/config.json
+  template:
+    metadata:
+      name: "{{.name}}-logging-stack"
+    spec:
+      project: default
+      source:
+        repoURL: "{{.repo.url}}"
+        targetRevision: "{{.repo.revision}}"
+        path: k8s/apps/logging-stack
+        kustomize:
+          namePrefix: "{{.name}}-"
+          patches:
+            - target:
+                kind: ApplicationSet
+              patch: |-
+                - op: replace
+                  path: /spec/generators/0/matrix/generators/0/list/elements/0/name
+                  value: {{.name}}
+                - op: replace
+                  path: /spec/generators/0/matrix/generators/1/git/repoURL
+                  value: {{.repo.url}}
+                - op: replace
+                  path: /spec/generators/0/matrix/generators/1/git/revision
+                  value: {{.repo.revision}}
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: argocd
+      syncPolicy:
+        automated:
+          prune: true
+        syncOptions:
+          - Validate=true
+          - PrunePropagationPolicy=foreground
+          - PruneLast=true
+          - RespectIgnoreDifferences=true
+        retry:
+          limit: 5

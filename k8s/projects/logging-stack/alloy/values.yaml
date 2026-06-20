@@ -1,0 +1,31 @@
+alloy:
+  # DaemonSet (default) — one collector per node, tailing that node's pod logs.
+  controller:
+    type: daemonset
+
+  alloy:
+    # Mount the host /var/log so /var/log/pods/*/*.log is readable (containerd CRI
+    # writes the real log files there).
+    mounts:
+      varlog: true
+    # No phone-home.
+    enableReporting: false
+    extraEnv:
+      - name: NODE_NAME
+        valueFrom:
+          fieldRef:
+            fieldPath: spec.nodeName
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        memory: 256Mi
+
+    # Config lives in files/config.alloy (lintable with `alloy fmt`/`alloy validate`),
+    # rendered into the alloy-config ConfigMap by templates/configmap.yaml. The
+    # chart's config-reloader sidecar hot-reloads it on change.
+    configMap:
+      create: false
+      name: alloy-config
+      key: config.alloy

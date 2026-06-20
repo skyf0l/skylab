@@ -1,0 +1,63 @@
+// Alloy log collection for the skylab cluster.
+// Lint/format locally: `alloy fmt config.alloy` / `alloy validate config.alloy`.
+//
+// Discover only THIS node's pods (one DaemonSet pod per node -> no duplication).
+discovery.kubernetes "pods" {
+	role = "pod"
+
+	selectors {
+		role  = "pod"
+		field = "spec.nodeName=" + sys.env("NODE_NAME")
+	}
+}
+
+// Map pod metadata to Loki labels and build the on-disk log path.
+discovery.relabel "pod_logs" {
+	targets = discovery.kubernetes.pods.targets
+
+	rule {
+		source_labels = ["__meta_kubernetes_namespace"]
+		target_label  = "namespace"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_name"]
+		target_label  = "pod"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_container_name"]
+		target_label  = "container"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_controller_kind"]
+		target_label  = "controller_kind"
+	}
+
+	// /var/log/pods/<namespace>_<pod>_<uid>/<container>/*.log
+	rule {
+		source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
+		separator     = "/"
+		action        = "replace"
+		replacement   = "/var/log/pods/*$1/*.log"
+		target_label  = "__path__"
+	}
+}
+
+// Expand the path globs into concrete files.
+local.file_match "pods" {
+	path_targets = discovery.relabel.pod_logs.output
+}
+
+// Tail and forward to Loki.
+loki.source.file "pods" {
+	targets    = local.file_match.pods.targets
+	forward_to = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+	endpoint {
+		url = "http://loki-gateway.logging.svc.cluster.local/loki/api/v1/push"
+	}
+}

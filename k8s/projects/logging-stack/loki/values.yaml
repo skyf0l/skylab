@@ -1,0 +1,89 @@
+loki:
+  # SingleBinary: one Loki process for a single-VPS homelab. Chunks + TSDB index
+  # live in Cloudflare R2 (S3 API); only a small local PVC holds the WAL/cache.
+  deploymentMode: SingleBinary
+
+  loki:
+    auth_enabled: false
+    # Single instance -> no replication.
+    commonConfig:
+      replication_factor: 1
+    schemaConfig:
+      configs:
+        - from: "2024-04-01"
+          store: tsdb
+          object_store: s3
+          schema: v13
+          index:
+            prefix: loki_index_
+            period: 24h
+    # Cloudflare R2 (S3-compatible). Creds are injected as env (see singleBinary
+    # extraEnvFrom) and expanded via -config.expand-env=true — never in git.
+    storage:
+      type: s3
+      # endpoint + bucketNames are account/cluster-specific -> values/<cluster>.yaml.
+      s3:
+        region: auto
+        accessKeyId: "${R2_ACCESS_KEY_ID}"
+        secretAccessKey: "${R2_SECRET_ACCESS_KEY}"
+        s3ForcePathStyle: true
+        insecure: false
+    limits_config:
+      retention_period: 720h          # 30 days
+      ingestion_rate_mb: 8
+      ingestion_burst_size_mb: 16
+      # Generous label/stream limits for a whole-cluster scrape.
+      max_label_names_per_series: 30
+    compactor:
+      retention_enabled: true
+      delete_request_store: s3
+
+  singleBinary:
+    replicas: 1
+    persistence:
+      enabled: true
+      storageClass: local-path
+      size: 5Gi
+    # Expand ${R2_*} in the config from env, sourced from the ESO-managed secret.
+    extraArgs:
+      - "-config.expand-env=true"
+    extraEnvFrom:
+      - secretRef:
+          name: loki-r2
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        memory: 1Gi
+
+  # SingleBinary -> the scalable components stay off.
+  backend:
+    replicas: 0
+  read:
+    replicas: 0
+  write:
+    replicas: 0
+
+  # No memcached caches on a homelab.
+  chunksCache:
+    enabled: false
+  resultsCache:
+    enabled: false
+
+  # nginx gateway in front — the Grafana datasource points here.
+  gateway:
+    enabled: true
+
+  # No canary / helm-test pods.
+  lokiCanary:
+    enabled: false
+  test:
+    enabled: false
+
+# ESO: project the R2 token from Vault into the loki-r2 Secret as env-var-named
+# keys (R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY) consumed above.
+externalSecret:
+  enabled: true
+  storeName: vault-backend
+  vaultKey: cluster/skylab/apps/loki

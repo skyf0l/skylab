@@ -1,0 +1,11 @@
+# Alloy config kept as a standalone files/config.alloy (lintable with `alloy fmt`),
+# loaded here so the chart consumes it via configMap.create=false + name/key below.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alloy-config
+  labels:
+    app: alloy
+data:
+  config.alloy: |-
+{{ .Files.Get "files/config.alloy" | indent 4 }}

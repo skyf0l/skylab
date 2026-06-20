@@ -1,0 +1,8 @@
+# Per-cluster overrides for skylab.
+alloy:
+  controller:
+    # DaemonSet must also run on the Pi "light" node to collect its logs.
+    tolerations:
+      - key: node-role.skylab/light
+        operator: Exists
+        effect: NoSchedule

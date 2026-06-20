@@ -1,0 +1,54 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: loki
+  annotations:
+    # Before Alloy (which pushes to Loki's gateway).
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          # Auto updated by parent ApplicationSet
+          - list:
+              elements:
+                - name: skylab
+          - git:
+              repoURL: https://github.com/skyf0l/skylab.git
+              revision: main
+              files:
+                - path: clusters/{{.name }}/config.json
+  template:
+    metadata:
+      name: "{{.name}}-loki"
+      annotations:
+        argocd.argoproj.io/sync-wave: "1"
+    spec:
+      project: default
+      source:
+        repoURL: "{{.repo.url}}"
+        targetRevision: "{{.repo.revision}}"
+        path: k8s/projects/logging-stack/loki
+        helm:
+          releaseName: loki
+          valueFiles:
+            - values.yaml
+            - values/{{.name}}.yaml
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: logging
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - Validate=true
+          - PrunePropagationPolicy=foreground
+          - PruneLast=true
+          - RespectIgnoreDifferences=true
+          - ServerSideApply=true # Avoids annotation size limits
+        retry:
+          limit: 5

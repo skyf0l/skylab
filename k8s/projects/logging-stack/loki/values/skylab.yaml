@@ -1,0 +1,11 @@
+# Per-cluster overrides for skylab — the account/cluster-specific R2 endpoint and
+# bucket. (The R2 access key/secret are NOT here; they come from Vault via ESO.)
+loki:
+  loki:
+    storage:
+      bucketNames:
+        chunks: skylab-loki
+        ruler: skylab-loki
+        admin: skylab-loki
+      s3:
+        endpoint: "https://2620dc6ee3d578b27347d8e5efd95f32.r2.cloudflarestorage.com"

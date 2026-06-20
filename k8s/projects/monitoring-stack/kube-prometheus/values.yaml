@@ -10,6 +10,16 @@ kube-prometheus-stack:
     ingress:
       enabled: true
 
+    # Loki as a log datasource (Explore → logs). Points at the in-cluster Loki
+    # gateway; Prometheus stays the default metrics datasource.
+    additionalDataSources:
+      - name: Loki
+        type: loki
+        uid: loki
+        access: proxy
+        url: http://loki-gateway.logging.svc.cluster.local
+        isDefault: false
+
     # Persist dashboards/settings across restarts. storageClass + enable are the
     # cluster-agnostic defaults; the SIZE is tuned per-cluster in values/<c>.yaml.
     persistence:

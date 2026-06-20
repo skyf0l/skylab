@@ -84,6 +84,9 @@ garmin_tokens_placeholder() {
   printf '%s' '{"oauth1_token":{"oauth_token":"REPLACE_ME","oauth_token_secret":"REPLACE_ME","domain":"garmin.com"},"oauth2_token":{"access_token":"REPLACE_ME","refresh_token":"REPLACE_ME","token_type":"Bearer","expires_at":0}}'
 }
 
+# Generic REPLACE_ME placeholder for human-supplied credentials (e.g. R2 tokens).
+replace_me() { printf '%s' 'REPLACE_ME'; }
+
 # ----- seeding helpers -------------------------------------------------------
 field_exists() { vault kv get -mount="$KV_MOUNT" -field="$2" "$1" >/dev/null 2>&1; }
 key_exists()   { vault kv get -mount="$KV_MOUNT" "$1" >/dev/null 2>&1; }
@@ -124,5 +127,15 @@ seed_field "$authelia" chatgpt_redirect_uri   chatgpt_redirect_placeholder
 garmin="cluster/${CLUSTER}/apps/garmin-mcp"
 echo "[garmin-mcp] ${KV_MOUNT}/${garmin}"
 seed_field "$garmin" garmin_tokens garmin_tokens_placeholder
+
+# loki — kvv2/cluster/<cluster>/apps/loki
+# Dedicated R2 token (Object Read & Write on the skylab-loki bucket) for Loki's S3
+# backend. PLACEHOLDER so the ExternalSecret syncs; overwrite with the REAL token:
+#   vault kv patch -mount=kvv2 cluster/<cluster>/apps/loki \
+#     r2_access_key_id=<id> r2_secret_access_key=<secret>
+loki="cluster/${CLUSTER}/apps/loki"
+echo "[loki] ${KV_MOUNT}/${loki}"
+seed_field "$loki" r2_access_key_id     replace_me
+seed_field "$loki" r2_secret_access_key replace_me
 
 echo "Done. Fill in any PLACEHOLDER fields via the Vault UI/CLI; re-running won't overwrite them."
