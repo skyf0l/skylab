@@ -72,6 +72,11 @@ services:
     service: hubble-ui
     namespace: kube-system
     port: 80
+  - name: traefik
+    # Traefik's own dashboard/API (api@internal). Reached at
+    # traefik.tail.<domain>/dashboard/ — tailnet-only, never publicly exposed
+    # (the public IngressRoute is disabled in the traefik chart).
+    traefikService: api@internal
 
 # Raw L4 TCP passthrough nodes — no Traefik, no TLS termination. For non-HTTP
 # endpoints that present their own cert and do their own auth (e.g. the

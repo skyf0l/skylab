@@ -31,10 +31,7 @@ spec:
           valueFiles:
             - values.yaml
             - values/{{.name}}.yaml
-          # Dashboard host derived from the cluster's global.domain.
           parameters:
-            - name: "traefik.ingressRoute.dashboard.matchRule"
-              value: "Host(`traefik.{{.global.domain}}`) && (PathPrefix(`/dashboard`) || PathPrefix(`/api`))"
             # Traefik runs as a hostPort DaemonSet behind a ClusterIP Service, so the
             # chart's default publishedService has no LoadBalancer status to copy and
             # every Ingress stays addressless -> Argo reports it Progressing forever,

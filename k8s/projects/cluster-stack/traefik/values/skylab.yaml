@@ -53,9 +53,9 @@ traefik:
     insecure: true
     dashboard: true
 
-  # Create the dashboard IngressRoute
+  # NO public dashboard IngressRoute. The dashboard (api@internal) is exposed
+  # ONLY on the tailnet at traefik.tail.<domain> via the headscale-proxy chart
+  # (tailnet-only middleware). api.dashboard stays true so api@internal serves.
   ingressRoute:
     dashboard:
-      enabled: true
-      # matchRule (Host) is injected by the ApplicationSet from global.domain.
-      entryPoints: ["websecure"]
+      enabled: false

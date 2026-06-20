@@ -16,12 +16,19 @@ spec:
       middlewares:
         - name: {{ $.Values.middlewareName }}
       services:
+        {{- if .traefikService }}
+        # Traefik-internal service (e.g. api@internal for the dashboard) — not a
+        # k8s Service, so reference it by name + kind instead of namespace/port.
+        - name: {{ .traefikService }}
+          kind: TraefikService
+        {{- else }}
         - name: {{ .service }}
           namespace: {{ .namespace }}
           port: {{ .port }}
           {{- with .scheme }}
           scheme: {{ . }}
           {{- end }}
+        {{- end }}
   tls:
     secretName: {{ $.Values.tlsSecretName }}
 ---
