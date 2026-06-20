@@ -3,7 +3,8 @@ kind: ApplicationSet
 metadata:
   name: gitops-stack
   annotations:
-    argocd.argoproj.io/sync-wave: "-1"
+    # Before security-stack (-9): ESO's vault-backend store reads from Vault.
+    argocd.argoproj.io/sync-wave: "-10"
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
