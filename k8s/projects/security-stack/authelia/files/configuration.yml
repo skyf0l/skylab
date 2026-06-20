@@ -53,6 +53,16 @@ identity_providers:
     hmac_secret: '{{ secret "/secrets/oidc.hmac" }}'
     jwks:
       - key: {{secret "/secrets/oidc.jwks.key" | mindent 10 "|" | msquote}}
+    # Token lifespans. The default refresh_token is only 90m, so an idle MCP
+    # connector loses its refresh window and forces a full re-auth. Extend
+    # refresh_token to 1 year: rotation renews it on every use, so an actively-used
+    # connector effectively never re-logs in, and even after months idle it still
+    # refreshes silently. Access tokens stay short (validated per call via /userinfo).
+    lifespans:
+      access_token: '1 hour'
+      authorize_code: '1 minute'
+      id_token: '1 hour'
+      refresh_token: '1 year'
     # Two public PKCE clients (no client secret) — one per assistant.
     clients:
       - client_id: claude
