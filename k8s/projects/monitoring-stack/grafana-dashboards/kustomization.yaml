@@ -3,22 +3,61 @@ kind: Kustomization
 namespace: monitoring
 
 # Community dashboards vendored as JSON (fetched once from grafana.com, datasource
-# pinned to uid "prometheus"). The Grafana dashboard sidecar watches for ConfigMaps
-# labelled grafana_dashboard=1 cluster-wide and hot-loads them — no pod restart and
-# no grafana.com egress at boot. Add a new dashboard: drop its JSON in json/ and add
-# one configMapGenerator entry below.
+# pinned to uid "prometheus"/"loki" or a picker defaulting to the default DS). The
+# Grafana dashboard sidecar watches for ConfigMaps labelled grafana_dashboard=1
+# cluster-wide and hot-loads them — no pod restart and no grafana.com egress at boot.
+# Each file is named <gnetId>-<grafana.com slug>.json; the source URL is linked above
+# its entry. Add a dashboard: drop json/<id>-<slug>.json + a configMapGenerator entry.
+#
+# NOTE: a dashboard only shows data once that app's metrics + ServiceMonitor are
+# enabled (Prometheus scrapes all ServiceMonitors via serviceMonitorSelectorNil...).
 generatorOptions:
   disableNameSuffixHash: true
   labels:
     grafana_dashboard: "1"
 
 configMapGenerator:
+  # https://grafana.com/grafana/dashboards/12904-hashicorp-vault
   - name: grafana-dashboard-vault
     files:
-      - json/vault.json
+      - json/12904-hashicorp-vault.json
+  # https://grafana.com/grafana/dashboards/16337-trivy-operator-vulnerabilities
   - name: grafana-dashboard-trivy-operator
     files:
-      - json/trivy-operator.json
+      - json/16337-trivy-operator-vulnerabilities.json
+  # https://grafana.com/grafana/dashboards/19268-prometheus
   - name: grafana-dashboard-prometheus
     files:
-      - json/prometheus.json
+      - json/19268-prometheus.json
+  # https://grafana.com/grafana/dashboards/14584-argocd
+  - name: grafana-dashboard-argocd
+    files:
+      - json/14584-argocd.json
+  # https://grafana.com/grafana/dashboards/17346-traefik-official-standalone-dashboard
+  - name: grafana-dashboard-traefik
+    files:
+      - json/17346-traefik-official-standalone-dashboard.json
+  # https://grafana.com/grafana/dashboards/16611-cilium-metrics
+  - name: grafana-dashboard-cilium-agent
+    files:
+      - json/16611-cilium-metrics.json
+  # https://grafana.com/grafana/dashboards/16612-cilium-operator
+  - name: grafana-dashboard-cilium-operator
+    files:
+      - json/16612-cilium-operator.json
+  # https://grafana.com/grafana/dashboards/16613-hubble
+  - name: grafana-dashboard-hubble
+    files:
+      - json/16613-hubble.json
+  # https://grafana.com/grafana/dashboards/11001-cert-manager
+  - name: grafana-dashboard-cert-manager
+    files:
+      - json/11001-cert-manager.json
+  # https://grafana.com/grafana/dashboards/17781-loki-metrics-dashboard
+  - name: grafana-dashboard-loki
+    files:
+      - json/17781-loki-metrics-dashboard.json
+  # https://grafana.com/grafana/dashboards/21640-external-secrets
+  - name: grafana-dashboard-external-secrets
+    files:
+      - json/21640-external-secrets.json
