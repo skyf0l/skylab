@@ -14,3 +14,12 @@ rke2_disable:
   - rke2-ingress-nginx
 # Cilium not available at install time, it will be installed later
 rke2_cni: none
+
+# Free-form server config.yaml options (lablabs.rke2 appends these for servers).
+# etcd-expose-metrics: bind etcd's /metrics to 0.0.0.0:2381 instead of the default
+# 127.0.0.1, so kube-prometheus's kube-etcd ServiceMonitor (scraping <nodeIP>:2381)
+# can reach it — otherwise the etcd dashboard shows no data (target = connection
+# refused). NB: 2381 is the unauthenticated metrics port; it's only reachable on
+# the cluster's private network (no public/tailnet exposure here).
+rke2_server_options:
+  - etcd-expose-metrics: true
