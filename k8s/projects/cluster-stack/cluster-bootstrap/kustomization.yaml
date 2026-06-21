@@ -1,0 +1,9 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# Foundational cluster primitives that ansible applies once at cluster-init (before
+# ArgoCD exists) and ArgoCD then ADOPTS for ongoing GitOps management + drift heal.
+# Single source of truth: the ansible rke2/provision role applies these same files
+# from this path, so there's no duplicate to keep in sync.
+resources:
+  - local-path-provisioner.yaml
+  - kube-dns-alias.yaml

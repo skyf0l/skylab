@@ -6,17 +6,22 @@
   retries: 60
   delay: 10
 
+# local-path-provisioner + kube-dns alias now live in k8s/ (single source of truth)
+# so ArgoCD adopts and manages them ongoing (cluster-stack/cluster-bootstrap);
+# ansible still applies them here at cluster-init for first-boot ordering. These
+# tasks run delegate_to localhost (see tasks/main.yml), so the controller-side
+# repo_root path resolves.
 - name: Init local path storage provisioner
   kubernetes.core.k8s:
     kubeconfig: "{{ kubeconfig_local_path }}"
     state: present
-    src: "local-path-provisioner.yaml"
+    src: "{{ repo_root }}/k8s/projects/cluster-stack/cluster-bootstrap/local-path-provisioner.yaml"
 
 - name: Alias kube-dns to RKE2 CoreDNS (for charts that hardcode kube-dns)
   kubernetes.core.k8s:
     kubeconfig: "{{ kubeconfig_local_path }}"
     state: present
-    src: "kube-dns-alias.yaml"
+    src: "{{ repo_root }}/k8s/projects/cluster-stack/cluster-bootstrap/kube-dns-alias.yaml"
 
 - name: Setup cilium
   ansible.builtin.include_tasks: init/cilium.yml
