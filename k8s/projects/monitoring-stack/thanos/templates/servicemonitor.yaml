@@ -1,0 +1,22 @@
+{{- if .Values.serviceMonitor.enabled }}
+# One ServiceMonitor covering all Thanos components — every Thanos Service exposes
+# its metrics on a port named `http`. Picked up by the cluster-wide
+# serviceMonitorSelector in the kube-prometheus chart.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: thanos
+  labels:
+    app.kubernetes.io/part-of: thanos
+spec:
+  namespaceSelector:
+    matchNames:
+      - monitoring
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: thanos
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+{{- end }}

@@ -1,0 +1,99 @@
+# Thanos Compactor — compacts raw 2h blocks into larger ones, builds 5m/1h
+# downsamples, and enforces retention in R2. MUST be a singleton (two compactors
+# on one bucket corrupt it; R2 has no object-lock to save you) -> replicas: 1 +
+# Recreate. `--wait` keeps it running as a long-lived process.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: thanos-compactor
+  labels:
+    app.kubernetes.io/name: thanos-compactor
+    app.kubernetes.io/part-of: thanos
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: {{ .Values.compactor.persistence.storageClass }}
+  resources:
+    requests:
+      storage: {{ .Values.compactor.persistence.size }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: thanos-compactor
+  labels:
+    app.kubernetes.io/name: thanos-compactor
+    app.kubernetes.io/part-of: thanos
+spec:
+  replicas: 1 # singleton — do not scale
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: thanos-compactor
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: thanos-compactor
+        app.kubernetes.io/part-of: thanos
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: compactor
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - compact
+            - --wait
+            - --log.level=info
+            - --data-dir=/data
+            - --objstore.config-file=/etc/thanos/objstore.yml
+            - --http-address=0.0.0.0:10902
+            - --retention.resolution-raw={{ .Values.compactor.retentionRaw }}
+            - --retention.resolution-5m={{ .Values.compactor.retention5m }}
+            - --retention.resolution-1h={{ .Values.compactor.retention1h }}
+            - --compact.concurrency=1
+            - --downsample.concurrency=1
+          ports:
+            - name: http
+              containerPort: 10902
+          livenessProbe:
+            httpGet: { path: /-/healthy, port: http }
+            initialDelaySeconds: 30
+          resources: {{- toYaml .Values.compactor.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: objstore
+              mountPath: /etc/thanos
+              readOnly: true
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: thanos-compactor
+        - name: objstore
+          secret:
+            secretName: thanos-objstore
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: thanos-compactor
+  labels:
+    app.kubernetes.io/name: thanos-compactor
+    app.kubernetes.io/part-of: thanos
+spec:
+  selector:
+    app.kubernetes.io/name: thanos-compactor
+  ports:
+    - name: http # metrics only (no StoreAPI on the compactor)
+      port: 10902
+      targetPort: http

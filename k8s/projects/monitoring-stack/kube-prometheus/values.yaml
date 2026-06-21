@@ -40,6 +40,19 @@ kube-prometheus-stack:
         access: proxy
         url: http://loki-gateway.logging.svc.cluster.local
         isDefault: false
+      # Thanos Query — same Prometheus API, but spans long-term history from R2
+      # (recent data via the sidecar + historical via the store-gateway). Left
+      # NON-default so existing dashboards are unaffected; to get long-term range
+      # in every bundled dashboard, make THIS the default instead of the built-in
+      # Prometheus datasource (they're API-compatible).
+      - name: Thanos
+        type: prometheus
+        uid: thanos
+        access: proxy
+        url: http://thanos-query.monitoring.svc.cluster.local:9090
+        isDefault: false
+        jsonData:
+          timeInterval: 30s
 
     # Persist dashboards/settings across restarts. storageClass + enable are the
     # cluster-agnostic defaults; the SIZE is tuned per-cluster in values/<c>.yaml.
@@ -60,12 +73,33 @@ kube-prometheus-stack:
     # dashboard sidecar (no init container, no grafana.com egress at boot).
 
   prometheus:
+    # Headless service exposing the Thanos sidecar's gRPC (10901) so Thanos Query
+    # can discover this Prometheus as a store. The thanos chart's query --endpoint
+    # uses dnssrv+ against this service; verify its name with:
+    #   kubectl -n monitoring get svc | grep thanos-discovery
+    thanosService:
+      enabled: true
     prometheusSpec:
       # Select ALL ServiceMonitors/PodMonitors.
       serviceMonitorSelectorNilUsesHelmValues: false
       podMonitorSelectorNilUsesHelmValues: false
-      # Defaults; retention + storage size are tuned per-cluster (disk-bound).
+      # Fast tier: 15d of full-resolution data on local disk for snappy recent
+      # queries. Long-term (12 months) lives in R2 via Thanos and is queried
+      # through Thanos Query, which de-dups the overlap. NB: with compaction
+      # disabled below, 15d is stored as ~180 uncompacted 2h blocks — a bit more
+      # disk than compacted; bump storage below (or drop retention) if it fills.
       retention: 15d
+      # The Thanos sidecar owns block upload to R2; if Prometheus also compacted
+      # locally it would rewrite blocks the sidecar already shipped (overlapping
+      # blocks / corruption). Hand compaction entirely to the Thanos compactor.
+      disableCompaction: true
+      # Inject the Thanos sidecar and point it at R2. The objstore Secret is
+      # created in this namespace by the thanos chart's ExternalSecret (ESO).
+      thanos:
+        objectStorageConfig:
+          existingSecret:
+            name: thanos-objstore
+            key: objstore.yml
       storageSpec:
         volumeClaimTemplate:
           spec:

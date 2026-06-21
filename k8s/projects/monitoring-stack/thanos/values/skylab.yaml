@@ -1,0 +1,6 @@
+# Per-cluster R2 coordinates for skylab. The access key/secret are NOT here —
+# they come from Vault via ESO (kvv2/cluster/skylab/apps/thanos). Mirrors the
+# Loki chart's values/skylab.yaml (same R2 account, different bucket).
+objstore:
+  bucket: skylab-thanos
+  endpoint: 2620dc6ee3d578b27347d8e5efd95f32.r2.cloudflarestorage.com

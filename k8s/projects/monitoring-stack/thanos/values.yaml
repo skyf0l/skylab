@@ -1,0 +1,88 @@
+# Thanos — long-term Prometheus storage on Cloudflare R2 (S3-compatible).
+#
+# Data flow (single-node homelab):
+#   kube-prometheus sidecar  -> uploads completed 2h TSDB blocks to R2   (lives in
+#                               the kube-prometheus chart, not here)
+#   store-gateway            -> serves historical blocks FROM R2 to queries
+#   compactor                -> compacts + downsamples + enforces retention in R2
+#                               (MUST be a singleton — never run two on one bucket)
+#   query                    -> fans queries across the sidecar (recent, in-Prom)
+#                               and the store-gateway (historical, in R2), dedups
+#
+# Creds: a dedicated R2 token (Object R/W on the skylab-thanos bucket) is read
+# from Vault by ESO and templated into the thanos-objstore Secret (objstore.yml).
+# The non-secret bucket/endpoint live per-cluster in values/<cluster>.yaml.
+
+image:
+  repository: quay.io/thanos/thanos
+  # Official upstream image (gets CVE patches, unlike the frozen bitnamilegacy one).
+  # Renovate tracks this; bump as new Thanos releases land.
+  tag: v0.39.2
+  pullPolicy: IfNotPresent
+
+# R2 object store (S3 API). access_key/secret_key come from Vault via ESO (see
+# externalSecret); only the non-secret coordinates live in git.
+objstore:
+  bucket: "" # per-cluster, e.g. skylab-thanos
+  endpoint: "" # per-cluster, <accountid>.r2.cloudflarestorage.com (NO https:// scheme)
+  region: auto
+
+# ESO projects the R2 token from Vault into the thanos-objstore Secret, templated
+# into a full Thanos objstore.yml. The apps/* read policy already covers this path
+# (no Vault Terraform change needed).
+externalSecret:
+  enabled: true
+  storeName: vault-backend
+  # kvv2/cluster/<cluster>/apps/thanos -> { r2_access_key_id, r2_secret_access_key }
+  vaultKey: cluster/skylab/apps/thanos
+
+query:
+  replicas: 1
+  # Replica label the prometheus-operator stamps on HA Prometheus replicas; Query
+  # dedups on it so HA pairs don't double-count.
+  replicaLabel: prometheus_replica
+  stores:
+    # This chart's store-gateway (historical blocks from R2).
+    - thanos-store.monitoring.svc.cluster.local:10901
+    # kube-prometheus-stack sidecar discovery svc (recent data still in Prometheus,
+    # + blocks not yet uploaded). Created by `prometheus.thanosService.enabled`.
+    # NAME = <prometheus-release-fullname>-thanos-discovery. Verify ONCE with:
+    #   kubectl -n monitoring get svc | grep thanos-discovery
+    - dnssrv+_grpc._tcp.kube-prometheus-kube-prometheus-stack-thanos-discovery.monitoring.svc.cluster.local
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 512Mi }
+
+storeGateway:
+  # Bound memory on a small node (these are in-memory caches).
+  indexCacheSize: 250MB
+  chunkPoolSize: 250MB
+  persistence:
+    storageClass: local-path
+    size: 2Gi # local index/bucket cache only — the data of record is in R2
+  resources:
+    requests: { cpu: 50m, memory: 256Mi }
+    limits: { memory: 1Gi }
+
+compactor:
+  # Retention per downsample resolution, sized for a ~12-month horizon in R2.
+  # Downsampling (raw -> 5m -> 1h rollups) is what makes multi-month range queries
+  # fast and cheap; --query.auto-downsampling picks the right resolution per range.
+  #   raw 90d  : full-resolution recent history (overlaps the 15d local tier)
+  #   5m  365d : medium-res for week/month-scale dashboards going back a year
+  #   1h  365d : low-res for the full 12-month range (cheapest to store + query)
+  # Set any to 0d to keep forever. Raw is by far the largest; keep it shortest.
+  retentionRaw: 90d
+  retention5m: 365d
+  retention1h: 365d
+  persistence:
+    storageClass: local-path
+    size: 10Gi # scratch space for compaction of the largest block group
+  resources:
+    requests: { cpu: 50m, memory: 256Mi }
+    limits: { memory: 1Gi }
+
+# ServiceMonitor so Prometheus scrapes Thanos' own metrics (picked up by the
+# cluster-wide serviceMonitorSelector in the kube-prometheus chart).
+serviceMonitor:
+  enabled: true
