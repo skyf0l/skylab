@@ -16,7 +16,17 @@ ANSIBLE_DIR := ansible
 LAB_INV     := inventories/skylab/hosts.local.ini
 LAB_SECRETS := inventories/skylab/secrets.local.yml
 
-.PHONY: help deps deploy preview preview-apps template bootstrap delete vault-unseal upgrade add-node refresh
+# kyverno CLI: standalone binary, else the krew plugin on PATH, else the krew
+# plugin by its install path (~/.krew/bin not always exported), else `kubectl kyverno`.
+KYVERNO := $(shell \
+  if command -v kyverno >/dev/null 2>&1; then echo kyverno; \
+  elif command -v kubectl-kyverno >/dev/null 2>&1; then echo kubectl-kyverno; \
+  elif [ -x "$$HOME/.krew/bin/kubectl-kyverno" ]; then echo "$$HOME/.krew/bin/kubectl-kyverno"; \
+  else echo "kubectl kyverno"; fi)
+# Where `make render` writes manifests for the validate-* gates (gitignored).
+RENDER_DIR := build
+
+.PHONY: help deps deploy preview preview-apps template render validate validate-schema validate-policy bootstrap delete vault-unseal upgrade add-node refresh
 
 help:
 	@echo "make bootstrap             provision cluster + ArgoCD + Vault (init+unseal) + root app"
@@ -29,6 +39,9 @@ help:
 	@echo "make preview  [CLUSTER=skylab] helm template + kubectl diff (needs a live cluster)"
 	@echo "make preview-apps          kubectl diff the app-of-apps (ApplicationSets)"
 	@echo "make template [CLUSTER=skylab] render every chart to validate values (no cluster)"
+	@echo "make validate [CLUSTER=skylab] full offline gate: schema + policy (calls validate-schema + validate-policy)"
+	@echo "make validate-schema       render + kubeconform (manifests vs k8s/CRD schemas)"
+	@echo "make validate-policy       render + kyverno (manifests vs ClusterPolicies)"
 	@echo "make deps                  helm dependency build/update for every chart"
 
 # One-shot cluster bootstrap: RKE2 + Cilium + Traefik + ArgoCD + Vault
@@ -79,8 +92,10 @@ deploy:
 	-argocd app wait -l argocd.argoproj.io/instance --timeout 600
 
 # Render each chart with its base + per-cluster values. No cluster required;
-# catches values/templating errors fast.
-template: deps
+# catches values/templating errors fast. Uses the already-vendored charts/*.tgz
+# (committed), so it's offline and instant — run `make deps` only when you add
+# or bump a subchart version.
+template:
 	@for d in $(PROJECTS); do \
 	  vf="-f $$d/values.yaml"; \
 	  [ -f "$$d/values/$(CLUSTER).yaml" ] && vf="$$vf -f $$d/values/$(CLUSTER).yaml"; \
@@ -89,8 +104,44 @@ template: deps
 	done
 	@echo "all charts rendered OK"
 
+# Render every chart + the app-of-apps tree + our policies into $(RENDER_DIR)/.
+# Shared input for the validate-* targets so each runs independently and the
+# artifacts stay inspectable (build/manifests.yaml, build/apps.yaml).
+render:
+	@rm -rf $(RENDER_DIR) && mkdir -p $(RENDER_DIR)
+	@for d in $(PROJECTS); do \
+	  vf="-f $$d/values.yaml"; \
+	  [ -f "$$d/values/$(CLUSTER).yaml" ] && vf="$$vf -f $$d/values/$(CLUSTER).yaml"; \
+	  helm template "$$(basename $$d)" "$$d" $$vf >> $(RENDER_DIR)/manifests.yaml \
+	    || { echo "render failed: $$d"; exit 1; }; \
+	  echo "---" >> $(RENDER_DIR)/manifests.yaml; \
+	done
+	@kubectl kustomize k8s/apps > $(RENDER_DIR)/apps.yaml || exit 1
+	@helm template kyverno k8s/projects/security-stack/kyverno > $(RENDER_DIR)/policies.yaml || exit 1
+	@echo "rendered → $(RENDER_DIR)/"
+
+# Schema gate: rendered manifests valid against the k8s + CRD OpenAPI schemas.
+# kubeconform is optional locally (SKIPPED with a hint); CI should install it.
+validate-schema: render
+	@if command -v kubeconform >/dev/null 2>&1; then \
+	  echo "→ kubeconform (schema)"; \
+	  kubeconform -strict -summary -ignore-missing-schemas $(RENDER_DIR)/manifests.yaml $(RENDER_DIR)/apps.yaml; \
+	else \
+	  echo "⊘ SKIP kubeconform (not installed): https://github.com/yannh/kubeconform#installation"; \
+	fi
+
+# Policy gate: rendered manifests pass our ClusterPolicies (e.g. disallow-latest-tag).
+validate-policy: render
+	@echo "→ kyverno (policy)"
+	$(KYVERNO) apply $(RENDER_DIR)/policies.yaml --resource $(RENDER_DIR)/manifests.yaml
+
+# Full offline gate = schema + policy (render runs once, shared by both). No
+# cluster required; this is what CI should run on every PR.
+validate: validate-schema validate-policy
+	@echo "validate OK"
+
 # Diff rendered charts against the live cluster (requires kubectl context).
-preview: deps
+preview:
 	@for d in $(PROJECTS); do \
 	  vf="-f $$d/values.yaml"; \
 	  [ -f "$$d/values/$(CLUSTER).yaml" ] && vf="$$vf -f $$d/values/$(CLUSTER).yaml"; \

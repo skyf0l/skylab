@@ -1,0 +1,5 @@
+# How a policy violation is handled at admission time:
+#   Audit   - allow the request, record the violation in a PolicyReport (blocks nothing)
+#   Enforce - reject the request
+# Start in Audit, watch the reports, then flip to Enforce once nothing legit breaks.
+validationFailureAction: Audit
