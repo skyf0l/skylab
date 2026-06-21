@@ -21,3 +21,22 @@ argo-cd:
       enabled: true
       serviceMonitor:
         enabled: true
+
+  configs:
+    cm:
+      # The ExternalSecret CRD defines OpenAPI schema defaults, so the apiserver
+      # fills in fields our git manifests omit (target.deletionPolicy=Retain,
+      # template.engineVersion=v2, remoteRef.*Strategy/Policy, ...). That makes
+      # live != desired and every ExternalSecret sits OutOfSync forever (Healthy,
+      # but noisy). Ignore those server-defaulted fields cluster-wide so loki,
+      # thanos, and any future ExternalSecret reconcile clean. RespectIgnore-
+      # Differences=true is already set in every app's syncOptions.
+      resource.customizations.ignoreDifferences.external-secrets.io_ExternalSecret: |
+        jqPathExpressions:
+          - .spec.target.deletionPolicy
+          - .spec.target.template.engineVersion
+          - .spec.target.template.mergePolicy
+          - .spec.data[]?.remoteRef.conversionStrategy
+          - .spec.data[]?.remoteRef.decodingStrategy
+          - .spec.data[]?.remoteRef.metadataPolicy
+          - .spec.data[]?.remoteRef.nullBytePolicy
