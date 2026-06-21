@@ -14,6 +14,10 @@ cilium:
     enabled: true
     serviceMonitor:
       enabled: true
+      # The Prometheus CRDs aren't visible during `helm template` (no cluster), so
+      # the chart's guard would fail offline renders. They do exist in-cluster
+      # (kube-prometheus). This flag trusts that and lets `make template` pass.
+      trustCRDsExist: true
   operator:
     prometheus:
       enabled: true

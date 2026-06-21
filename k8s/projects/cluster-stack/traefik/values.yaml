@@ -10,3 +10,7 @@ traefik:
         enabled: true
       serviceMonitor:
         enabled: true
+      # The Prometheus CRDs aren't visible during `helm template` (no cluster);
+      # they exist in-cluster (kube-prometheus). Skip the API check so offline
+      # `make template` renders the ServiceMonitor instead of failing.
+      disableAPICheck: true
