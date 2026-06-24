@@ -152,4 +152,17 @@ echo "[thanos] ${KV_MOUNT}/${thanos}"
 seed_field "$thanos" r2_access_key_id     replace_me
 seed_field "$thanos" r2_secret_access_key replace_me
 
+# defectdojo — kvv2/cluster/<cluster>/apps/defectdojo
+# No DB password here: the privileged Postgres role (vault_mgr) is bootstrapped by
+# CNPG and its password is owned + rotated by Vault's database engine (rotate-root),
+# so it never lives in KV. r2_*: PLACEHOLDER R2 token (Object R/W on the dedicated
+# skylab-defectdojo-pg bucket) used by Barman for Postgres backups — only needed
+# once you flip backup.enabled: true:
+#   vault kv patch -mount=kvv2 cluster/<cluster>/apps/defectdojo \
+#     r2_access_key_id=<id> r2_secret_access_key=<secret>
+defectdojo="cluster/${CLUSTER}/apps/defectdojo"
+echo "[defectdojo] ${KV_MOUNT}/${defectdojo}"
+seed_field "$defectdojo" r2_access_key_id      replace_me
+seed_field "$defectdojo" r2_secret_access_key  replace_me
+
 echo "Done. Fill in any PLACEHOLDER fields via the Vault UI/CLI; re-running won't overwrite them."

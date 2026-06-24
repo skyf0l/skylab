@@ -11,3 +11,10 @@ path "kvv2/data/cluster/${cluster_name}/apps/*" {
 path "kvv2/metadata/cluster/${cluster_name}/apps/*" {
   capabilities = ["read", "list"]
 }
+
+# Dynamic database credentials from the database engine. A read here triggers
+# issuance of a fresh leased role; ESO projects it into a workload Secret. Wildcard
+# so any app's role is covered (mirrors the apps/* kv grant) — one role per app.
+path "database/creds/*" {
+  capabilities = ["read"]
+}

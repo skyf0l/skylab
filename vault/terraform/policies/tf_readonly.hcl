@@ -35,6 +35,11 @@ path "sys/mounts/*" {
   capabilities = ["read"]
 }
 
+# Database engine — read-only, so plan can refresh the connection/role state.
+path "database/*" {
+  capabilities = ["read", "list"]
+}
+
 # Audit devices
 path "sys/audit" {
   capabilities = ["read"]

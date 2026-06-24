@@ -80,6 +80,14 @@ path "kvv2/*" {
   capabilities = ["create", "read", "update", "delete", "list", "sudo"]
 }
 
+## Database Secrets Engine
+
+# Manage the database engine: connections (database/config/*) and roles
+# (database/roles/*) for dynamic credential issuance.
+path "database/*" {
+  capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+}
+
 # Manage secrets engine
 path "sys/mounts/*" {
   capabilities = ["create", "read", "update", "delete", "list", "sudo"]
