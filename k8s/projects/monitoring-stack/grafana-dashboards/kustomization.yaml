@@ -61,3 +61,8 @@ configMapGenerator:
   - name: grafana-dashboard-external-secrets
     files:
       - json/21640-external-secrets.json
+  # https://grafana.com/grafana/dashboards/20417 (CloudNativePG) — datasource
+  # normalized to uid "prometheus" + ${DS_EXPRESSION}->__expr__ on vendoring.
+  - name: grafana-dashboard-cloudnativepg
+    files:
+      - json/20417-cloudnativepg.json

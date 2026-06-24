@@ -1,0 +1,7 @@
+# Per-cluster overrides for skylab. The operator tolerates the light (Pi) node
+# taint so it can also manage Clusters scheduled there later.
+cloudnative-pg:
+  tolerations:
+    - key: node-role.skylab/light
+      operator: Exists
+      effect: NoSchedule

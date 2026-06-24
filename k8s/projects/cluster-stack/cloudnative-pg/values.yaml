@@ -1,0 +1,21 @@
+cloudnative-pg:
+  # CRDs (Cluster, Backup, ScheduledBackup, Pool, ...) ship with the chart.
+  crds:
+    create: true
+
+  monitoring:
+    # Operator's own metrics -> PodMonitor. Prometheus scrapes all PodMonitors
+    # (podMonitorSelectorNilUsesHelmValues: false in the kube-prometheus chart).
+    podMonitorEnabled: true
+    # We vendor the official dashboard (gnetId 20417) as a ConfigMap under
+    # monitoring-stack/grafana-dashboards, matching every other dashboard in the
+    # repo — so don't let the operator chart create its own copy.
+    grafanaDashboard:
+      create: false
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 100Mi
+    limits:
+      memory: 256Mi

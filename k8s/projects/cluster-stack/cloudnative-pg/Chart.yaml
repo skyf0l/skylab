@@ -1,0 +1,13 @@
+apiVersion: v2
+name: cloudnative-pg
+type: application
+version: 0.1.0
+
+# CloudNativePG operator — manages PostgreSQL Cluster CRs cluster-wide (declarative
+# lifecycle, failover, Barman backups to object storage, native Prometheus metrics).
+# A reusable platform capability: any app that needs Postgres gets a Cluster CR
+# instead of a one-off pod. First consumer: defectdojo-pg (security-stack).
+dependencies:
+  - name: cloudnative-pg
+    repository: https://cloudnative-pg.github.io/charts
+    version: 0.28.3

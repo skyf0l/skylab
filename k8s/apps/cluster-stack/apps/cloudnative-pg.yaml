@@ -1,0 +1,49 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: cloudnative-pg
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          # Auto updated by parent ApplicationSet
+          - list:
+              elements:
+                - name: skylab
+          - git:
+              repoURL: https://github.com/skyf0l/skylab.git
+              revision: main
+              files:
+                - path: clusters/{{.name }}/config.json
+  template:
+    metadata:
+      name: "{{.name}}-cloudnative-pg"
+    spec:
+      project: default
+      source:
+        repoURL: "{{.repo.url}}"
+        targetRevision: "{{.repo.revision}}"
+        path: k8s/projects/cluster-stack/cloudnative-pg
+        helm:
+          releaseName: cloudnative-pg
+          valueFiles:
+            - values.yaml
+            - values/{{.name}}.yaml
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: cnpg-system
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - Validate=true
+          - PrunePropagationPolicy=foreground
+          - PruneLast=true
+          - RespectIgnoreDifferences=true
+          - ServerSideApply=true # CRDs are large -> avoid last-applied annotation limit
+        retry:
+          limit: 5
