@@ -1,0 +1,57 @@
+# defectdojo-pg — CloudNativePG-managed Postgres for DefectDojo.
+#
+# Credential model: the database + objects are owned by a NOLOGIN parent role
+# (ownerRole). Application logins are issued on demand by Vault's database engine
+# as members of that parent — there is no standing application password. Vault
+# connects as adminRole (CREATEROLE, not superuser) to mint/revoke those logins,
+# and owns adminRole's password itself (rotated via rotate-root at setup).
+
+postgres:
+  instances: 1 # single node for now; bump once a second node joins (HA-ready)
+  database: defectdojo
+  # imageName: "" # optional pin; CNPG default is recent PostgreSQL (16+ required)
+  ownerRole: defectdojo_app # NOLOGIN owner of the database + objects
+  adminRole: vault_mgr # CREATEROLE login Vault's database engine connects as
+  # Throwaway password adminRole is bootstrapped with; Vault rotate-root replaces
+  # it on the first apply (see vault/terraform/database.tf), after which it lives
+  # only inside Vault. MUST match local.vault_mgr_bootstrap_password there.
+  vaultMgrBootstrapPassword: bootstrap-rotated-by-vault
+  storage:
+    size: 5Gi
+    storageClass: local-path
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 1Gi
+
+# Barman continuous WAL archiving + scheduled base backups to Cloudflare R2.
+# DISABLED by default so the Cluster comes up clean: a Cluster pointed at a
+# non-existent bucket fails WAL archiving, which eventually wedges the primary.
+# Flip backup.enabled: true in values/<cluster>.yaml AFTER the bucket + creds exist.
+backup:
+  enabled: false
+  retentionPolicy: "30d"
+  scheduleCron: "0 0 3 * * *" # CNPG 6-field cron (sec min hour ...) — 03:00 daily
+  destinationPath: "" # s3://<bucket>/<path>, per-cluster (values/<cluster>.yaml)
+  endpointURL: "" # https://<account>.r2.cloudflarestorage.com, per-cluster
+
+# Application credentials issued by Vault's database engine (database/creds/<role>)
+# and projected into a Secret by the ESO generator. DISABLED until the DefectDojo
+# workload exists to consume them — without a consumer each issuance just leases a
+# role that is never used. Enabling also requires Reloader on the DefectDojo
+# Deployment so it restarts onto rotated credentials.
+dynamicCreds:
+  enabled: false
+  vaultMount: database
+  vaultRole: defectdojo # database/creds/defectdojo
+
+externalSecret:
+  storeName: vault-backend
+  vaultKey: cluster/skylab/apps/defectdojo
+  # Vault server + k8s auth for the dynamic-secret generator (mirrors the
+  # vault-backend ClusterSecretStore).
+  vaultServer: "http://vault.vault.svc:8200"
+  vaultAuthMount: kubernetes
+  vaultRole: external-secrets

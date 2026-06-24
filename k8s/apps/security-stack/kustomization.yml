@@ -9,3 +9,4 @@ resources:
   - apps/headscale.yaml
   - apps/headscale-proxy.yaml
   - apps/headscale-exit.yaml
+  - apps/defectdojo.yaml

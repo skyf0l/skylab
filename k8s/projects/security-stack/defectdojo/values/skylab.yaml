@@ -1,0 +1,9 @@
+# Per-cluster R2 backup target for skylab (same R2 account as Loki/Thanos). A
+# dedicated per-app bucket + its own scoped token, so a leaked credential can't
+# reach any other database's backups. Backups stay OFF until you flip enabled:
+# true here, after creating the skylab-defectdojo-pg bucket + putting R2 creds in
+# Vault.
+backup:
+  enabled: false
+  destinationPath: s3://skylab-defectdojo-pg
+  endpointURL: https://2620dc6ee3d578b27347d8e5efd95f32.r2.cloudflarestorage.com

@@ -1,0 +1,71 @@
+# CloudNativePG Cluster for DefectDojo. The cloudnative-pg operator (cluster-stack)
+# reconciles this into a Postgres instance + the defectdojo-pg-rw/-ro/-r services,
+# a PodMonitor (native metrics), and — when backup is enabled — WAL archiving to R2.
+#
+# Roles (created at bootstrap; not reconciled afterward, so Vault can own the admin
+# password via rotate-root without CNPG resetting it):
+#   ownerRole (NOLOGIN)  — owns the database + objects; the parent every issued
+#                          application login runs as.
+#   adminRole (CREATEROLE, ADMIN on ownerRole) — the identity Vault's database
+#                          engine connects as to mint/revoke logins. Created with a
+#                          throwaway password that Vault rotate-roots immediately.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: defectdojo-pg
+  labels:
+    app.kubernetes.io/part-of: defectdojo
+spec:
+  instances: {{ .Values.postgres.instances }}
+  {{- with .Values.postgres.imageName }}
+  imageName: {{ . | quote }}
+  {{- end }}
+  storage:
+    size: {{ .Values.postgres.storage.size }}
+    storageClass: {{ .Values.postgres.storage.storageClass }}
+  monitoring:
+    enablePodMonitor: true
+  bootstrap:
+    initdb:
+      database: {{ .Values.postgres.database }}
+      owner: {{ .Values.postgres.ownerRole }}
+      # Global role setup (runs once, as superuser, on the postgres database).
+      postInitSQL:
+        - ALTER ROLE {{ .Values.postgres.ownerRole }} NOLOGIN;
+        - CREATE ROLE {{ .Values.postgres.adminRole }} WITH LOGIN CREATEROLE PASSWORD '{{ .Values.postgres.vaultMgrBootstrapPassword }}';
+        - GRANT {{ .Values.postgres.ownerRole }} TO {{ .Values.postgres.adminRole }} WITH ADMIN OPTION;
+      # Application-database setup (runs once, as superuser, on the app database).
+      postInitApplicationSQL:
+        - GRANT ALL ON SCHEMA public TO {{ .Values.postgres.ownerRole }};
+        - ALTER SCHEMA public OWNER TO {{ .Values.postgres.ownerRole }};
+  resources: {{- toYaml .Values.postgres.resources | nindent 4 }}
+  {{- if .Values.backup.enabled }}
+  backup:
+    retentionPolicy: {{ .Values.backup.retentionPolicy | quote }}
+    barmanObjectStore:
+      destinationPath: {{ .Values.backup.destinationPath | quote }}
+      endpointURL: {{ .Values.backup.endpointURL | quote }}
+      s3Credentials:
+        accessKeyId:
+          name: defectdojo-pg-backup
+          key: ACCESS_KEY_ID
+        secretAccessKey:
+          name: defectdojo-pg-backup
+          key: ACCESS_SECRET_KEY
+      wal:
+        compression: gzip
+  {{- end }}
+{{- if .Values.backup.enabled }}
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: defectdojo-pg-daily
+  labels:
+    app.kubernetes.io/part-of: defectdojo
+spec:
+  schedule: {{ .Values.backup.scheduleCron | quote }}
+  backupOwnerReference: self
+  cluster:
+    name: defectdojo-pg
+{{- end }}

@@ -1,0 +1,13 @@
+apiVersion: v2
+name: defectdojo
+type: application
+version: 0.1.0
+
+# DefectDojo vulnerability-management platform. THIS increment provisions only its
+# database layer — a CloudNativePG Cluster (defectdojo-pg) with native metrics +
+# optional R2 backup, plus the ESO-projected credentials. The DefectDojo app itself
+# (django/celery + a non-Bitnami redis broker + feeder CronJob + tailnet ingress)
+# is the next increment and will point at the defectdojo-pg-rw service.
+#
+# No chart dependencies yet — the Cluster/ScheduledBackup CRs come from the
+# cloudnative-pg operator (cluster-stack), which syncs first.
