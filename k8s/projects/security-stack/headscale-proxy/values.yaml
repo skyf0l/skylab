@@ -68,6 +68,10 @@ services:
     service: kube-prometheus-grafana
     namespace: monitoring
     port: 80
+  - name: defectdojo
+    service: defectdojo-django
+    namespace: defectdojo
+    port: 80
   - name: hubble
     service: hubble-ui
     namespace: kube-system

@@ -38,12 +38,11 @@ backup:
   endpointURL: "" # https://<account>.r2.cloudflarestorage.com, per-cluster
 
 # Application credentials issued by Vault's database engine (database/creds/<role>)
-# and projected into a Secret by the ESO generator. DISABLED until the DefectDojo
-# workload exists to consume them — without a consumer each issuance just leases a
-# role that is never used. Enabling also requires Reloader on the DefectDojo
-# Deployment so it restarts onto rotated credentials.
+# and projected into the defectdojo-db Secret (DD_DATABASE_URL) by the ESO
+# generator, consumed by the app below. Reloader restarts the app onto rotated
+# creds (see defectdojo.* annotations).
 dynamicCreds:
-  enabled: false
+  enabled: true
   vaultMount: database
   vaultRole: defectdojo # database/creds/defectdojo
 
@@ -55,3 +54,52 @@ externalSecret:
   vaultServer: "http://vault.vault.svc:8200"
   vaultAuthMount: kubernetes
   vaultRole: external-secrets
+
+# --- DefectDojo app (upstream chart) ----------------------------------------
+defectdojo:
+  host: defectdojo.tail.skyf0l.dev
+  siteUrl: "https://defectdojo.tail.skyf0l.dev"
+
+  # Chart generates its own django SECRET_KEY / AES key / admin password (random,
+  # read back from the defectdojo secret). DB is external (CNPG) so no postgres
+  # secret; Valkey gets its own generated secret.
+  createSecret: true
+  createValkeySecret: true
+  createPostgresqlSecret: false
+
+  # External Postgres: disable the bundled subchart; the app reaches CNPG through
+  # the Vault-issued DD_DATABASE_URL (injected per-component below).
+  postgresql:
+    enabled: false
+
+  # Broker: official Valkey image (not Bitnami).
+  valkey:
+    enabled: true
+
+  # Reachable only on the tailnet via the headscale-proxy IngressRoute, so the
+  # chart's own ingress is off.
+  django:
+    ingress:
+      enabled: false
+    extraEnv: &ddDatabaseUrl
+      - name: DD_DATABASE_URL
+        valueFrom:
+          secretKeyRef:
+            name: defectdojo-db
+            key: DD_DATABASE_URL
+
+  # Every component that touches the DB gets the same dynamic DD_DATABASE_URL.
+  initializer:
+    staticName: true # stable Job name — friendlier to ArgoCD
+    extraEnv: *ddDatabaseUrl
+  dbMigrationChecker:
+    extraEnv: *ddDatabaseUrl
+  celery:
+    # Deployment-level annotation (worker + beat) → Reloader restarts them when
+    # the leased creds rotate.
+    annotations:
+      reloader.stakater.com/auto: "true"
+    worker:
+      extraEnv: *ddDatabaseUrl
+    beat:
+      extraEnv: *ddDatabaseUrl
