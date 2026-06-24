@@ -15,10 +15,14 @@ name: Vault
 on:
   pull_request:
     branches: ["main"]
-    paths: ["vault/**"]
+    paths:
+      - "vault/**"
+      - ".github/workflows/vault.yml"
   push:
     branches: ["main"]
-    paths: ["vault/**"]
+    paths:
+      - "vault/**"
+      - ".github/workflows/vault.yml"
   workflow_dispatch:
 
 permissions:
@@ -94,11 +98,12 @@ jobs:
         run: |
           curl -X POST -sv -H "X-Vault-Token: ${{ env.VAULT_TOKEN }}" ${{ env.VAULT_ADDR }}/v1/auth/token/revoke-self
 
-  # Apply — only from the protected `production` Environment (push to main).
-  # The admin Vault role is bound to the `environment=production` OIDC claim,
-  # so only this job can mint an admin token.
+  # Apply — only from the protected `production` Environment, on main: either a
+  # push (vault/** or this workflow) or a manual workflow_dispatch. The admin Vault
+  # role is bound to the `environment=production` OIDC claim, so only this job can
+  # mint an admin token.
   apply:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     environment: production
     defaults:
