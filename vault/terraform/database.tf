@@ -72,9 +72,10 @@ resource "vault_database_secret_backend_role" "defectdojo" {
     "ALTER ROLE \"{{name}}\" SET ROLE \"defectdojo_app\";",
   ]
 
+  # The leased role owns nothing (every session runs as defectdojo_app via SET
+  # ROLE), so revocation is a plain DROP — no REASSIGN/DROP OWNED, which a
+  # non-superuser vault_mgr can't run against a role it isn't a member of.
   revocation_statements = [
-    "REASSIGN OWNED BY \"{{name}}\" TO \"defectdojo_app\";",
-    "DROP OWNED BY \"{{name}}\";",
     "DROP ROLE IF EXISTS \"{{name}}\";",
   ]
 
