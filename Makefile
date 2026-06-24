@@ -8,6 +8,13 @@
 SHELL    := /bin/bash
 CLUSTER  ?= skylab
 MSG      ?= deploy
+
+# Point kubectl at the cluster kubeconfig the ansible bootstrap writes under
+# artifacts, so cluster targets (refresh / preview / preview-apps) hit skylab and
+# not whatever context the ambient shell defaults to. Override per-invocation with
+# `make refresh KUBECONFIG=/path` (command-line args win over this).
+KUBECONFIG := $(CURDIR)/ansible/artifacts/$(CLUSTER)/$(CLUSTER).kubeconfig
+export KUBECONFIG
 # Every helm-wrapper chart (a directory containing a Chart.yaml under k8s/projects).
 PROJECTS := $(shell find k8s/projects -name Chart.yaml -exec dirname {} \;)
 
@@ -26,7 +33,11 @@ KYVERNO := $(shell \
 # Where `make render` writes manifests for the validate-* gates (gitignored).
 RENDER_DIR := build
 
-.PHONY: help deps deploy preview preview-apps template render validate validate-schema validate-policy bootstrap delete vault-unseal upgrade add-node refresh
+.PHONY: help deps deploy preview preview-apps template render validate validate-schema validate-policy bootstrap delete vault-unseal vault-seed vault-plan vault-apply upgrade add-node refresh
+
+# R2 state-backend creds (Cloudflare R2 = S3 API), pulled from Vault into the env
+# for the vault-plan/apply recipes (must run in the SAME shell as terraform).
+TF_R2_CREDS := export AWS_ACCESS_KEY_ID="$$(vault kv get -mount=kvv2 -field=AWS_ACCESS_KEY_ID cicd/cloudflare-tfstates)"; export AWS_SECRET_ACCESS_KEY="$$(vault kv get -mount=kvv2 -field=AWS_SECRET_ACCESS_KEY cicd/cloudflare-tfstates)";
 
 help:
 	@echo "make bootstrap             provision cluster + ArgoCD + Vault (init+unseal) + root app"
@@ -34,6 +45,9 @@ help:
 	@echo "make upgrade               rolling RKE2 upgrade (bump rke2_version first) + re-unseal"
 	@echo "make add-node              join new node(s) added to hosts.local.ini"
 	@echo "make vault-unseal          unseal Vault from local keys (after a Vault pod restart)"
+	@echo "make vault-seed            seed bootstrap secret VALUES into Vault (idempotent)"
+	@echo "make vault-plan            terraform plan the Vault config (read-only)"
+	@echo "make vault-apply           terraform apply the Vault config (mounts/auth/policies/db engine)"
 	@echo "make deploy   [MSG=...]   commit + push to GitHub; ArgoCD auto-syncs"
 	@echo "make refresh               force ArgoCD to re-pull GitHub now (hard refresh all apps)"
 	@echo "make preview  [CLUSTER=skylab] helm template + kubectl diff (needs a live cluster)"
@@ -70,6 +84,28 @@ add-node:
 # Run this after a reboot / Vault pod restart re-seals it. Does not touch Helm.
 vault-unseal:
 	cd $(ANSIBLE_DIR) && ansible-playbook -i $(LAB_INV) playbooks/skylab/unseal.yml
+
+# --- Vault config (terraform + secret values) ------------------------------
+# The GitHub Action applies the terraform on push to vault/** (OIDC + R2 state).
+# These are the local/manual escape hatch: set VAULT_ADDR + VAULT_TOKEN (an
+# admin/root token) first; the R2 state-backend creds are pulled from Vault.
+
+# Seed bootstrap secret VALUES (crypto material + PLACEHOLDERs apps expect before
+# their ExternalSecret can sync). Idempotent — never clobbers an existing field.
+vault-seed:
+	@: "$${VAULT_ADDR:?set VAULT_ADDR}" "$${VAULT_TOKEN:?set VAULT_TOKEN}"
+	CLUSTER=$(CLUSTER) bash vault/seed-secrets.sh
+
+# terraform plan the Vault config (read-only; safe to run anytime).
+vault-plan:
+	@: "$${VAULT_ADDR:?set VAULT_ADDR}" "$${VAULT_TOKEN:?set VAULT_TOKEN}"
+	cd vault/terraform && $(TF_R2_CREDS) terraform init -input=false && terraform plan
+
+# terraform apply the Vault config: mounts, auth backends, policies, roles, and
+# the database secrets engine. Interactive approval (no -auto-approve).
+vault-apply:
+	@: "$${VAULT_ADDR:?set VAULT_ADDR}" "$${VAULT_TOKEN:?set VAULT_TOKEN}"
+	cd vault/terraform && $(TF_R2_CREDS) terraform init -input=false && terraform apply
 
 # Force ArgoCD to re-pull GitHub immediately (hard refresh every app), instead of
 # waiting for the per-tier ~3min reconcile to cascade through the app-of-apps.
