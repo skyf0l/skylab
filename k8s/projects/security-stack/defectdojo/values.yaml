@@ -61,20 +61,25 @@ defectdojo:
   siteUrl: "https://defectdojo.tail.skyf0l.dev"
 
   # Chart generates its own django SECRET_KEY / AES key / admin password (random,
-  # read back from the defectdojo secret). DB is external (CNPG) so no postgres
-  # secret; Valkey gets its own generated secret.
+  # read back from the defectdojo secret) + Valkey secret. createPostgresqlSecret
+  # stays on even with an external DB: the chart hardcodes a DD_DATABASE_PASSWORD
+  # env from defectdojo-postgresql-specific, so that secret must exist for the env
+  # ref to resolve — its (random, unused) value is overridden by DD_DATABASE_URL.
   createSecret: true
   createValkeySecret: true
-  createPostgresqlSecret: false
+  createPostgresqlSecret: true
 
   # External Postgres: disable the bundled subchart; the app reaches CNPG through
   # the Vault-issued DD_DATABASE_URL (injected per-component below).
   postgresql:
     enabled: false
 
-  # Broker: official Valkey image (not Bitnami).
+  # Broker: official Valkey image (not Bitnami). local-path isn't the default
+  # StorageClass, so set it explicitly or the PVC stays Pending.
   valkey:
     enabled: true
+    persistence:
+      storageClass: local-path
 
   # Reachable only on the tailnet via the headscale-proxy IngressRoute, so the
   # chart's own ingress is off.
