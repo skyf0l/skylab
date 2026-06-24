@@ -35,8 +35,12 @@ path "sys/mounts/*" {
   capabilities = ["read"]
 }
 
-# Database engine — read-only, so plan can refresh the connection/role state.
-path "database/*" {
+# Database engine STRUCTURE — read-only, so plan can refresh connection/role
+# state. Excludes database/creds/* so a PR plan can't mint dynamic logins.
+path "database/config/*" {
+  capabilities = ["read", "list"]
+}
+path "database/roles/*" {
   capabilities = ["read", "list"]
 }
 

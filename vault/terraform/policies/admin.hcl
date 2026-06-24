@@ -75,17 +75,25 @@ path "identity/entity-alias/id" {
 
 ## KV Secrets Engine
 
-# Manage kv secrets engine
-path "kvv2/*" {
-  capabilities = ["create", "read", "update", "delete", "list", "sudo"]
-}
+# No kvv2/data or kvv2/metadata grant on purpose: this CI identity manages Vault
+# *structure*, never reads or writes secret *values*. The KV engine MOUNT is
+# managed via sys/mounts/* below; seeding secret values is a root/break-glass op.
+# (If the kv-v2 mount refresh ever needs it, add `kvv2/config` READ only — never
+# data/metadata.)
 
 ## Database Secrets Engine
 
-# Manage the database engine: connections (database/config/*) and roles
-# (database/roles/*) for dynamic credential issuance.
-path "database/*" {
-  capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+# Manage the database engine STRUCTURE only: connections, roles, and root-cred
+# rotation. Deliberately excludes database/creds/* — the CI configures the engine
+# but never mints dynamic logins (that path belongs to the app via ESO).
+path "database/config/*" {
+  capabilities = ["create", "read", "update", "delete", "list"]
+}
+path "database/roles/*" {
+  capabilities = ["create", "read", "update", "delete", "list"]
+}
+path "database/rotate-root/*" {
+  capabilities = ["create", "update"]
 }
 
 # Manage secrets engine
