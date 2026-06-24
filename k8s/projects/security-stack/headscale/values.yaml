@@ -40,10 +40,13 @@ podName: headscale-0
 
 # Declarative tailnet users. A post-install/upgrade Job creates these and PRUNES
 # any Headscale user not in this list. skypwn = personal devices; infra = owns
-# the router tag + mints the router key. Pre-auth keys are minted by Jobs too.
+# the router tag + mints the router key; ci = the GitHub Actions identity that
+# owns tag:ci and under which the CI pre-auth key is minted. Pre-auth keys are
+# minted by Jobs too.
 users:
   - 'skypwn@{{ .Values.global.domain }}'
   - 'infra@{{ .Values.global.domain }}'
+  - 'ci@{{ .Values.global.domain }}'
 
 # ---- Headscale server config (rendered into config.yaml) ----
 config:
@@ -109,6 +112,8 @@ config:
     tagOwners:
       "tag:tail-proxy": ['infra@{{ .Values.global.domain }}']
       "tag:tail-exit": ['infra@{{ .Values.global.domain }}']
+      # The GitHub Actions Vault runner registers under this tag.
+      "tag:ci": ['ci@{{ .Values.global.domain }}']
     # Auto-approve the exit-node route (0.0.0.0/0 + ::/0) advertised by any node
     # tagged tag:tail-exit (chart: headscale-exit) — no manual
     # `headscale nodes approve-routes` step needed.
@@ -127,3 +132,12 @@ config:
         src: ['skypwn@{{ .Values.global.domain }}']
         dst:
           - "autogroup:internet:*"
+      # The Vault CI runner (tag:ci) reaches the admin proxies on 443 only — enough
+      # to hit vault.tail.<domain>; it can't touch personal devices, the exit node,
+      # or the cluster directly. (All proxies share tag:tail-proxy, so this also
+      # technically allows the other admin proxies; split the proxy tag if you want
+      # to pin it to the Vault node alone.)
+      - action: accept
+        src: ['tag:ci']
+        dst:
+          - "tag:tail-proxy:443"
