@@ -37,23 +37,19 @@ backup:
   destinationPath: "" # s3://<bucket>/<path>, per-cluster (values/<cluster>.yaml)
   endpointURL: "" # https://<account>.r2.cloudflarestorage.com, per-cluster
 
-# Application credentials issued by Vault's database engine (database/creds/<role>)
-# and projected into the defectdojo-db Secret (DD_DATABASE_URL) by the ESO
-# generator, consumed by the app below. Reloader restarts the app onto rotated
-# creds (see defectdojo.* annotations).
+# Application credentials issued by Vault's database engine (database/creds/<role>),
+# read through the vault-database ClusterSecretStore and projected into the
+# defectdojo-db Secret as DD_DATABASE_URL. (A regular ExternalSecret + cluster
+# store — not an ESO generator, which can't use the external-secrets SA across
+# namespaces.) Reloader restarts the app onto rotated creds.
 dynamicCreds:
   enabled: true
-  vaultMount: database
-  vaultRole: defectdojo # database/creds/defectdojo
+  storeName: vault-database # ClusterSecretStore for the database engine
+  vaultRole: defectdojo # reads creds/<vaultRole> -> username/password
 
 externalSecret:
-  storeName: vault-backend
+  storeName: vault-backend # KV store, for the backup creds below
   vaultKey: cluster/skylab/apps/defectdojo
-  # Vault server + k8s auth for the dynamic-secret generator (mirrors the
-  # vault-backend ClusterSecretStore).
-  vaultServer: "http://vault.vault.svc:8200"
-  vaultAuthMount: kubernetes
-  vaultRole: external-secrets
 
 # --- DefectDojo app (upstream chart) ----------------------------------------
 defectdojo:

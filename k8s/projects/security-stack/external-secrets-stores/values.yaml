@@ -22,3 +22,12 @@ vault:
   serviceAccount: "external-secrets"
   serviceAccountNamespace: "external-secrets"
   # caBundle: ""   # base64 PEM, only if using https with a private CA
+
+# Second ClusterSecretStore for the Vault database secrets engine, so apps can
+# read dynamic DB credentials (database/creds/<role>) through ESO. Reuses the
+# vault.* server/auth above; only the mount path + version differ.
+database:
+  enabled: true
+  storeName: vault-database
+  path: "database"
+  version: "v1"
