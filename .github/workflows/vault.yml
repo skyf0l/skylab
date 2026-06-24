@@ -1,3 +1,16 @@
+# Vault config (Terraform). Vault is tailnet-only, so both jobs join the Headscale
+# tailnet as a tag:ci node before the OIDC -> Vault login.
+#
+# One-time setup of the HEADSCALE_CI_AUTHKEY secret (the ci@ user + tag:ci are
+# declared in the headscale chart — deploy that first so the user exists):
+#
+#   kubectl -n headscale exec headscale-0 -- headscale users list -o json | jq -r '.[]|select(.name=="ci@skyf0l.dev").id'
+#   kubectl -n headscale exec headscale-0 -- headscale preauthkeys create --reusable --ephemeral --expiration 8760h --tags tag:ci --user "$uid"
+#   gh secret set HEADSCALE_CI_AUTHKEY --body '<key>'
+#
+# --tags stamps tag:ci on the runner node (tagOwners in headscale only authorizes
+# it — it tags nothing on its own); the ACL matches src tag:ci. reusable+long-expiry
+# = one durable key in CI; ephemeral = each runner node auto-removes after the run.
 name: Vault
 on:
   pull_request:
@@ -20,13 +33,18 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  VAULT_ADDR: https://vault.skyf0l.dev:8200
+  # Vault is tailnet-only. Reached via the Headscale proxy at this MagicDNS name,
+  # which Traefik serves with the *.tail Let's Encrypt wildcard cert — so system
+  # trust validates it and no custom CA is needed (the old VAULT_CA_CERT secret is
+  # gone). Resolving the name requires being on the tailnet (--accept-dns below).
+  VAULT_ADDR: https://vault.tail.skyf0l.dev
+  HEADSCALE_URL: https://headscale.skyf0l.dev
   TF_IN_AUTOMATION: "1"
   TF_INPUT: "false"
   WORKING_DIRECTORY: vault/terraform
 
 jobs:
-  # PR plan — authenticates with the read-only `tf-plan` role (any branch).
+  # PR plan — joins the tailnet, authenticates with the read-only `tf-plan` role.
   plan:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
@@ -37,16 +55,20 @@ jobs:
       - uses: actions/checkout@v6
       - uses: hashicorp/setup-terraform@v3
 
-      - name: Install Vault's Root CA
-        run: |
-          echo "${{ secrets.VAULT_CA_CERT }}" | sudo tee /usr/local/share/ca-certificates/vault-root.crt >/dev/null
-          sudo update-ca-certificates
+      # Vault (and the R2-state creds it holds) are only reachable on the tailnet.
+      # Join as an ephemeral, tag:ci Headscale node — auto-removed when the run
+      # ends; the Headscale ACL limits tag:ci to the Vault proxy only. The key
+      # itself carries the tag + ephemeral flag (minted like headscale-proxy's).
+      - name: Join tailnet (Headscale)
+        uses: tailscale/github-action@v3
+        with:
+          authkey: ${{ secrets.HEADSCALE_CI_AUTHKEY }}
+          args: --login-server=${{ env.HEADSCALE_URL }} --accept-dns --hostname=gha-vault-ci
 
       - name: Import Secrets
         uses: hashicorp/vault-action@v3
         with:
           url: ${{ env.VAULT_ADDR }}
-          caCertificate: ${{ secrets.VAULT_CA_CERT_B64 }}
           exportToken: true # Required by terraform
           method: jwt
           role: tf-plan
@@ -86,16 +108,16 @@ jobs:
       - uses: actions/checkout@v6
       - uses: hashicorp/setup-terraform@v3
 
-      - name: Install Vault's Root CA
-        run: |
-          echo "${{ secrets.VAULT_CA_CERT }}" | sudo tee /usr/local/share/ca-certificates/vault-root.crt >/dev/null
-          sudo update-ca-certificates
+      - name: Join tailnet (Headscale)
+        uses: tailscale/github-action@v3
+        with:
+          authkey: ${{ secrets.HEADSCALE_CI_AUTHKEY }}
+          args: --login-server=${{ env.HEADSCALE_URL }} --accept-dns --hostname=gha-vault-ci
 
       - name: Import Secrets
         uses: hashicorp/vault-action@v3
         with:
           url: ${{ env.VAULT_ADDR }}
-          caCertificate: ${{ secrets.VAULT_CA_CERT_B64 }}
           exportToken: true # Required by terraform
           method: jwt
           role: admin
