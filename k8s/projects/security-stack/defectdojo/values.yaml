@@ -56,6 +56,11 @@ defectdojo:
   host: defectdojo.tail.skyf0l.dev
   siteUrl: "https://defectdojo.tail.skyf0l.dev"
 
+  # External DB host → DD_DATABASE_HOST, which the wait-for-db init container
+  # connects to. (django itself uses DD_DATABASE_URL, which carries the leased
+  # user/password; this just points the readiness check + env at CNPG.)
+  postgresServer: defectdojo-pg-rw.defectdojo.svc.cluster.local
+
   # Chart generates its own django SECRET_KEY / AES key / admin password (random,
   # read back from the defectdojo secret) + Valkey secret. createPostgresqlSecret
   # stays on even with an external DB: the chart hardcodes a DD_DATABASE_PASSWORD
