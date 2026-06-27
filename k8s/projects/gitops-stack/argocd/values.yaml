@@ -33,7 +33,10 @@ argo-cd:
         issuer: https://keycloak.skyf0l.dev/realms/skylab
         clientID: argocd
         clientSecret: $argocd-oidc:clientSecret
-        requestedScopes: ["openid", "profile", "email", "groups"]
+        # NB: no "groups" scope — Keycloak has no client scope by that name (invalid_scope).
+        # The argocd client's group-membership mapper adds the groups claim to the ID token
+        # unconditionally, so RBAC still gets it.
+        requestedScopes: ["openid", "profile", "email"]
         requestedIDTokenClaims:
           groups:
             essential: true
