@@ -160,8 +160,17 @@ seed_field "$thanos" r2_secret_access_key replace_me
 # once you flip backup.enabled: true:
 #   vault kv patch -mount=kvv2 cluster/<cluster>/apps/defectdojo \
 #     r2_access_key_id=<id> r2_secret_access_key=<secret>
+# Stable app secrets (random, set-once) — replace the chart's createSecret/* which
+# churn under ArgoCD. All random; nothing to fill in by hand (the trivy importer
+# logs in with dd_admin_password and mints its own API token).
 defectdojo="cluster/${CLUSTER}/apps/defectdojo"
 echo "[defectdojo] ${KV_MOUNT}/${defectdojo}"
+seed_field "$defectdojo" dd_secret_key         rand_secret
+seed_field "$defectdojo" dd_aes_key            rand_secret
+seed_field "$defectdojo" dd_admin_password     rand_secret
+seed_field "$defectdojo" dd_metrics_password   rand_secret
+seed_field "$defectdojo" valkey_password       rand_secret
+seed_field "$defectdojo" pg_password           rand_secret
 seed_field "$defectdojo" r2_access_key_id      replace_me
 seed_field "$defectdojo" r2_secret_access_key  replace_me
 

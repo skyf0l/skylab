@@ -1,0 +1,161 @@
+{{- if .Values.trivyImporter.enabled }}
+# Pushes trivy-operator findings into DefectDojo. Lists VulnerabilityReport CRDs
+# cluster-wide and reimports each (scan_type "Trivy Operator Scan"), one test per
+# workload so reimport tracks the finding lifecycle. Auth is fully in-cluster: the
+# job logs in with the admin creds from the stable `defectdojo` secret and mints an
+# API token at runtime — nothing to generate or seed by hand.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: defectdojo-trivy-importer
+  labels:
+    app.kubernetes.io/part-of: defectdojo
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: defectdojo-trivy-importer
+  labels:
+    app.kubernetes.io/part-of: defectdojo
+rules:
+  - apiGroups: ["aquasecurity.github.io"]
+    resources: ["vulnerabilityreports"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: defectdojo-trivy-importer
+  labels:
+    app.kubernetes.io/part-of: defectdojo
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: defectdojo-trivy-importer
+subjects:
+  - kind: ServiceAccount
+    name: defectdojo-trivy-importer
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: defectdojo-trivy-importer
+  labels:
+    app.kubernetes.io/part-of: defectdojo
+data:
+  import.py: |
+    import json, os, ssl, urllib.request, urllib.parse, uuid
+    K8S = "https://kubernetes.default.svc"
+    SA = "/var/run/secrets/kubernetes.io/serviceaccount"
+    sa_token = open(SA + "/token").read().strip()
+    ctx = ssl.create_default_context(cafile=SA + "/ca.crt")
+    DD = os.environ["DD_URL"].rstrip("/")
+    HOST = os.environ["DD_HOST"]
+    PRODUCT = os.environ["DD_PRODUCT"]
+    ENGAGEMENT = os.environ["DD_ENGAGEMENT"]
+
+    def login():
+        data = urllib.parse.urlencode({"username": os.environ["DD_ADMIN_USER"],
+                                       "password": os.environ["DD_ADMIN_PASSWORD"]}).encode()
+        req = urllib.request.Request(DD + "/api/v2/api-token-auth/", data=data,
+                                     method="POST", headers={"Host": HOST})
+        with urllib.request.urlopen(req) as r:
+            return json.load(r)["token"]
+
+    def k8s_get(path):
+        req = urllib.request.Request(K8S + path, headers={"Authorization": "Bearer " + sa_token})
+        with urllib.request.urlopen(req, context=ctx) as r:
+            return json.load(r)
+
+    def reimport(rep, token):
+        ns, name = rep["metadata"]["namespace"], rep["metadata"]["name"]
+        b = uuid.uuid4().hex
+        fields = {
+            "scan_type": "Trivy Operator Scan", "product_name": PRODUCT,
+            "engagement_name": ENGAGEMENT, "test_title": ns + "/" + name,
+            "auto_create_context": "true", "minimum_severity": "Info",
+            "active": "true", "verified": "false", "close_old_findings": "true",
+        }
+        parts = ["--%s\r\nContent-Disposition: form-data; name=\"%s\"\r\n\r\n%s\r\n" % (b, k, v) for k, v in fields.items()]
+        parts.append("--%s\r\nContent-Disposition: form-data; name=\"file\"; filename=\"r.json\"\r\nContent-Type: application/json\r\n\r\n%s\r\n" % (b, json.dumps(rep)))
+        body = ("".join(parts) + "--%s--\r\n" % b).encode()
+        req = urllib.request.Request(DD + "/api/v2/reimport-scan/", data=body, method="POST", headers={
+            "Authorization": "Token " + token, "Host": HOST,
+            "Content-Type": "multipart/form-data; boundary=" + b})
+        with urllib.request.urlopen(req) as r:
+            return r.status
+
+    token = login()
+    reports = k8s_get("/apis/aquasecurity.github.io/v1alpha1/vulnerabilityreports")["items"]
+    ok = fail = 0
+    for rep in reports:
+        try:
+            reimport(rep, token); ok += 1
+        except Exception as e:
+            fail += 1; print("FAIL %s/%s: %s" % (rep["metadata"]["namespace"], rep["metadata"]["name"], e))
+    print("imported %d, failed %d, total %d" % (ok, fail, len(reports)))
+    raise SystemExit(1 if fail else 0)
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: defectdojo-trivy-importer
+  labels:
+    app.kubernetes.io/part-of: defectdojo
+spec:
+  schedule: {{ .Values.trivyImporter.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          serviceAccountName: defectdojo-trivy-importer
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: importer
+              image: {{ .Values.trivyImporter.image | quote }}
+              command: ["python3", "/scripts/import.py"]
+              env:
+                - name: DD_URL
+                  value: {{ .Values.trivyImporter.ddUrl | quote }}
+                - name: DD_HOST
+                  value: {{ .Values.trivyImporter.ddHost | quote }}
+                - name: DD_PRODUCT
+                  value: {{ .Values.trivyImporter.product | quote }}
+                - name: DD_ENGAGEMENT
+                  value: {{ .Values.trivyImporter.engagement | quote }}
+                - name: DD_ADMIN_USER
+                  value: {{ .Values.trivyImporter.adminUser | quote }}
+                - name: DD_ADMIN_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: defectdojo
+                      key: DD_ADMIN_PASSWORD
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              volumeMounts:
+                - name: script
+                  mountPath: /scripts
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                limits:
+                  memory: 256Mi
+          volumes:
+            - name: script
+              configMap:
+                name: defectdojo-trivy-importer
+{{- end }}
