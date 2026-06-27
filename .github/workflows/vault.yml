@@ -70,7 +70,7 @@ jobs:
           args: --login-server=${{ env.HEADSCALE_URL }} --accept-dns --hostname=gha-vault-ci
 
       - name: Import Secrets
-        uses: hashicorp/vault-action@v3
+        uses: hashicorp/vault-action@v4
         with:
           url: ${{ env.VAULT_ADDR }}
           exportToken: true # Required by terraform
@@ -120,7 +120,7 @@ jobs:
           args: --login-server=${{ env.HEADSCALE_URL }} --accept-dns --hostname=gha-vault-ci
 
       - name: Import Secrets
-        uses: hashicorp/vault-action@v3
+        uses: hashicorp/vault-action@v4
         with:
           url: ${{ env.VAULT_ADDR }}
           exportToken: true # Required by terraform
