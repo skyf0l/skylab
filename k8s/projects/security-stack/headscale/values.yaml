@@ -48,6 +48,18 @@ users:
   - 'infra@{{ .Values.global.domain }}'
   - 'ci@{{ .Values.global.domain }}'
 
+# Append-only overlay for private users (e.g. friends), concatenated onto `users`
+# above by the create-users-job (prune-safe). Empty here; supplied by the private
+# values overlay (skylab-private) via a multi-source Application, so personal
+# identities never land in the public repo.
+extraUsers: []
+
+# Append-only overlay for private ACL rules (e.g. "friend may reach my laptop:port"),
+# concatenated onto config.acl.acls when acl.json is rendered. Empty here; supplied by
+# the private overlay. Same shape as config.acl.acls entries, e.g.:
+#   - { action: accept, src: ['friend@domain'], dst: ['100.x.y.z:8080'] }
+extraAcls: []
+
 # ---- Headscale server config (rendered into config.yaml) ----
 config:
   logLevel: info

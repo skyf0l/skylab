@@ -58,4 +58,4 @@ data:
       update_frequency: 24h
     ephemeral_node_inactivity_timeout: 30m
   acl.json: |
-{{ tpl (.Values.config.acl | toJson) . | indent 4 }}
+{{ tpl (merge (dict "acls" (concat (default (list) .Values.config.acl.acls) (default (list) .Values.extraAcls))) (omit .Values.config.acl "acls") | toJson) . | indent 4 }}
