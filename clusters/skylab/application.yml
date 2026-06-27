@@ -47,3 +47,46 @@ spec:
           - PrunePropagationPolicy=foreground
           - PruneLast=true
           - RespectIgnoreDifferences=true
+---
+# The cluster's PRIVATE app-of-apps root. Same shape as `apps` above, but the app
+# manifests come from the skylab-private repo, per cluster (clusters/<name>/apps), so
+# private apps for skylab live only there and never in this public repo. Cluster meta
+# (name) still comes from the public config.json. Lives here, alongside the public root,
+# because it's bootstrap config you apply by hand — not auto-synced — so it activates on
+# your terms (after skylab-private exists + the ArgoCD GitHub App is granted access).
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: private-apps
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - git:
+        repoURL: https://github.com/skyf0l/skylab.git
+        revision: main
+        files:
+          - path: clusters/skylab/config.json
+  template:
+    metadata:
+      name: "{{.name}}-private-apps"
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/skyf0l/skylab-private.git
+        targetRevision: main
+        path: clusters/{{.name}}/apps
+        kustomize:
+          namePrefix: "{{.name}}-private-"
+      destination:
+        server: "https://kubernetes.default.svc"
+        namespace: argocd
+      syncPolicy:
+        automated:
+          prune: true
+        syncOptions:
+          - Validate=true
+          - PrunePropagationPolicy=foreground
+          - PruneLast=true
+          - RespectIgnoreDifferences=true
