@@ -29,10 +29,12 @@ spec:
     name: keycloak-oidc-clients
     creationPolicy: Owner
   data:
-    - secretKey: grafana-client-secret
+    {{- range .Values.configCli.oidcClients }}
+    - secretKey: {{ .secretKey }}
       remoteRef:
-        key: {{ .Values.configCli.grafanaSecretVaultKey | quote }}
+        key: {{ .vaultKey | quote }}
         property: oidc_client_secret
+    {{- end }}
 ---
 apiVersion: batch/v1
 kind: Job
@@ -76,12 +78,14 @@ spec:
               value: "/config/*.json"
             - name: IMPORT_VARSUBSTITUTION_ENABLED
               value: "true"
-            # injected into the realm JSON's $(env:GRAFANA_OIDC_SECRET)
-            - name: GRAFANA_OIDC_SECRET
+            # injected into the realm JSON's $(env:<envVar>) placeholders
+            {{- range .Values.configCli.oidcClients }}
+            - name: {{ .envVar }}
               valueFrom:
                 secretKeyRef:
                   name: keycloak-oidc-clients
-                  key: grafana-client-secret
+                  key: {{ .secretKey }}
+            {{- end }}
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

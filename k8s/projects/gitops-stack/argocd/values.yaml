@@ -24,6 +24,19 @@ argo-cd:
 
   configs:
     cm:
+      # External URL (also the OIDC issuer's redirect base). ArgoCD is tailnet-only.
+      url: https://argocd.tail.skyf0l.dev
+      # SSO via Keycloak. clientSecret resolves from the argocd-oidc secret (ESO/Vault).
+      # `groups` claim drives RBAC (below). Local admin stays as break-glass.
+      oidc.config: |
+        name: Keycloak
+        issuer: https://keycloak.skyf0l.dev/realms/skylab
+        clientID: argocd
+        clientSecret: $argocd-oidc:clientSecret
+        requestedScopes: ["openid", "profile", "email", "groups"]
+        requestedIDTokenClaims:
+          groups:
+            essential: true
       # The ExternalSecret CRD defines OpenAPI schema defaults, so the apiserver
       # fills in fields our git manifests omit (target.deletionPolicy=Retain,
       # template.engineVersion=v2, remoteRef.*Strategy/Policy, ...). That makes
@@ -40,3 +53,9 @@ argo-cd:
           - .spec.data[]?.remoteRef.decodingStrategy
           - .spec.data[]?.remoteRef.metadataPolicy
           - .spec.data[]?.remoteRef.nullBytePolicy
+    # RBAC: members of the Keycloak `argocd-admins` group get full admin. Everyone else
+    # falls through to the (read-only) default policy. Local admin user is unaffected.
+    rbac:
+      scopes: '[groups]'
+      policy.csv: |
+        g, argocd-admins, role:admin

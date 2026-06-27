@@ -11,8 +11,8 @@
     ]
   },
   "groups": [
-    { "name": "grafana-admins",  "realmRoles": ["grafana-admin"] },
-    { "name": "grafana-editors", "realmRoles": ["grafana-editor"] }
+    { "name": "grafana-admins", "realmRoles": ["grafana-admin"] },
+    { "name": "argocd-admins" }
   ],
   "clients": [
     {
@@ -35,6 +35,35 @@
             "claim.name": "roles",
             "jsonType.label": "String",
             "multivalued": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "argocd",
+      "name": "ArgoCD",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "$(env:ARGOCD_OIDC_SECRET)",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "https://argocd.tail.skyf0l.dev/auth/callback",
+        "http://localhost:8085/auth/callback"
+      ],
+      "webOrigins": ["https://argocd.tail.skyf0l.dev"],
+      "protocolMappers": [
+        {
+          "name": "group-membership",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "claim.name": "groups",
+            "full.path": "false",
             "id.token.claim": "true",
             "access.token.claim": "true",
             "userinfo.token.claim": "true"

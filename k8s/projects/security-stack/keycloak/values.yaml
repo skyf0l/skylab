@@ -49,8 +49,12 @@ realmImport:
 configCli:
   enabled: true
   image: adorsys/keycloak-config-cli:6.5.1-26
-  # Vault path holding OIDC client secrets (oidc_client_secret = the grafana client secret).
-  grafanaSecretVaultKey: cluster/skylab/apps/grafana
+  # Per-app OIDC client secrets: pulled from Vault (<vaultKey> -> oidc_client_secret) into
+  # the keycloak-oidc-clients secret, then exposed to the realm import as $(env:<envVar>).
+  # Add an app = append an entry + a $(env:..) in its realm client.
+  oidcClients:
+    - { envVar: GRAFANA_OIDC_SECRET, secretKey: grafana-client-secret, vaultKey: cluster/skylab/apps/grafana }
+    - { envVar: ARGOCD_OIDC_SECRET,  secretKey: argocd-client-secret,  vaultKey: cluster/skylab/apps/argocd }
 
 # ---- CloudNativePG Postgres --------------------------------------------------------
 postgres:
