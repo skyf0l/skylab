@@ -75,11 +75,13 @@ path "identity/entity-alias/id" {
 
 ## KV Secrets Engine
 
-# No kvv2/data or kvv2/metadata grant on purpose: this CI identity manages Vault
-# *structure*, never reads or writes secret *values*. The KV engine MOUNT is
-# managed via sys/mounts/* below; seeding secret values is a root/break-glass op.
-# (If the kv-v2 mount refresh ever needs it, add `kvv2/config` READ only — never
-# data/metadata.)
+# No APP secret access on purpose: this CI identity manages Vault *structure*, not
+# the app secret tree (kvv2/data/cluster/...). The one exception is its own R2
+# Terraform-state backend creds, which terraform must read to init the backend.
+# Scoped to cicd/ only.
+path "kvv2/data/cicd/*" {
+  capabilities = ["read"]
+}
 
 ## Database Secrets Engine
 

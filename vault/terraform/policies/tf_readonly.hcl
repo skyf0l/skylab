@@ -35,6 +35,12 @@ path "sys/mounts/*" {
   capabilities = ["read"]
 }
 
+# Own R2 Terraform-state backend creds, so plan can init the backend. Scoped to
+# cicd/ only, never the app secret tree.
+path "kvv2/data/cicd/*" {
+  capabilities = ["read"]
+}
+
 # Database engine STRUCTURE — read-only, so plan can refresh connection/role
 # state. Excludes database/creds/* so a PR plan can't mint dynamic logins.
 path "database/config/*" {
