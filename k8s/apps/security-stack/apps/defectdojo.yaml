@@ -26,6 +26,11 @@ spec:
       name: "{{.name}}-defectdojo"
       annotations:
         argocd.argoproj.io/sync-wave: "3"
+        # The chart renders uwsgi processes/threads into the container's resources
+        # (not valid k8s fields). The API server drops them on apply, but ArgoCD's
+        # client-side diff can't and errors out, wedging every sync. ServerSideDiff
+        # runs the diff through the API server too, so it drops them the same way.
+        argocd.argoproj.io/compare-options: ServerSideDiff=true
     spec:
       project: default
       source:

@@ -95,15 +95,12 @@ defectdojo:
     # The chart ships 4 uwsgi processes against a 512Mi limit; DefectDojo needs
     # ~300-500Mi per process, so workers thrash and the uwsgi socket drops (nginx
     # 502s). Fewer processes (the env comes from appSettings.processes) + headroom.
+    # The chart also leaks resources.processes/threads into the container resources;
+    # the app's ServerSideDiff compare-option lets ArgoCD diff past those.
     uwsgi:
       appSettings:
         processes: 2
-      # The chart dumps all of resources.* into the container's resources, so the
-      # default processes/threads keys land in container resources (invalid k8s) and
-      # break ArgoCD's diff. Null them out; the process count is set via appSettings.
       resources:
-        processes: null
-        threads: null
         requests:
           memory: 512Mi
         limits:
