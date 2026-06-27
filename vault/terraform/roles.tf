@@ -40,3 +40,25 @@ resource "vault_kubernetes_auth_backend_role" "external_secrets" {
     vault_policy.external_secrets.name
   ]
 }
+
+# DefectDojo dynamic DB creds. ESO's VaultDynamicSecret generator is namespaced
+# and can't use the external-secrets SA cross-namespace, so it authenticates as a
+# dedicated SA in the defectdojo namespace, bound here to read its leased logins.
+resource "vault_kubernetes_auth_backend_role" "defectdojo_db" {
+  backend   = vault_auth_backend.kubernetes.path
+  role_name = "defectdojo-db"
+
+  bound_service_account_names      = ["defectdojo-db"]
+  bound_service_account_namespaces = ["defectdojo"]
+
+  token_policies = [
+    vault_policy.defectdojo_db_creds.name
+  ]
+
+  # A dynamic DB lease is a child of the auth token Vault issues here — when the
+  # token expires, the lease is revoked (DROP ROLE) and the app's credential dies.
+  # Keep the token alive longer than the DB role's default_ttl (24h) so the lease
+  # lives its full life; ESO refreshes (12h) well inside that, with overlap.
+  token_ttl     = 90000  # 25h
+  token_max_ttl = 90000
+}

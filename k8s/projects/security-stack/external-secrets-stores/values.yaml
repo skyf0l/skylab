@@ -23,11 +23,12 @@ vault:
   serviceAccountNamespace: "external-secrets"
   # caBundle: ""   # base64 PEM, only if using https with a private CA
 
-# Second ClusterSecretStore for the Vault database secrets engine, so apps can
-# read dynamic DB credentials (database/creds/<role>) through ESO. Reuses the
-# vault.* server/auth above; only the mount path + version differ.
+# A ClusterSecretStore for the Vault database engine is intentionally disabled:
+# dynamic DB creds are leased per-app by an ESO VaultDynamicSecret generator (with
+# its own namespace SA + Vault role), not read through a central store login. Kept
+# here (off) as a clear pointer to where it would live if ever needed.
 database:
-  enabled: true
+  enabled: false
   storeName: vault-database
   path: "database"
   version: "v1"

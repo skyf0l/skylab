@@ -37,15 +37,19 @@ backup:
   destinationPath: "" # s3://<bucket>/<path>, per-cluster (values/<cluster>.yaml)
   endpointURL: "" # https://<account>.r2.cloudflarestorage.com, per-cluster
 
-# Application credentials issued by Vault's database engine (database/creds/<role>),
-# read through the vault-database ClusterSecretStore and projected into the
-# defectdojo-db Secret as DD_DATABASE_URL. (A regular ExternalSecret + cluster
-# store — not an ESO generator, which can't use the external-secrets SA across
-# namespaces.) Reloader restarts the app onto rotated creds.
+# Application credentials issued by Vault's database engine, leased by the ESO
+# VaultDynamicSecret generator and projected into the defectdojo-db Secret as
+# DD_DATABASE_URL. The generator reads the path ONCE per refresh (consistent
+# user/password pair) and authenticates as a dedicated SA in this namespace
+# (bound to the Vault defectdojo-db role). Reloader restarts the app onto rotated
+# creds (see defectdojo.celery.annotations).
 dynamicCreds:
   enabled: true
-  storeName: vault-database # ClusterSecretStore for the database engine
-  vaultRole: defectdojo # reads creds/<vaultRole> -> username/password
+  serviceAccount: defectdojo-db # SA the generator authenticates as (this ns)
+  vaultServer: "http://vault.vault.svc:8200"
+  vaultAuthMount: kubernetes
+  vaultRole: defectdojo-db # Vault k8s auth role bound to the SA above
+  credsPath: "database/creds/defectdojo"
 
 externalSecret:
   storeName: vault-backend # KV store, for the backup creds below
@@ -85,6 +89,10 @@ defectdojo:
   # Reachable only on the tailnet via the headscale-proxy IngressRoute, so the
   # chart's own ingress is off.
   django:
+    # Restart django when the leased DB creds rotate (same as celery) — a pooled
+    # app reads creds at boot, so without this it crash-loops when the lease ends.
+    annotations:
+      reloader.stakater.com/auto: "true"
     ingress:
       enabled: false
     extraEnv: &ddDatabaseUrl
