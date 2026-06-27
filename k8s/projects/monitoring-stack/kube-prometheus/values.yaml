@@ -84,8 +84,10 @@ kube-prometheus-stack:
         auth_url: https://keycloak.skyf0l.dev/realms/skylab/protocol/openid-connect/auth
         token_url: https://keycloak.skyf0l.dev/realms/skylab/protocol/openid-connect/token
         api_url: https://keycloak.skyf0l.dev/realms/skylab/protocol/openid-connect/userinfo
-        role_attribute_path: "contains(roles[*], 'grafana-admin') && 'Admin' || contains(roles[*], 'grafana-editor') && 'Editor' || 'Viewer'"
-        role_attribute_strict: false
+        # Strict: only grafana-admins get a role (Admin); everyone else resolves to no
+        # valid role and is DENIED at login. No Viewer fallback = no access for non-members.
+        role_attribute_path: "contains(roles[*], 'grafana-admin') && 'Admin'"
+        role_attribute_strict: true
     # Client secret from Vault (never in the repo) — same value the keycloak config-cli
     # Job substitutes into the realm, so the two sides can't drift.
     envValueFrom:
