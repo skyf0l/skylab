@@ -76,6 +76,11 @@ services:
     service: hubble-ui
     namespace: kube-system
     port: 80
+  - name: falco
+    # Falcosidekick Web UI — runtime threat-detection event browser.
+    service: falco-falcosidekick-ui
+    namespace: falco
+    port: 2802
   - name: traefik
     # Traefik's own dashboard/API (api@internal). Reached at
     # traefik.tail.<domain>/dashboard/ — tailnet-only, never publicly exposed

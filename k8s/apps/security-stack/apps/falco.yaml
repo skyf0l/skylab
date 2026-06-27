@@ -1,0 +1,59 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: falco
+  annotations:
+    # After the monitoring stack so the ServiceMonitor CRD exists when Falco +
+    # falcosidekick create theirs.
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          # Auto updated by parent ApplicationSet
+          - list:
+              elements:
+                - name: skylab
+          - git:
+              repoURL: https://github.com/skyf0l/skylab.git
+              revision: main
+              files:
+                - path: clusters/{{.name }}/config.json
+  template:
+    metadata:
+      name: "{{.name}}-falco"
+      annotations:
+        argocd.argoproj.io/sync-wave: "2"
+    spec:
+      project: default
+      source:
+        repoURL: "{{.repo.url}}"
+        targetRevision: "{{.repo.revision}}"
+        path: k8s/projects/security-stack/falco
+        helm:
+          releaseName: falco
+          valueFiles:
+            - values.yaml
+          # The falcosidekick ServiceMonitor is gated on the Prometheus-operator CRD
+          # being present, which the repo-server can't discover when rendering. Declare
+          # it so the ServiceMonitor renders (Falco's own SM has no such gate).
+          apiVersions:
+            - monitoring.coreos.com/v1
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: falco
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - Validate=true
+          - PrunePropagationPolicy=foreground
+          - PruneLast=true
+          - RespectIgnoreDifferences=true
+          - ServerSideApply=true
+        retry:
+          limit: 5

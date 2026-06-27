@@ -1,0 +1,67 @@
+# Falco — runtime threat detection. The DETECT layer that trivy-operator (static
+# vuln scanning) and Vault/ESO (secrets) don't cover: it taps the kernel syscall
+# stream and alerts on behaviour (shell in a container, unexpected egress, reads of
+# service-account tokens, writes under /etc, container-escape attempts).
+#
+# Pipeline: Falco DaemonSet (one pod/node) -> Falcosidekick (fan-out) -> Loki
+# (forensics, browse in Grafana) + Alertmanager (Warning+ only) + the Falcosidekick
+# Web UI (tailnet-only, like DefectDojo). Falco + sidekick both expose Prometheus
+# metrics via ServiceMonitors. All values live under the `falco` subchart key.
+falco:
+  # ---- engine + driver ----------------------------------------------------------
+  driver:
+    # modern eBPF (CO-RE): no kernel module, no per-kernel build. The node runs
+    # kernel 6.8, well above the 5.8 floor, so this is the prod-recommended path.
+    kind: modern_ebpf
+
+  # k8s metadata enrichment (the k8s-metacollector subchart) so events carry
+  # namespace/pod/labels instead of bare container IDs.
+  collectors:
+    enabled: true
+
+  # ---- Falco's native Prometheus metrics (Falco 0.38+) --------------------------
+  metrics:
+    enabled: true
+    interval: 1h
+    rulesCountersEnabled: true
+    # metrics go to the /metrics endpoint, not emitted as log rules
+    outputRule: false
+
+  # ServiceMonitor for Falco's own /metrics. kube-prometheus scrapes every
+  # ServiceMonitor (serviceMonitorSelectorNilUsesHelmValues=false), so no labels.
+  serviceMonitor:
+    create: true
+
+  # ---- Falcosidekick: routing + Web UI ------------------------------------------
+  falcosidekick:
+    enabled: true
+    # ServiceMonitor for falcosidekick's own metrics (events by rule/priority/output).
+    serviceMonitor:
+      enabled: true
+    # Purpose-built event browser, reachable only on the tailnet via the
+    # headscale-proxy IngressRoute (falco.tail.<domain>:2802). Bundled Redis backs it.
+    webui:
+      enabled: true
+      redis:
+        enabled: true
+    config:
+      # Everything Notice+ to Loki for forensics/searchable history (LogQL in Grafana).
+      loki:
+        hostport: "http://loki.logging:3100"
+        endpoint: "/loki/api/v1/push"
+        minimumpriority: "notice"
+      # Only Warning+ pages through Alertmanager — keeps the noise floor sane.
+      alertmanager:
+        hostport: "http://kube-prometheus-kube-prome-alertmanager.monitoring:9093"
+        endpoint: "/api/v2/alerts"
+        minimumpriority: "warning"
+
+  # ---- rule tuning ---------------------------------------------------------------
+  # Starts on the upstream ruleset (fetched by the falcoctl init container). Add
+  # custom rules / exceptions here as the noise floor gets characterised; managing
+  # them as code is the whole point. Example shape left for later:
+  # customRules:
+  #   overrides.yaml: |-
+  #     - rule: Terminal shell in container
+  #       append: true
+  #       condition: and not container.image.repository in (allowed_debug_images)
