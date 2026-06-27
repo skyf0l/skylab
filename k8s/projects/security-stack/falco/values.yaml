@@ -44,6 +44,10 @@ falco:
       enabled: true
       redis:
         enabled: true
+        # The UI's redis is just a recent-events cache for the browser; durable
+        # history lives in Loki. Run it ephemeral — local-path isn't a default
+        # StorageClass here, so a PVC would sit unbound.
+        storageEnabled: false
     config:
       # Everything Notice+ to Loki for forensics/searchable history (LogQL in Grafana).
       loki:
