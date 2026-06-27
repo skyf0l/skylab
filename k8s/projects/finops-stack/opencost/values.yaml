@@ -22,10 +22,14 @@ opencost:
     # request/usage; it does NOT inflate running pods to fill the bill. Whatever is
     # not used shows as "idle cost" — i.e. the slice of $28.80 being wasted.
     #
-    # Rates are set so a FULLY-used node = $28.80/mo, split across CPU+RAM by a
-    # realistic ratio (~AWS CPU:RAM weighting) over 8 cores / 62.5 GiB / 730h:
-    #   CPU: 0.002406 /core/h  -> 0.002406 * 8    * 730 ~= $14.05/mo
-    #   RAM: 0.000323 /GB/h    -> 0.000323 * 62.5  * 730 ~= $14.74/mo   (total ~$28.8)
+    # IMPORTANT: these costModel rates are MONTHLY per unit. OpenCost divides them by
+    # 730 (hours/month) to get the hourly node rate, so feeding it hourly numbers makes
+    # the node 730x too cheap and everything reads $0 (and tiny RAM values get rejected
+    # as "illegal CostPerRAMHr").
+    # Set so a FULLY-used node = $28.80/mo, split across CPU+RAM by a realistic ratio
+    # (~AWS CPU:RAM weighting) over 8 cores / 62.5 GiB:
+    #   CPU 1.756 /core/mo  -> 1.756  * 8    = $14.05/mo
+    #   RAM 0.2358 /GB/mo   -> 0.2358 * 62.5 = $14.74/mo   (total ~$28.80)
     # storage is a small NVMe rate so PV-backed apps show a storage line (the disk is
     # already inside the flat fee, so treat this as supplementary, adjustable).
     # Network egress = 0 (VPS bandwidth is included). Tune any of these freely.
@@ -34,13 +38,13 @@ opencost:
       provider: custom
       createConfigmap: true
       costModel:
-        description: "skylab VPS flat $28.80/mo over 8 vCPU / 62.5 GiB"
-        CPU: 0.002406
-        spotCPU: 0.002406
-        RAM: 0.000323
-        spotRAM: 0.000323
+        description: "skylab VPS flat $28.80/mo over 8 vCPU / 62.5 GiB (monthly per-unit)"
+        CPU: 1.756
+        spotCPU: 1.756
+        RAM: 0.2358
+        spotRAM: 0.2358
         GPU: 0
-        storage: 0.0000548
+        storage: 0.04
         zoneNetworkEgress: 0
         regionNetworkEgress: 0
         internetNetworkEgress: 0
