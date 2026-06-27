@@ -94,14 +94,15 @@ defectdojo:
       reloader.stakater.com/auto: "true"
     # The chart ships 4 uwsgi processes against a 512Mi limit; DefectDojo needs
     # ~300-500Mi per process, so workers thrash and the uwsgi socket drops (nginx
-    # 502s). Fewer processes + real headroom.
+    # 502s). Fewer processes (the env comes from appSettings.processes) + headroom.
     uwsgi:
+      appSettings:
+        processes: 2
       resources:
         requests:
           memory: 512Mi
         limits:
           memory: 1Gi
-        processes: 2
     ingress:
       enabled: false
     extraEnv: &ddDatabaseUrl
