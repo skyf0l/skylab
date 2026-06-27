@@ -53,6 +53,7 @@ data:
     DD = os.environ["DD_URL"].rstrip("/")
     HOST = os.environ["DD_HOST"]
     PRODUCT = os.environ["DD_PRODUCT"]
+    PRODUCT_TYPE = os.environ["DD_PRODUCT_TYPE"]
     ENGAGEMENT = os.environ["DD_ENGAGEMENT"]
 
     def login():
@@ -73,6 +74,7 @@ data:
         b = uuid.uuid4().hex
         fields = {
             "scan_type": "Trivy Operator Scan", "product_name": PRODUCT,
+            "product_type_name": PRODUCT_TYPE,
             "engagement_name": ENGAGEMENT, "test_title": ns + "/" + name,
             "auto_create_context": "true", "minimum_severity": "Info",
             "active": "true", "verified": "false", "close_old_findings": "true",
@@ -133,6 +135,8 @@ spec:
                   value: {{ .Values.trivyImporter.ddHost | quote }}
                 - name: DD_PRODUCT
                   value: {{ .Values.trivyImporter.product | quote }}
+                - name: DD_PRODUCT_TYPE
+                  value: {{ .Values.trivyImporter.productType | quote }}
                 - name: DD_ENGAGEMENT
                   value: {{ .Values.trivyImporter.engagement | quote }}
                 - name: DD_ADMIN_USER
