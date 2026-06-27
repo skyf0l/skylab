@@ -6,9 +6,8 @@
   "registrationAllowed": false,
   "roles": {
     "realm": [
-      { "name": "grafana-admin",  "description": "Grafana org admin" },
-      { "name": "grafana-editor", "description": "Grafana editor" },
-      { "name": "argocd-access",  "description": "May log in to ArgoCD (carried by argocd-admins)" }
+      { "name": "grafana-admin", "description": "Grafana org admin" },
+      { "name": "argocd-access", "description": "May log in to ArgoCD (carried by argocd-admins)" }
     ]
   },
   "groups": [
