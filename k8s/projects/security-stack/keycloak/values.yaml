@@ -38,12 +38,19 @@ resources:
     memory: 1280Mi
 
 # ---- realm-as-code -----------------------------------------------------------------
-# Built-in --import-realm: creates the realm on first boot if absent (does NOT update
-# on change). For idempotent ongoing sync, layer keycloak-config-cli later (a Job that
-# applies realm JSON every sync). Kept off by default; drop realm JSON in
-# templates/realm-import.yaml's ConfigMap and flip enabled to turn it on.
+# Built-in --import-realm alternative (creates only, no update). Off — we use
+# keycloak-config-cli (below) for idempotent create+update instead.
 realmImport:
   enabled: false
+
+# keycloak-config-cli: a PostSync Job that applies realms/*.json idempotently on every
+# sync. Client secrets are substituted from env ($(env:...)) sourced from Vault, so they
+# never live in the repo. KC 26-compatible image tag.
+configCli:
+  enabled: true
+  image: adorsys/keycloak-config-cli:6.5.1-26
+  # Vault path holding OIDC client secrets (oidc_client_secret = the grafana client secret).
+  grafanaSecretVaultKey: cluster/skylab/apps/grafana
 
 # ---- CloudNativePG Postgres --------------------------------------------------------
 postgres:

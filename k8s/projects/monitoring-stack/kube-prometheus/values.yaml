@@ -68,6 +68,50 @@ kube-prometheus-stack:
     initChownData:
       enabled: false
 
+    # ---- SSO via Keycloak (OIDC) ----
+    # Users log in through Keycloak; the grafana-admins group (realm role grafana-admin)
+    # maps to Grafana Admin, grafana-editors -> Editor, everyone else -> Viewer. The local
+    # admin stays as break-glass. The pod's back-channel to the public keycloak issuer
+    # works in-cluster (hairpin OK), so no split-horizon DNS is needed.
+    grafana.ini:
+      server:
+        root_url: https://grafana.tail.skyf0l.dev
+      auth.generic_oauth:
+        enabled: true
+        name: Keycloak
+        client_id: grafana
+        scopes: openid email profile roles
+        auth_url: https://keycloak.skyf0l.dev/realms/skylab/protocol/openid-connect/auth
+        token_url: https://keycloak.skyf0l.dev/realms/skylab/protocol/openid-connect/token
+        api_url: https://keycloak.skyf0l.dev/realms/skylab/protocol/openid-connect/userinfo
+        role_attribute_path: "contains(roles[*], 'grafana-admin') && 'Admin' || contains(roles[*], 'grafana-editor') && 'Editor' || 'Viewer'"
+        role_attribute_strict: false
+    # Client secret from Vault (never in the repo) — same value the keycloak config-cli
+    # Job substitutes into the realm, so the two sides can't drift.
+    envValueFrom:
+      GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET:
+        secretKeyRef:
+          name: grafana-oidc
+          key: client-secret
+    extraObjects:
+      - apiVersion: external-secrets.io/v1
+        kind: ExternalSecret
+        metadata:
+          name: grafana-oidc
+        spec:
+          refreshInterval: 1h
+          secretStoreRef:
+            name: vault-backend
+            kind: ClusterSecretStore
+          target:
+            name: grafana-oidc
+            creationPolicy: Owner
+          data:
+            - secretKey: client-secret
+              remoteRef:
+                key: cluster/skylab/apps/grafana
+                property: oidc_client_secret
+
     # Community dashboards are vendored as JSON ConfigMaps under
     # k8s/projects/monitoring-stack/grafana-dashboards and hot-loaded by the
     # dashboard sidecar (no init container, no grafana.com egress at boot).

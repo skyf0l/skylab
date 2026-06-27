@@ -1,0 +1,98 @@
+{{- if .Values.configCli.enabled }}
+# Realm-as-code via keycloak-config-cli (idempotent create+update, unlike the built-in
+# --import-realm which only creates). Applies every realms/*.json on each ArgoCD sync.
+# Client secrets stay OUT of the repo: the realm JSON uses $(env:GRAFANA_OIDC_SECRET),
+# substituted here from the Vault-synced secret.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-realms
+  labels:
+    app.kubernetes.io/part-of: keycloak
+data:
+{{ (.Files.Glob "realms/*.json").AsConfig | indent 2 }}
+---
+# OIDC client secrets pulled from Vault (cluster/skylab/apps/grafana -> oidc_client_secret).
+# Same value Grafana consumes on its side (monitoring ns), so the two never drift.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: keycloak-oidc-clients
+  labels:
+    app.kubernetes.io/part-of: keycloak
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: {{ .Values.externalSecret.storeName }}
+    kind: ClusterSecretStore
+  target:
+    name: keycloak-oidc-clients
+    creationPolicy: Owner
+  data:
+    - secretKey: grafana-client-secret
+      remoteRef:
+        key: {{ .Values.configCli.grafanaSecretVaultKey | quote }}
+        property: oidc_client_secret
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: keycloak-config-cli
+  labels:
+    app.kubernetes.io/part-of: keycloak
+  annotations:
+    # Run after Keycloak is up; re-run on every sync (hash changes when realm/secret do).
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 600
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: keycloak-config-cli
+          image: {{ .Values.configCli.image | quote }}
+          env:
+            - name: KEYCLOAK_URL
+              value: "http://keycloak.{{ .Release.Namespace }}.svc:8080"
+            - name: KEYCLOAK_USER
+              value: {{ .Values.admin.username | quote }}
+            - name: KEYCLOAK_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak
+                  key: admin-password
+            - name: KEYCLOAK_AVAILABILITYCHECK_ENABLED
+              value: "true"
+            - name: KEYCLOAK_AVAILABILITYCHECK_TIMEOUT
+              value: "120s"
+            - name: IMPORT_FILES_LOCATIONS
+              value: "/config/*.json"
+            - name: IMPORT_VARSUBSTITUTION_ENABLED
+              value: "true"
+            # injected into the realm JSON's $(env:GRAFANA_OIDC_SECRET)
+            - name: GRAFANA_OIDC_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-oidc-clients
+                  key: grafana-client-secret
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: realms
+              mountPath: /config
+              readOnly: true
+      volumes:
+        - name: realms
+          configMap:
+            name: keycloak-realms
+{{- end }}

@@ -184,4 +184,11 @@ seed_field "$keycloak" admin_password        rand_secret
 seed_field "$keycloak" r2_access_key_id      replace_me
 seed_field "$keycloak" r2_secret_access_key  replace_me
 
+# grafana — kvv2/cluster/<cluster>/apps/grafana
+# OIDC client secret shared by the Keycloak `grafana` client (substituted into the realm
+# by keycloak-config-cli) and Grafana's auth.generic_oauth. Random, set-once.
+grafana="cluster/${CLUSTER}/apps/grafana"
+echo "[grafana] ${KV_MOUNT}/${grafana}"
+seed_field "$grafana" oidc_client_secret     rand_secret
+
 echo "Done. Fill in any PLACEHOLDER fields via the Vault UI/CLI; re-running won't overwrite them."
