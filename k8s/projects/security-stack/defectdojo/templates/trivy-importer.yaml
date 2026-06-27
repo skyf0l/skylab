@@ -45,7 +45,7 @@ metadata:
     app.kubernetes.io/part-of: defectdojo
 data:
   import.py: |
-    import json, os, ssl, urllib.request, urllib.parse, uuid
+    import json, os, ssl, urllib.request, urllib.parse, urllib.error, uuid
     K8S = "https://kubernetes.default.svc"
     SA = "/var/run/secrets/kubernetes.io/serviceaccount"
     sa_token = open(SA + "/token").read().strip()
@@ -92,6 +92,8 @@ data:
     for rep in reports:
         try:
             reimport(rep, token); ok += 1
+        except urllib.error.HTTPError as e:
+            fail += 1; print("FAIL %s/%s: %d %s" % (rep["metadata"]["namespace"], rep["metadata"]["name"], e.code, e.read().decode()[:300]))
         except Exception as e:
             fail += 1; print("FAIL %s/%s: %s" % (rep["metadata"]["namespace"], rep["metadata"]["name"], e))
     print("imported %d, failed %d, total %d" % (ok, fail, len(reports)))
