@@ -6,52 +6,12 @@
   "registrationAllowed": false,
   "roles": {
     "realm": [
-      { "name": "grafana-admin", "description": "Grafana org admin" },
-      { "name": "argocd-access", "description": "May log in to ArgoCD (carried by argocd-admins)" }
+      { "name": "grafana-admin", "description": "Grafana org admin" }
     ]
   },
   "groups": [
     { "name": "grafana-admins", "realmRoles": ["grafana-admin"] },
-    { "name": "argocd-admins",  "realmRoles": ["argocd-access"] }
-  ],
-  "authenticatorConfig": [
-    {
-      "alias": "argocd-access-condition",
-      "config": { "condUserRole": "argocd-access", "negate": "true" }
-    }
-  ],
-  "authenticationFlows": [
-    {
-      "alias": "argocd-browser",
-      "description": "Browser flow for the argocd client: deny login unless the user has argocd-access",
-      "providerId": "basic-flow",
-      "topLevel": true,
-      "builtIn": false,
-      "authenticationExecutions": [
-        { "authenticator": "auth-cookie", "requirement": "ALTERNATIVE", "priority": 10, "userSetupAllowed": false, "autheticatorFlow": false },
-        { "flowAlias": "argocd-browser-forms", "requirement": "ALTERNATIVE", "priority": 20, "userSetupAllowed": false, "autheticatorFlow": true },
-        { "flowAlias": "argocd-access-gate", "requirement": "CONDITIONAL", "priority": 30, "userSetupAllowed": false, "autheticatorFlow": true }
-      ]
-    },
-    {
-      "alias": "argocd-browser-forms",
-      "providerId": "basic-flow",
-      "topLevel": false,
-      "builtIn": false,
-      "authenticationExecutions": [
-        { "authenticator": "auth-username-password-form", "requirement": "REQUIRED", "priority": 10, "userSetupAllowed": false, "autheticatorFlow": false }
-      ]
-    },
-    {
-      "alias": "argocd-access-gate",
-      "providerId": "basic-flow",
-      "topLevel": false,
-      "builtIn": false,
-      "authenticationExecutions": [
-        { "authenticator": "conditional-user-role", "requirement": "REQUIRED", "priority": 10, "userSetupAllowed": false, "autheticatorFlow": false, "authenticatorConfig": "argocd-access-condition" },
-        { "authenticator": "deny-access-authenticator", "requirement": "REQUIRED", "priority": 20, "userSetupAllowed": false, "autheticatorFlow": false }
-      ]
-    }
+    { "name": "argocd-admins" }
   ],
   "clients": [
     {
@@ -95,7 +55,6 @@
         "http://localhost:8085/auth/callback"
       ],
       "webOrigins": ["https://argocd.tail.skyf0l.dev"],
-      "authenticationFlowBindingOverrides": { "browser": "argocd-browser" },
       "protocolMappers": [
         {
           "name": "group-membership",
