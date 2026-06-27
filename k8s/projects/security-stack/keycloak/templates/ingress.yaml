@@ -1,0 +1,31 @@
+{{- if .Values.ingress.enabled }}
+# PUBLIC ingress — only the OIDC endpoints need to face the internet (external OAuth
+# clients). The admin console is NOT here: KC_HOSTNAME_ADMIN points it at the tailnet
+# host (keycloak.tail.<domain>, via headscale-proxy), and Keycloak rejects admin access
+# on this public host. cert-manager issues the TLS cert; Traefik terminates it.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: keycloak
+  labels:
+    app.kubernetes.io/part-of: keycloak
+  annotations:
+    cert-manager.io/cluster-issuer: {{ .Values.ingress.clusterIssuer }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  tls:
+    - hosts:
+        - {{ .Values.host }}
+      secretName: {{ .Values.ingress.tlsSecretName }}
+  rules:
+    - host: {{ .Values.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: keycloak
+                port:
+                  name: http
+{{- end }}

@@ -1,0 +1,16 @@
+{{- if .Values.realmImport.enabled }}
+# Realm-as-code: every realms/*.json in this chart becomes a key here, mounted at
+# /opt/keycloak/data/import and applied by `start --import-realm` on first boot.
+# NOTE: --import-realm CREATES a realm if absent but does NOT update it on change.
+# For idempotent ongoing sync, add a keycloak-config-cli Job that reapplies these JSONs
+# every sync. Drop your exported realm JSON in k8s/.../keycloak/realms/ and flip
+# realmImport.enabled.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-realm-import
+  labels:
+    app.kubernetes.io/part-of: keycloak
+data:
+{{ (.Files.Glob "realms/*.json").AsConfig | indent 2 }}
+{{- end }}

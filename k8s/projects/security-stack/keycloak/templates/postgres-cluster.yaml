@@ -1,0 +1,59 @@
+# CloudNativePG Cluster for Keycloak (see [[cloudnativepg-postgres-pattern]]). CNPG
+# reconciles this into a Postgres instance + keycloak-pg-rw/-ro/-r services, a
+# PodMonitor (native metrics), and — when backup is on — WAL archiving to R2. CNPG
+# creates the `keycloak` owner LOGIN role and stores its credentials in the
+# auto-generated `keycloak-pg-app` secret, which the Deployment consumes directly —
+# no DB password in Vault. (Dynamic Vault DB creds could be layered later, like
+# DefectDojo, but Keycloak holds a pooled connection so it would need the same
+# token_ttl/Reloader handling.)
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: keycloak-pg
+  labels:
+    app.kubernetes.io/part-of: keycloak
+spec:
+  instances: {{ .Values.postgres.instances }}
+  storage:
+    size: {{ .Values.postgres.storage.size }}
+    storageClass: {{ .Values.postgres.storage.storageClass }}
+  monitoring:
+    enablePodMonitor: true
+  bootstrap:
+    initdb:
+      database: {{ .Values.postgres.database }}
+      owner: {{ .Values.postgres.owner }}
+      postInitApplicationSQL:
+        - GRANT ALL ON SCHEMA public TO {{ .Values.postgres.owner }};
+        - ALTER SCHEMA public OWNER TO {{ .Values.postgres.owner }};
+  resources: {{- toYaml .Values.postgres.resources | nindent 4 }}
+  {{- if .Values.backup.enabled }}
+  backup:
+    retentionPolicy: {{ .Values.backup.retentionPolicy | quote }}
+    barmanObjectStore:
+      destinationPath: {{ .Values.backup.destinationPath | quote }}
+      endpointURL: {{ .Values.backup.endpointURL | quote }}
+      s3Credentials:
+        accessKeyId:
+          name: keycloak-pg-backup
+          key: ACCESS_KEY_ID
+        secretAccessKey:
+          name: keycloak-pg-backup
+          key: ACCESS_SECRET_KEY
+      wal:
+        compression: gzip
+  {{- end }}
+{{- if .Values.backup.enabled }}
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: keycloak-pg-daily
+  labels:
+    app.kubernetes.io/part-of: keycloak
+spec:
+  schedule: {{ .Values.backup.scheduleCron | quote }}
+  backupOwnerReference: self
+  cluster:
+    name: keycloak-pg
+{{- end }}

@@ -1,0 +1,111 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  labels:
+    app.kubernetes.io/part-of: keycloak
+    app.kubernetes.io/name: keycloak
+  annotations:
+    # Restart when the admin secret (ESO) or the CNPG keycloak-pg-app secret rotates.
+    reloader.stakater.com/auto: "true"
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: keycloak
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: keycloak
+        app.kubernetes.io/part-of: keycloak
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: keycloak
+          image: {{ .Values.image | quote }}
+          args:
+            # `start` auto-builds on boot (db=postgres etc). For faster starts, prebuild
+            # a custom image with `kc.sh build` and switch to ["start", "--optimized"].
+            - start
+            {{- if .Values.realmImport.enabled }}
+            - --import-realm
+            {{- end }}
+          env:
+            # --- database (CNPG-managed: keycloak-pg-app secret) ---
+            - name: KC_DB
+              value: postgres
+            - name: KC_DB_URL
+              value: "jdbc:postgresql://keycloak-pg-rw.{{ .Release.Namespace }}.svc:5432/{{ .Values.postgres.database }}"
+            - name: KC_DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-pg-app
+                  key: username
+            - name: KC_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-pg-app
+                  key: password
+            # --- hostname / reverse proxy (Traefik terminates TLS) ---
+            # Public OIDC issuer host; admin console on a separate tailnet-only host.
+            - name: KC_HOSTNAME
+              value: "https://{{ .Values.host }}"
+            - name: KC_HOSTNAME_ADMIN
+              value: "https://{{ .Values.adminHost }}"
+            - name: KC_HTTP_ENABLED
+              value: "true"
+            - name: KC_PROXY_HEADERS
+              value: xforwarded
+            # --- health + metrics on the management port (9000) ---
+            - name: KC_HEALTH_ENABLED
+              value: "true"
+            - name: KC_METRICS_ENABLED
+              value: "true"
+            # --- bootstrap admin (from Vault via ESO) ---
+            - name: KC_BOOTSTRAP_ADMIN_USERNAME
+              value: {{ .Values.admin.username | quote }}
+            - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak
+                  key: admin-password
+          ports:
+            - name: http
+              containerPort: 8080
+            - name: management
+              containerPort: 9000
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: management
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: management
+            initialDelaySeconds: 60
+            periodSeconds: 15
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: ["ALL"]
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+          {{- if .Values.realmImport.enabled }}
+          volumeMounts:
+            - name: realm-import
+              mountPath: /opt/keycloak/data/import
+              readOnly: true
+          {{- end }}
+      {{- if .Values.realmImport.enabled }}
+      volumes:
+        - name: realm-import
+          configMap:
+            name: keycloak-realm-import
+      {{- end }}

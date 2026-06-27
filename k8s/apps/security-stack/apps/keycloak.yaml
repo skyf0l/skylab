@@ -1,0 +1,60 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: keycloak
+  annotations:
+    # After ESO + its ClusterSecretStore and the cloudnative-pg operator: the Cluster CR
+    # needs the CNPG CRDs and the ExternalSecret. Same wave as defectdojo.
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          # Auto updated by parent ApplicationSet
+          - list:
+              elements:
+                - name: skylab
+          - git:
+              repoURL: https://github.com/skyf0l/skylab.git
+              revision: main
+              files:
+                - path: clusters/{{.name }}/config.json
+  template:
+    metadata:
+      name: "{{.name}}-keycloak"
+      annotations:
+        argocd.argoproj.io/sync-wave: "3"
+    spec:
+      project: default
+      source:
+        repoURL: "{{.repo.url}}"
+        targetRevision: "{{.repo.revision}}"
+        path: k8s/projects/security-stack/keycloak
+        helm:
+          releaseName: keycloak
+          valueFiles:
+            - values.yaml
+          # Public OIDC host + tailnet-only admin host, derived from global.domain.
+          parameters:
+            - name: "host"
+              value: "keycloak.{{.global.domain}}"
+            - name: "adminHost"
+              value: "keycloak.tail.{{.global.domain}}"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: keycloak
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - Validate=true
+          - PrunePropagationPolicy=foreground
+          - PruneLast=true
+          - RespectIgnoreDifferences=true
+          - ServerSideApply=true
+        retry:
+          limit: 5

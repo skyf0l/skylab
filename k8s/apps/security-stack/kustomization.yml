@@ -11,3 +11,4 @@ resources:
   - apps/headscale-exit.yaml
   - apps/defectdojo.yaml
   - apps/falco.yaml
+  - apps/keycloak.yaml

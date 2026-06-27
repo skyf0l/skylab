@@ -1,0 +1,6 @@
+apiVersion: v2
+name: keycloak
+type: application
+version: 0.1.0
+# Hand-rolled wrapper around the official quay.io/keycloak/keycloak image (no Bitnami).
+# Postgres is a CloudNativePG Cluster; the admin secret comes from Vault via ESO.

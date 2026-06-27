@@ -1,0 +1,74 @@
+# Keycloak — enterprise IAM (OIDC/OAuth2/SAML), reachable tailnet-only via the
+# headscale-proxy IngressRoute. Postgres is a CloudNativePG Cluster (keycloak-pg);
+# CNPG owns the DB credential (auto-generated keycloak-pg-app secret), so only the
+# Keycloak bootstrap-admin password lives in Vault. Realm config is imported as code.
+
+# Pin to the current stable (verified on quay).
+image: quay.io/keycloak/keycloak:26.6.4
+
+# Hostnames (injected from global.domain by the ApplicationSet, like authelia):
+#   host       = PUBLIC OIDC endpoint (issuer/authorize/token/jwks). External OAuth
+#                clients (e.g. the ChatGPT/MCP connector) MUST reach this, so it's a
+#                public domain exposed via a Traefik Ingress + cert-manager TLS.
+#   adminHost  = the admin console, served tailnet-only via headscale-proxy. Keycloak
+#                refuses admin access on the public host, so /admin is never on the
+#                internet — only the OIDC endpoints are.
+host: ""        # set by app def -> keycloak.<global.domain>        (PUBLIC)
+adminHost: ""   # set by app def -> keycloak.tail.<global.domain>   (tailnet-only)
+
+# Public OIDC ingress (Traefik + cert-manager TLS), mirroring authelia.
+ingress:
+  enabled: true
+  className: traefik
+  clusterIssuer: letsencrypt-prod
+  tlsSecretName: keycloak-tls
+
+admin:
+  # Bootstrap admin user; password is synced from Vault by ESO (below). Rotate/disable
+  # after you create a real admin in the console.
+  username: admin
+
+replicas: 1
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 768Mi
+  limits:
+    memory: 1280Mi
+
+# ---- realm-as-code -----------------------------------------------------------------
+# Built-in --import-realm: creates the realm on first boot if absent (does NOT update
+# on change). For idempotent ongoing sync, layer keycloak-config-cli later (a Job that
+# applies realm JSON every sync). Kept off by default; drop realm JSON in
+# templates/realm-import.yaml's ConfigMap and flip enabled to turn it on.
+realmImport:
+  enabled: false
+
+# ---- CloudNativePG Postgres --------------------------------------------------------
+postgres:
+  instances: 1
+  database: keycloak
+  owner: keycloak            # CNPG creates this LOGIN role + the keycloak-pg-app secret
+  storage:
+    size: 2Gi
+    storageClass: local-path
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+
+# ESO: bootstrap-admin password from Vault (kvv2/cluster/skylab/apps/keycloak).
+externalSecret:
+  storeName: vault-backend
+  vaultKey: cluster/skylab/apps/keycloak
+
+# Postgres backup to R2 (Barman), gated — flip on once the bucket + R2 token exist.
+backup:
+  enabled: false
+  retentionPolicy: "14d"
+  scheduleCron: "0 3 * * *"
+  destinationPath: ""
+  endpointURL: ""

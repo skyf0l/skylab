@@ -174,4 +174,14 @@ seed_field "$defectdojo" pg_password           rand_secret
 seed_field "$defectdojo" r2_access_key_id      replace_me
 seed_field "$defectdojo" r2_secret_access_key  replace_me
 
+# keycloak — kvv2/cluster/<cluster>/apps/keycloak
+# Bootstrap-admin password (random, set-once). The DB credential is NOT here — CNPG
+# owns it via the keycloak-pg-app secret. r2_*: PLACEHOLDER, only needed if you flip
+# backup.enabled: true for the keycloak-pg Postgres backups.
+keycloak="cluster/${CLUSTER}/apps/keycloak"
+echo "[keycloak] ${KV_MOUNT}/${keycloak}"
+seed_field "$keycloak" admin_password        rand_secret
+seed_field "$keycloak" r2_access_key_id      replace_me
+seed_field "$keycloak" r2_secret_access_key  replace_me
+
 echo "Done. Fill in any PLACEHOLDER fields via the Vault UI/CLI; re-running won't overwrite them."

@@ -81,6 +81,13 @@ services:
     service: falco-falcosidekick-ui
     namespace: falco
     port: 2802
+  - name: keycloak
+    # Keycloak ADMIN console only (tailnet-only). Matches KC_HOSTNAME_ADMIN =
+    # keycloak.tail.<domain>. The public OIDC endpoints are served via the separate
+    # public Ingress (keycloak.<domain>), not here.
+    service: keycloak
+    namespace: keycloak
+    port: 8080
   - name: opencost
     # OpenCost UI — FinOps cost allocation (port 9090 is the UI; 9003 is the API).
     service: opencost
