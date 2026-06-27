@@ -32,14 +32,16 @@ cilium:
     # bursts. RAM-only (~10-15MB/agent) and cleared on cilium-agent restart; for
     # durable history, export flows to Loki instead.
     eventBufferCapacity: "65535"
-    # Hubble flow metrics → Prometheus: aggregate rates/drops/HTTP by namespace
+    # Hubble flow metrics → Prometheus: aggregate rates/drops/HTTP by namespace.
+    # NB: port-distribution is intentionally OFF — it emitted ~41k series (one per
+    # src/dst port), ~21% of the whole TSDB, and dwarfed every Thanos block in R2
+    # for near-zero value. Don't re-enable on the R2 free tier.
     metrics:
       enabled:
         - dns
         - drop
         - tcp
         - flow
-        - port-distribution
         - icmp
         - http
       serviceMonitor:

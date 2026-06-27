@@ -5,3 +5,8 @@ trivy-operator:
     namespace: trivy
     labels:
       release: kube-prometheus
+    # NB: trivy_vulnerability_id is high-cardinality (~14k series, one per CVE) but
+    # deliberately KEPT — dashboard 16337 needs it (via the Prometheus datasource,
+    # 15d local) and it's an info-gauge of constant 1s, so it compresses to ~nothing
+    # in R2 (cost is index, not chunks). DefectDojo reads VulnerabilityReport CRDs,
+    # not this metric, so it's unaffected either way.
