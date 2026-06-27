@@ -98,7 +98,12 @@ defectdojo:
     uwsgi:
       appSettings:
         processes: 2
+      # The chart dumps all of resources.* into the container's resources, so the
+      # default processes/threads keys land in container resources (invalid k8s) and
+      # break ArgoCD's diff. Null them out; the process count is set via appSettings.
       resources:
+        processes: null
+        threads: null
         requests:
           memory: 512Mi
         limits:
