@@ -81,6 +81,11 @@ services:
     service: falco-falcosidekick-ui
     namespace: falco
     port: 2802
+  - name: opencost
+    # OpenCost UI — FinOps cost allocation (port 9090 is the UI; 9003 is the API).
+    service: opencost
+    namespace: opencost
+    port: 9090
   - name: traefik
     # Traefik's own dashboard/API (api@internal). Reached at
     # traefik.tail.<domain>/dashboard/ — tailnet-only, never publicly exposed
