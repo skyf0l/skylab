@@ -89,6 +89,6 @@ jobs:
       - uses: actions/checkout@v4
       # rhysd ships no marketplace action; the official Docker image is the
       # cleanest non-curl install. (Renovate keeps this tag current.)
-      - uses: docker://rhysd/actionlint:1.7.7
+      - uses: docker://rhysd/actionlint:1.7.12
         with:
           args: -color
