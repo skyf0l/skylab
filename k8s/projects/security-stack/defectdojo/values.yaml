@@ -137,7 +137,7 @@ defectdojo:
 trivyImporter:
   enabled: true
   schedule: "0 */6 * * *" # every 6h
-  image: python:3.12-slim
+  image: python:3.14-slim
   product: skylab
   # auto_create_context can't create the product without a product type to put it
   # under; DefectDojo creates this type on first import if it doesn't exist.
