@@ -33,7 +33,7 @@ authkeyMint:
   user: ""
   headscaleNamespace: headscale
   headscalePod: headscale-0
-  jobImage: alpine/kubectl:1.36.1
+  jobImage: alpine/kubectl:1.36.2
   expiration: 999d
 
 # ---- TLS + routing (folded in from the old tail-ingress chart) ----

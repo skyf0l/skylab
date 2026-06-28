@@ -28,7 +28,7 @@ storage:
 dataPath: /var/lib/headscale
 
 # Image for the in-cluster bootstrap Jobs (needs kubectl + sh). Matches vault-init.
-jobImage: alpine/kubectl:1.36.1
+jobImage: alpine/kubectl:1.36.2
 
 # Stable pod name (StatefulSet ordinal-0) — exec RBAC is pinned to it.
 podName: headscale-0
