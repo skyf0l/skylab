@@ -69,8 +69,19 @@ jobs:
           authkey: ${{ secrets.HEADSCALE_CI_AUTHKEY }}
           args: --login-server=${{ env.HEADSCALE_URL }} --accept-dns --hostname=gha-vault-ci
 
+      # MagicDNS isn't reliably applied on hosted runners, so vault.tail.<domain>
+      # can fall through to the public wildcard (-> public Traefik -> tailnet-only
+      # 403). Pin it to the node's tailnet IP from tailscaled so we never depend on
+      # runner DNS. The getent lines are diagnostics: pre-pin shows what DNS gave.
+      - name: Resolve Vault over the tailnet (skip public wildcard)
+        run: |
+          tailscale status
+          getent hosts vault.tail.skyf0l.dev || true
+          echo "$(tailscale ip -4 vault) vault.tail.skyf0l.dev" | sudo tee -a /etc/hosts
+          getent hosts vault.tail.skyf0l.dev
+
       - name: Import Secrets
-        uses: hashicorp/vault-action@v3
+        uses: hashicorp/vault-action@v4
         with:
           url: ${{ env.VAULT_ADDR }}
           exportToken: true # Required by terraform
@@ -119,8 +130,19 @@ jobs:
           authkey: ${{ secrets.HEADSCALE_CI_AUTHKEY }}
           args: --login-server=${{ env.HEADSCALE_URL }} --accept-dns --hostname=gha-vault-ci
 
+      # MagicDNS isn't reliably applied on hosted runners, so vault.tail.<domain>
+      # can fall through to the public wildcard (-> public Traefik -> tailnet-only
+      # 403). Pin it to the node's tailnet IP from tailscaled so we never depend on
+      # runner DNS. The getent lines are diagnostics: pre-pin shows what DNS gave.
+      - name: Resolve Vault over the tailnet (skip public wildcard)
+        run: |
+          tailscale status
+          getent hosts vault.tail.skyf0l.dev || true
+          echo "$(tailscale ip -4 vault) vault.tail.skyf0l.dev" | sudo tee -a /etc/hosts
+          getent hosts vault.tail.skyf0l.dev
+
       - name: Import Secrets
-        uses: hashicorp/vault-action@v3
+        uses: hashicorp/vault-action@v4
         with:
           url: ${{ env.VAULT_ADDR }}
           exportToken: true # Required by terraform
