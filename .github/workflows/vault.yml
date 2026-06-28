@@ -57,7 +57,7 @@ jobs:
         working-directory: ${{ env.WORKING_DIRECTORY }}
     steps:
       - uses: actions/checkout@v6
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
 
       # Vault (and the R2-state creds it holds) are only reachable on the tailnet.
       # Join as an ephemeral, tag:ci Headscale node — auto-removed when the run
@@ -111,7 +111,7 @@ jobs:
         working-directory: ${{ env.WORKING_DIRECTORY }}
     steps:
       - uses: actions/checkout@v6
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
 
       - name: Join tailnet (Headscale)
         uses: tailscale/github-action@v3
