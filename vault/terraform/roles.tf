@@ -59,6 +59,6 @@ resource "vault_kubernetes_auth_backend_role" "defectdojo_db" {
   # token expires, the lease is revoked (DROP ROLE) and the app's credential dies.
   # Keep the token alive longer than the DB role's default_ttl (24h) so the lease
   # lives its full life; ESO refreshes (12h) well inside that, with overlap.
-  token_ttl     = 90000  # 25h
+  token_ttl     = 90000 # 25h
   token_max_ttl = 90000
 }

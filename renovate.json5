@@ -1,4 +1,36 @@
 {
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
-  extends: ["config:recommended"],
+  extends: ["config:recommended", ":dependencyDashboard"],
+
+  // Let Renovate merge a PR by itself once the required CI checks pass, using
+  // GitHub's native auto-merge. PREREQUISITES (one-time, in repo settings):
+  //   1. Settings > General > "Allow auto-merge" enabled.
+  //   2. A branch protection rule / ruleset on `main` that REQUIRES the CI jobs
+  //      (validate, terraform, format, actionlint) as status checks.
+  // Without (2), auto-merge merges as soon as the PR is mergeable — i.e. WITHOUT
+  // waiting for CI. The required checks are the actual gate.
+  platformAutomerge: true,
+
+  packageRules: [
+    {
+      description: "Auto-merge low-risk updates once CI is green.",
+      matchUpdateTypes: ["minor", "patch", "digest", "pin", "pinDigest"],
+      automerge: true,
+    },
+    {
+      // A docker tag minor (e.g. python 3.13 -> 3.14, nginx 1.29 -> 1.31) is a real
+      // runtime jump the render/schema gate can't actually exercise — review it.
+      description: "Docker base-image minor/major bumps need a human.",
+      matchDatasources: ["docker"],
+      matchUpdateTypes: ["minor", "major"],
+      automerge: false,
+    },
+    {
+      // Helm/Terraform/action majors (argo-cd v10, kube-prometheus v87, traefik
+      // v41, vault provider v5, checkout v7, ...) are the breaking-change class.
+      description: "Major updates always require manual review + merge.",
+      matchUpdateTypes: ["major"],
+      automerge: false,
+    },
+  ],
 }

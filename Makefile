@@ -33,7 +33,7 @@ KYVERNO := $(shell \
 # Where `make render` writes manifests for the validate-* gates (gitignored).
 RENDER_DIR := build
 
-.PHONY: help deps deploy preview preview-apps template render validate validate-schema validate-policy bootstrap delete vault-unseal vault-seed vault-plan vault-apply upgrade add-node refresh
+.PHONY: help deps deploy preview preview-apps template render validate validate-schema validate-policy tf-validate bootstrap delete vault-unseal vault-seed vault-plan vault-apply upgrade add-node refresh
 
 # R2 state-backend creds (Cloudflare R2 = S3 API), pulled from Vault into the env
 # for the vault-plan/apply recipes (must run in the SAME shell as terraform).
@@ -56,6 +56,7 @@ help:
 	@echo "make validate [CLUSTER=skylab] full offline gate: schema + policy (calls validate-schema + validate-policy)"
 	@echo "make validate-schema       render + kubeconform (manifests vs k8s/CRD schemas)"
 	@echo "make validate-policy       render + kyverno (manifests vs ClusterPolicies)"
+	@echo "make tf-validate           offline terraform fmt + validate (Vault config; no Vault/R2 needed)"
 	@echo "make deps                  helm dependency build/update for every chart"
 
 # One-shot cluster bootstrap: RKE2 + Cilium + Traefik + ArgoCD + Vault
@@ -175,6 +176,17 @@ validate-policy: render
 # cluster required; this is what CI should run on every PR.
 validate: validate-schema validate-policy
 	@echo "validate OK"
+
+# Offline Vault-config check: formatting + provider-schema validation, no Vault
+# or R2 state needed (`-backend=false`). Mirrors the CI `terraform` job, so a
+# provider bump (e.g. vault v4 -> v5) is caught locally the same way. Uses an
+# isolated TF_DATA_DIR so it ignores any real backend already initialized under
+# vault/terraform/.terraform (which would make validate try to read R2 state).
+tf-validate:
+	@cd vault/terraform && terraform fmt -check -recursive
+	@d=$$(mktemp -d); cd vault/terraform \
+	  && TF_DATA_DIR=$$d terraform init -backend=false -input=false >/dev/null \
+	  && TF_DATA_DIR=$$d terraform validate; rc=$$?; rm -rf "$$d"; exit $$rc
 
 # Diff rendered charts against the live cluster (requires kubectl context).
 preview:

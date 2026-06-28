@@ -1,0 +1,90 @@
+# PR validation gate. Runs the same offline checks as `make validate` plus
+# formatting / workflow / terraform linting — no cluster and no secrets, so it
+# runs safely on Renovate (and fork) branches. These jobs are what Renovate's
+# auto-merge waits on: make them REQUIRED status checks on main (branch
+# protection / ruleset) so a dependency PR can only merge once they're green.
+name: CI
+
+on:
+  pull_request:
+    branches: ["main"]
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Helm renders + k8s/CRD schema (kubeconform) + policy (kyverno) gates. Catches
+  # the breaking-change class that has bitten before: a chart bump that drops or
+  # renames a values key (e.g. ESO's removed `template.engine`). Reuses the
+  # Makefile so local `make validate` and CI run the exact same gate.
+  validate:
+    runs-on: ubuntu-latest
+    env:
+      KUBECONFORM_VERSION: v0.6.7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - uses: azure/setup-kubectl@v4 # `make render` uses `kubectl kustomize`
+
+      # Official Kyverno action (kyverno org) — installs the CLI onto PATH so
+      # `make validate`'s policy gate finds it.
+      - uses: kyverno/action-install-cli@v0.2.0
+        with:
+          release: v1.13.4
+
+      # No official kubeconform action exists — every marketplace setup-kubeconform
+      # is third-party. Install the upstream release binary directly to avoid adding
+      # supply-chain surface.
+      - name: Install kubeconform
+        run: |
+          curl -fsSL "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" \
+            | sudo tar -xz -C /usr/local/bin kubeconform
+
+      # Subcharts are gitignored (ArgoCD builds them at sync) — fetch them first so
+      # the render reflects the versions pinned in each Chart.yaml.
+      - name: Fetch chart dependencies
+        run: make deps
+
+      - name: Render + schema + policy gate
+        run: make validate
+
+  # Terraform (Vault config): formatting + provider-schema validation. Offline
+  # (`-backend=false`), so a provider bump like vault v4 -> v5 is checked against
+  # the new schema without touching Vault or R2 state.
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+      - run: make tf-validate
+
+  # YAML/JSON/Markdown formatting (prettier, config in .prettierrc).
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: yarn install --frozen-lockfile
+      - run: yarn format:check
+
+  # Lint the workflow files themselves (catches the GitHub Actions bumps Renovate
+  # opens, e.g. checkout v7 / tailscale v4, breaking a workflow's syntax/inputs).
+  actionlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # rhysd ships no marketplace action; the official Docker image is the
+      # cleanest non-curl install. (Renovate keeps this tag current.)
+      - uses: docker://rhysd/actionlint:1.7.7
+        with:
+          args: -color
