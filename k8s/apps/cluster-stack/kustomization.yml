@@ -6,3 +6,4 @@ resources:
   - apps/traefik.yaml
   - apps/trivy.yaml
   - apps/cloudnative-pg.yaml
+  - apps/reloader.yaml

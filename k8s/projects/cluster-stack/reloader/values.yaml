@@ -1,0 +1,16 @@
+# Reloader watches every namespace and rolling-restarts workloads annotated with
+# reloader.stakater.com/auto: "true" when a Secret/ConfigMap they use changes. Values
+# nest under the `reloader` subchart, whose own top-level key is also `reloader`.
+reloader:
+  reloader:
+    watchGlobally: true
+    # Native metrics scraped by kube-prometheus (selects all ServiceMonitors).
+    serviceMonitor:
+      enabled: true
+    deployment:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+        limits:
+          memory: 128Mi
