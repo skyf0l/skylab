@@ -54,6 +54,12 @@ allowedSourceRanges:
 # One entry per admin UI. Each renders BOTH a tailnet proxy node
 # (<name>.tail.<domain>) AND a Traefik IngressRoute Host(<name>.tail...) ->
 # service.namespace:port. Add a UI = add one entry.
+#
+# tsPort (optional): a unique host UDP port. When set, the proxy pins tailscaled
+# to it and exposes it as a hostPort so peers get a DIRECT (no-DERP) path via the
+# VPS public IP -> faster. REQUIRES the port opened inbound in the VPS firewall.
+# Omit tsPort to keep the default relayed-via-DERP(skylab) path. 41641 is reserved
+# for the exit node, 3478 for STUN; allocate proxy ports from 41642 up.
 services:
   - name: argocd
     service: argocd-server
@@ -64,10 +70,12 @@ services:
     namespace: vault
     port: 8200
     scheme: http   # vault listener is http internally; set https if you enable TLS on it
+    tsPort: 41643
   - name: grafana
     service: kube-prometheus-grafana
     namespace: monitoring
     port: 80
+    tsPort: 41644
   - name: defectdojo
     service: defectdojo-django
     namespace: defectdojo

@@ -51,6 +51,20 @@ spec:
               # Tags come from the pre-auth key (--tags), NOT --advertise-tags
               # (authkey nodes can't self-request tags reliably).
               value: "--login-server={{ $.Values.loginServer }} --accept-dns=false"
+            {{- if $svc.tsPort }}
+            - name: TS_TAILSCALED_EXTRA_ARGS
+              # Fixed UDP port exposed via hostPort below -> stable direct endpoint
+              # on the VPS public IP, so peers upgrade off DERP(skylab). Omit tsPort
+              # in values to keep the default relayed-via-DERP path for this node.
+              value: "--port={{ $svc.tsPort }}"
+            {{- end }}
+          {{- if $svc.tsPort }}
+          ports:
+            - name: ts-udp
+              containerPort: {{ $svc.tsPort }}
+              hostPort: {{ $svc.tsPort }}
+              protocol: UDP
+          {{- end }}
           securityContext:
             capabilities:
               add: ["NET_ADMIN"]
