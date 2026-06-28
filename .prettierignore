@@ -1,2 +1,14 @@
 .gitignore
 yarn.lock
+
+# Helm chart internals are Go templates / raw payloads, not valid standalone
+# YAML/JSON — prettier can't parse them.
+**/templates/
+**/files/
+k8s/projects/security-stack/keycloak/realms/
+
+# Vendored upstream Grafana dashboards — don't reformat third-party JSON.
+k8s/projects/monitoring-stack/grafana-dashboards/json/
+
+# Rendered build artifacts (also gitignored).
+build/

@@ -59,6 +59,6 @@ argo-cd:
     # RBAC: members of the Keycloak `argocd-admins` group get full admin. Everyone else
     # falls through to the (read-only) default policy. Local admin user is unaffected.
     rbac:
-      scopes: '[groups]'
+      scopes: "[groups]"
       policy.csv: |
         g, argocd-admins, role:admin

@@ -50,7 +50,7 @@ spec:
           kind: MutatingWebhookConfiguration
           name: vault-agent-injector-cfg
           jqPathExpressions:
-            - '.webhooks[]?.clientConfig.caBundle'
+            - ".webhooks[]?.clientConfig.caBundle"
         # StatefulSet volumeClaimTemplates are immutable AND the API server defaults
         # them (apiVersion/kind, volumeMode: Filesystem, status.phase) which the Vault
         # Helm chart doesn't render — ArgoCD's normalizers don't strip these, so it

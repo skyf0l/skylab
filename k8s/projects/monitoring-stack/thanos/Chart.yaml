@@ -2,7 +2,6 @@ apiVersion: v2
 name: thanos
 type: application
 version: 0.1.0
-
 # Hand-rolled Thanos components (query / store-gateway / compactor) rather than a
 # vendored upstream chart: the moving parts are three small Deployments, and
 # owning the manifests keeps the R2 objstore wiring explicit and Bitnami-registry

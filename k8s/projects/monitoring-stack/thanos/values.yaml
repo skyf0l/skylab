@@ -50,8 +50,8 @@ query:
     #   kubectl -n monitoring get svc | grep thanos-discovery
     - dnssrv+_grpc._tcp.kube-prometheus-kube-prometheus-stack-thanos-discovery.monitoring.svc.cluster.local
   resources:
-    requests: { cpu: 50m, memory: 128Mi }
-    limits: { memory: 512Mi }
+    requests: {cpu: 50m, memory: 128Mi}
+    limits: {memory: 512Mi}
 
 storeGateway:
   # Bound memory on a small node (these are in-memory caches).
@@ -61,8 +61,8 @@ storeGateway:
     storageClass: local-path
     size: 2Gi # local index/bucket cache only — the data of record is in R2
   resources:
-    requests: { cpu: 50m, memory: 256Mi }
-    limits: { memory: 1Gi }
+    requests: {cpu: 50m, memory: 256Mi}
+    limits: {memory: 1Gi}
 
 compactor:
   # Retention per downsample resolution, sized to fit the R2 free tier (10GB).
@@ -82,8 +82,8 @@ compactor:
     storageClass: local-path
     size: 10Gi # scratch space for compaction of the largest block group
   resources:
-    requests: { cpu: 50m, memory: 256Mi }
-    limits: { memory: 1Gi }
+    requests: {cpu: 50m, memory: 256Mi}
+    limits: {memory: 1Gi}
 
 # ServiceMonitor so Prometheus scrapes Thanos' own metrics (picked up by the
 # cluster-wide serviceMonitorSelector in the kube-prometheus chart).

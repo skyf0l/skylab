@@ -10,7 +10,7 @@ global:
   domain: ""
 
 # Public coordination endpoint (used for both the Ingress host and server_url).
-host: 'headscale.{{ .Values.global.domain }}'
+host: "headscale.{{ .Values.global.domain }}"
 
 # Public coordination endpoint, exposed via a Traefik IngressRoute (NOT a k8s
 # Ingress — see templates/ingressroute.yaml for why) + a cert-manager Certificate.
@@ -44,9 +44,9 @@ podName: headscale-0
 # owns tag:ci and under which the CI pre-auth key is minted. Pre-auth keys are
 # minted by Jobs too.
 users:
-  - 'skypwn@{{ .Values.global.domain }}'
-  - 'infra@{{ .Values.global.domain }}'
-  - 'ci@{{ .Values.global.domain }}'
+  - "skypwn@{{ .Values.global.domain }}"
+  - "infra@{{ .Values.global.domain }}"
+  - "ci@{{ .Values.global.domain }}"
 
 # Append-only overlay for private users (e.g. friends), concatenated onto `users`
 # above by the create-users-job (prune-safe). Empty here; supplied by the private
@@ -74,7 +74,7 @@ config:
     # after the service (argocd, vault, ...) so they resolve as
     # <svc>.tail.<domain> — matching the Traefik IngressRoute hosts and the
     # *.tail.<domain> wildcard cert.
-    baseDomain: 'tail.{{ .Values.global.domain }}'
+    baseDomain: "tail.{{ .Values.global.domain }}"
     nameservers:
       - 1.1.1.1
       - 9.9.9.9
@@ -122,26 +122,26 @@ config:
   acl:
     # infra owns the proxy + exit tags (keeps them off your personal identity).
     tagOwners:
-      "tag:tail-proxy": ['infra@{{ .Values.global.domain }}']
-      "tag:tail-exit": ['infra@{{ .Values.global.domain }}']
+      "tag:tail-proxy": ["infra@{{ .Values.global.domain }}"]
+      "tag:tail-exit": ["infra@{{ .Values.global.domain }}"]
       # The GitHub Actions Vault runner registers under this tag.
-      "tag:ci": ['ci@{{ .Values.global.domain }}']
+      "tag:ci": ["ci@{{ .Values.global.domain }}"]
     # Auto-approve the exit-node route (0.0.0.0/0 + ::/0) advertised by any node
     # tagged tag:tail-exit (chart: headscale-exit) — no manual
     # `headscale nodes approve-routes` step needed.
     autoApprovers:
-      exitNode: ['tag:tail-exit']
+      exitNode: ["tag:tail-exit"]
     acls:
       # skypwn reaches the per-service admin proxies (argocd/vault/grafana/hubble).
       - action: accept
-        src: ['skypwn@{{ .Values.global.domain }}']
+        src: ["skypwn@{{ .Values.global.domain }}"]
         dst:
           - "tag:tail-proxy:*"
       # skypwn may route ALL its traffic out through the exit node (full VPN):
       # `tailscale up --exit-node=exit.tail.<domain>`. Using an exit node requires
       # an explicit dst of autogroup:internet.
       - action: accept
-        src: ['skypwn@{{ .Values.global.domain }}']
+        src: ["skypwn@{{ .Values.global.domain }}"]
         dst:
           - "autogroup:internet:*"
       # The Vault CI runner (tag:ci) reaches the admin proxies on 443 only — enough
@@ -150,6 +150,6 @@ config:
       # technically allows the other admin proxies; split the proxy tag if you want
       # to pin it to the Vault node alone.)
       - action: accept
-        src: ['tag:ci']
+        src: ["tag:ci"]
         dst:
           - "tag:tail-proxy:443"

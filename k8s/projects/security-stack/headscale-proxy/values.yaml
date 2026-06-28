@@ -49,7 +49,7 @@ middlewareName: tailnet-only
 # Only the proxy pods reach Traefik for these hosts (socat connects from the
 # proxy pod IP). Anything else -> 403. This is what makes them tailnet-only.
 allowedSourceRanges:
-  - 10.42.0.0/16    # pod CIDR (proxy-pod source)
+  - 10.42.0.0/16 # pod CIDR (proxy-pod source)
 
 # One entry per admin UI. Each renders BOTH a tailnet proxy node
 # (<name>.tail.<domain>) AND a Traefik IngressRoute Host(<name>.tail...) ->
@@ -63,7 +63,7 @@ services:
     service: vault
     namespace: vault
     port: 8200
-    scheme: http   # vault listener is http internally; set https if you enable TLS on it
+    scheme: http # vault listener is http internally; set https if you enable TLS on it
   - name: grafana
     service: kube-prometheus-grafana
     namespace: monitoring

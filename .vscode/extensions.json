@@ -1,8 +1,8 @@
 {
-    "recommendations": [
-        "HashiCorp.terraform",
-        "mitchdenny.ecdc",
-        "ms-kubernetes-tools.vscode-kubernetes-tools",
-        "usernamehw.errorlens",
-    ]
+  "recommendations": [
+    "HashiCorp.terraform",
+    "mitchdenny.ecdc",
+    "ms-kubernetes-tools.vscode-kubernetes-tools",
+    "usernamehw.errorlens"
+  ]
 }
