@@ -56,6 +56,10 @@ spec:
       namespace: logging
     - server: https://kubernetes.default.svc
       namespace: opencost
+    # kube-prometheus-stack creates control-plane scrape Services (kubelet,
+    # kube-controller-manager, kube-scheduler, ...) in kube-system.
+    - server: https://kubernetes.default.svc
+      namespace: kube-system
   # The only cluster-scoped objects these charts ship: kube-prometheus CRDs +
   # admission webhooks, and cluster roles for the prometheus-operator,
   # node-exporter, kube-state-metrics, alloy and opencost. Everything else must
@@ -85,6 +89,8 @@ spec:
   sourceRepos:
     - https://github.com/skyf0l/skylab.git
     - https://github.com/skyf0l/skylab-private.git
+    # garmin-mcp deploys an upstream app straight from its own repo.
+    - https://github.com/skyf0l/garmin_mcp.git
   destinations:
     - server: https://kubernetes.default.svc
       namespace: mcp
