@@ -73,6 +73,15 @@ defectdojo:
   createValkeySecret: false
   createPostgresqlSecret: false
 
+  # The chart creates the app ServiceAccount as a `pre-install` Helm hook, which
+  # ArgoCD treats as a transient hook (deleted on its hook lifecycle) — so it goes
+  # missing in steady state and cred-rotation rollouts fail with "serviceaccount
+  # defectdojo not found". Manage it as a normal resource instead (templates/
+  # serviceaccount.yaml); the deployments still reference name: defectdojo.
+  serviceAccount:
+    create: false
+    name: defectdojo
+
   # External Postgres: disable the bundled subchart; the app reaches CNPG through
   # the Vault-issued DD_DATABASE_URL (injected per-component below).
   postgresql:
