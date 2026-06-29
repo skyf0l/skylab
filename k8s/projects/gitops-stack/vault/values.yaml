@@ -1,6 +1,10 @@
 vault:
+  # Agent Injector disabled: it's the sidecar-injection alternative to ESO, and we
+  # deliver every secret via External Secrets Operator (+ the VaultDynamicSecret
+  # generator). Nothing carries vault.hashicorp.com/agent-inject annotations, so the
+  # injector only ran an idle Deployment + a cluster-wide pod mutating webhook.
   injector:
-    enabled: true
+    enabled: false
 
   server:
     standalone:
