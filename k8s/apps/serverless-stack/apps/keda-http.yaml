@@ -1,0 +1,55 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: keda-http
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          # Auto updated by parent ApplicationSet
+          - list:
+              elements:
+                - name: skylab
+          - git:
+              repoURL: https://github.com/skyf0l/skylab.git
+              revision: main
+              files:
+                - path: clusters/{{.name }}/config.json
+  template:
+    metadata:
+      name: "{{.name}}-keda-http"
+      labels:
+        app.kubernetes.io/part-of: serverless-stack
+        skylab.dev/tier: platform
+      annotations:
+        # After KEDA core (-5): the add-on's operator turns HTTPScaledObjects into
+        # KEDA ScaledObjects, so it needs KEDA's CRDs already present.
+        argocd.argoproj.io/sync-wave: "-4"
+    spec:
+      project: platform
+      source:
+        repoURL: "{{.repo.url}}"
+        targetRevision: "{{.repo.revision}}"
+        path: k8s/projects/serverless-stack/keda-http
+        helm:
+          releaseName: keda-http
+          valueFiles:
+            - values.yaml
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: keda
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - Validate=true
+          - PrunePropagationPolicy=foreground
+          - PruneLast=true
+          - RespectIgnoreDifferences=true
+          - ServerSideApply=true # HTTPScaledObject CRD is large -> avoid annotation limit
+        retry:
+          limit: 5

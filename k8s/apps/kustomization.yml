@@ -8,3 +8,4 @@ resources:
   - logging-stack/applications.yaml
   - mcp-stack/applications.yaml
   - finops-stack/applications.yaml
+  - serverless-stack/applications.yaml

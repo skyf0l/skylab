@@ -1,0 +1,55 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: keda
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          # Auto updated by parent ApplicationSet
+          - list:
+              elements:
+                - name: skylab
+          - git:
+              repoURL: https://github.com/skyf0l/skylab.git
+              revision: main
+              files:
+                - path: clusters/{{.name }}/config.json
+  template:
+    metadata:
+      name: "{{.name}}-keda"
+      labels:
+        app.kubernetes.io/part-of: serverless-stack
+        skylab.dev/tier: platform
+      annotations:
+        # KEDA core (operator + CRDs + metrics APIService) must settle before the
+        # HTTP add-on (-4), which builds ScaledObjects on top of it.
+        argocd.argoproj.io/sync-wave: "-5"
+    spec:
+      project: platform
+      source:
+        repoURL: "{{.repo.url}}"
+        targetRevision: "{{.repo.revision}}"
+        path: k8s/projects/serverless-stack/keda
+        helm:
+          releaseName: keda
+          valueFiles:
+            - values.yaml
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: keda
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - Validate=true
+          - PrunePropagationPolicy=foreground
+          - PruneLast=true
+          - RespectIgnoreDifferences=true
+          - ServerSideApply=true # KEDA CRDs are large -> avoid last-applied annotation limit
+        retry:
+          limit: 5

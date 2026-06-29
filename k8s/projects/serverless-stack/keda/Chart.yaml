@@ -1,0 +1,13 @@
+apiVersion: v2
+name: keda
+type: application
+version: 0.1.0
+
+# KEDA core — event-driven autoscaler. Ships the operator, metrics adapter and
+# admission webhooks plus the ScaledObject/ScaledJob/TriggerAuthentication CRDs.
+# The foundation for scale-to-zero workloads; the HTTP add-on (chart: keda-http)
+# layers request-driven HTTP autoscaling on top in a later sync-wave.
+dependencies:
+  - name: keda
+    repository: https://kedacore.github.io/charts
+    version: 2.20.1

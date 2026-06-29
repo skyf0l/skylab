@@ -1,0 +1,6 @@
+# KEDA HTTP Add-on. Subchart values go under `keda-add-ons-http:` (see Chart.yaml).
+# Defaults are fine for bring-up. Per-app HTTP scaling is configured later via
+# HTTPScaledObject CRs (not here); ingress is routed to the interceptor proxy, which
+# wakes the target Deployment from zero. Tune cold-start behaviour per app (small
+# cached image + a fast readiness probe) rather than here.
+keda-add-ons-http: {}

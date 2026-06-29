@@ -1,0 +1,13 @@
+apiVersion: v2
+name: keda-http
+type: application
+version: 0.1.0
+
+# KEDA HTTP Add-on — request-driven autoscaling (incl. scale-to-zero) for HTTP
+# workloads. Adds the interceptor proxy (holds a request while a Deployment scales
+# 0->1, then forwards), an external scaler, and the HTTPScaledObject CRD. Requires
+# KEDA core (chart: keda) — deployed in an earlier sync-wave.
+dependencies:
+  - name: keda-add-ons-http
+    repository: https://kedacore.github.io/charts
+    version: 0.15.0

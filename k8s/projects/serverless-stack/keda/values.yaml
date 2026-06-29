@@ -1,0 +1,5 @@
+# KEDA core. Subchart values go under the dependency key `keda:` (see Chart.yaml).
+# Defaults are sane for a single-node cluster — nothing to override for bring-up.
+# To surface KEDA metrics in Grafana later, enable the chart's ServiceMonitors
+# under keda.prometheus.* (the Prometheus operator CRDs already exist).
+keda: {}
