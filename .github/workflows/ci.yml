@@ -30,7 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: azure/setup-helm@v5
-      - uses: azure/setup-kubectl@v4 # `make render` uses `kubectl kustomize`
+      - uses: azure/setup-kubectl@v5 # `make render` uses `kubectl kustomize`
 
       # Kyverno policy gate temporarily disabled. The only finding is the
       # falcosidekick Helm test-hook pod (an untagged image on a `helm.sh/hook:
