@@ -17,7 +17,7 @@ image:
   repository: quay.io/thanos/thanos
   # Official upstream image (gets CVE patches, unlike the frozen bitnamilegacy one).
   # Renovate tracks this; bump as new Thanos releases land.
-  tag: v0.39.2
+  tag: v0.41.0
   pullPolicy: IfNotPresent
 
 # R2 object store (S3 API). access_key/secret_key come from Vault via ESO (see
