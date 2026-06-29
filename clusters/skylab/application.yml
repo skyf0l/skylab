@@ -1,3 +1,99 @@
+# ---------------------------------------------------------------------------
+# AppProjects — least-privilege boundaries for the whole app-of-apps tree.
+# Defined here in the hand-applied bootstrap so they exist BEFORE any
+# ApplicationSet generates an Application that references them (no
+# chicken-and-egg). They are NOT auto-synced — re-run ./sync.sh after editing.
+# Three tiers, by blast radius:
+#   platform      privileged foundation (cluster/gitops/security stacks) + the
+#                 GitOps management plane (the app-of-apps roots and every
+#                 *-stack ApplicationSet, which create Applications — a
+#                 privileged op kept out of the lower tiers to block
+#                 project escalation).
+#   observability metrics/logs/cost — namespaced, plus the few cluster-scoped
+#                 objects their operators ship (CRDs, admission webhooks,
+#                 cluster roles).
+#   workloads     user-facing apps — namespaced only, NO cluster-scoped
+#                 resources at all.
+# All three are pinned to this cluster and the two skylab repos (never "*"),
+# unlike the stock `default` project this replaces.
+# ---------------------------------------------------------------------------
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: platform
+  namespace: argocd
+spec:
+  description: Privileged foundation + app-of-apps management plane
+  sourceRepos:
+    - https://github.com/skyf0l/skylab.git
+    - https://github.com/skyf0l/skylab-private.git
+  destinations:
+    # Privileged tier legitimately spans every namespace (kube-system, argocd,
+    # cert-manager, vault, ...) and creates them via CreateNamespace.
+    - server: https://kubernetes.default.svc
+      namespace: "*"
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: observability
+  namespace: argocd
+spec:
+  description: Monitoring, logging and finops workloads
+  sourceRepos:
+    - https://github.com/skyf0l/skylab.git
+    - https://github.com/skyf0l/skylab-private.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: monitoring
+    - server: https://kubernetes.default.svc
+      namespace: logging
+    - server: https://kubernetes.default.svc
+      namespace: opencost
+  # The only cluster-scoped objects these charts ship: kube-prometheus CRDs +
+  # admission webhooks, and cluster roles for the prometheus-operator,
+  # node-exporter, kube-state-metrics, alloy and opencost. Everything else must
+  # be namespaced. Extend if a sync reports "resource not permitted in project".
+  clusterResourceWhitelist:
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: workloads
+  namespace: argocd
+spec:
+  description: User-facing app workloads — namespaced only, no cluster-scoped resources
+  sourceRepos:
+    - https://github.com/skyf0l/skylab.git
+    - https://github.com/skyf0l/skylab-private.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: mcp
+  # No clusterResourceWhitelist on purpose: app workloads must not create
+  # cluster-scoped objects. Add namespaces above as new apps land.
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+---
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
@@ -15,8 +111,11 @@ spec:
   template:
     metadata:
       name: "{{.name}}-apps"
+      labels:
+        app.kubernetes.io/part-of: app-of-apps
+        skylab.dev/tier: platform
     spec:
-      project: default
+      project: platform
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"
@@ -71,8 +170,11 @@ spec:
   template:
     metadata:
       name: "{{.name}}-private-apps"
+      labels:
+        app.kubernetes.io/part-of: app-of-apps
+        skylab.dev/tier: platform
     spec:
-      project: default
+      project: platform
       source:
         repoURL: https://github.com/skyf0l/skylab-private.git
         targetRevision: main

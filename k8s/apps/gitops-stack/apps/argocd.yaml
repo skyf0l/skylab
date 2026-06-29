@@ -22,10 +22,13 @@ spec:
   template:
     metadata:
       name: "{{.name}}-argocd"
+      labels:
+        app.kubernetes.io/part-of: gitops-stack
+        skylab.dev/tier: platform
       annotations:
         argocd.argoproj.io/sync-wave: "-1"
     spec:
-      project: default
+      project: platform
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"

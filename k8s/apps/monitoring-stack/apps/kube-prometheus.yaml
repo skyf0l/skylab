@@ -20,8 +20,11 @@ spec:
   template:
     metadata:
       name: "{{.name}}-kube-prometheus"
+      labels:
+        app.kubernetes.io/part-of: monitoring-stack
+        skylab.dev/tier: observability
     spec:
-      project: default
+      project: observability
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"

@@ -24,10 +24,13 @@ spec:
   template:
     metadata:
       name: "{{.name}}-cluster-bootstrap"
+      labels:
+        app.kubernetes.io/part-of: cluster-stack
+        skylab.dev/tier: platform
       annotations:
         argocd.argoproj.io/sync-wave: "-1"
     spec:
-      project: default
+      project: platform
       # Plain manifests (kustomize) — local-path-provisioner + kube-dns alias.
       # ansible applies these same files at cluster-init; ArgoCD adopts them here.
       source:

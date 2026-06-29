@@ -23,8 +23,11 @@ spec:
   template:
     metadata:
       name: "{{.name}}-mcp-stack"
+      labels:
+        app.kubernetes.io/part-of: mcp-stack
+        skylab.dev/tier: platform
     spec:
-      project: default
+      project: platform
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"

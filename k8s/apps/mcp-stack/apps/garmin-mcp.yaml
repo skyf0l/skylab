@@ -23,10 +23,13 @@ spec:
   template:
     metadata:
       name: "{{.name}}-garmin-mcp"
+      labels:
+        app.kubernetes.io/part-of: mcp-stack
+        skylab.dev/tier: workloads
       annotations:
         argocd.argoproj.io/sync-wave: "2"
     spec:
-      project: default
+      project: workloads
       # One app, two sources:
       #  1. the auth-AGNOSTIC upstream garmin_mcp chart (the MCP server + GHCR image),
       #     consumed straight from its repo — never modified here;

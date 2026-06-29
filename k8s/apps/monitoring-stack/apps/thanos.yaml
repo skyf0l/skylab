@@ -24,10 +24,13 @@ spec:
   template:
     metadata:
       name: "{{.name}}-thanos"
+      labels:
+        app.kubernetes.io/part-of: monitoring-stack
+        skylab.dev/tier: observability
       annotations:
         argocd.argoproj.io/sync-wave: "1"
     spec:
-      project: default
+      project: observability
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"

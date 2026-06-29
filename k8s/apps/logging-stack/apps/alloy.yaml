@@ -23,10 +23,13 @@ spec:
   template:
     metadata:
       name: "{{.name}}-alloy"
+      labels:
+        app.kubernetes.io/part-of: logging-stack
+        skylab.dev/tier: observability
       annotations:
         argocd.argoproj.io/sync-wave: "2"
     spec:
-      project: default
+      project: observability
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"

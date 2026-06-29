@@ -22,8 +22,11 @@ spec:
   template:
     metadata:
       name: "{{.name}}-monitoring-stack"
+      labels:
+        app.kubernetes.io/part-of: monitoring-stack
+        skylab.dev/tier: platform
     spec:
-      project: default
+      project: platform
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"

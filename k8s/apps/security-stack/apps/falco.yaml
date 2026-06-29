@@ -24,10 +24,13 @@ spec:
   template:
     metadata:
       name: "{{.name}}-falco"
+      labels:
+        app.kubernetes.io/part-of: security-stack
+        skylab.dev/tier: platform
       annotations:
         argocd.argoproj.io/sync-wave: "2"
     spec:
-      project: default
+      project: platform
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"

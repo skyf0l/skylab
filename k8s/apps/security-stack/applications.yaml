@@ -22,8 +22,11 @@ spec:
   template:
     metadata:
       name: "{{.name}}-security-stack"
+      labels:
+        app.kubernetes.io/part-of: security-stack
+        skylab.dev/tier: platform
     spec:
-      project: default
+      project: platform
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"
