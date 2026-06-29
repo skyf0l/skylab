@@ -1,5 +1,13 @@
 # KEDA core. Subchart values go under the dependency key `keda:` (see Chart.yaml).
-# Defaults are sane for a single-node cluster — nothing to override for bring-up.
-# To surface KEDA metrics in Grafana later, enable the chart's ServiceMonitors
-# under keda.prometheus.* (the Prometheus operator CRDs already exist).
-keda: {}
+keda:
+  # Expose the keda-operator's Prometheus metrics (keda_*, controller_runtime_*,
+  # workqueue_*) and scrape them via a ServiceMonitor — feeds the "Keda Operator"
+  # Grafana dashboard (gnetId 22111, vendored in monitoring-stack/grafana-dashboards).
+  # kube-prometheus scrapes every ServiceMonitor (serviceMonitorSelectorNil...=false),
+  # so no extra labels are needed. The metricServer/webhooks ServiceMonitors stay off
+  # (the operator emits everything that dashboard needs).
+  prometheus:
+    operator:
+      enabled: true
+      serviceMonitor:
+        enabled: true

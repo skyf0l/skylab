@@ -66,3 +66,9 @@ configMapGenerator:
   - name: grafana-dashboard-cloudnativepg
     files:
       - json/20417-cloudnativepg.json
+  # https://grafana.com/grafana/dashboards/22111-keda-operator — datasource pinned
+  # to uid "prometheus" on vendoring; $job auto-discovers via keda_build_info.
+  # Needs keda.prometheus.operator.serviceMonitor enabled (serverless-stack/keda).
+  - name: grafana-dashboard-keda-operator
+    files:
+      - json/22111-keda-operator.json
