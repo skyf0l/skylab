@@ -35,6 +35,9 @@ spec:
       # hostNetwork defaults DNS to the host resolver, which can't resolve the
       # in-cluster Headscale Service — keep cluster DNS.
       dnsPolicy: ClusterFirstWithHostNet
+      # So the init container's `nsenter -t 1` reaches the HOST init (PID 1) and can
+      # run the host's modprobe (see enable-forwarding below).
+      hostPID: true
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -61,7 +64,15 @@ spec:
               echo 1 > /proc/sys/net/ipv4/ip_forward
               echo 1 > /proc/sys/net/ipv6/conf/all/forwarding
               echo 1 > /proc/sys/net/ipv6/conf/default/forwarding
-              echo "IP forwarding enabled (v4 + v6)."
+              # Forwarding alone isn't enough for IPv6: tailscale can only SNAT the
+              # advertised ::/0 if the host kernel has ip6table_nat loaded. Without it
+              # forwarded v6 keeps its un-routable tailnet source and black-holes, so
+              # dual-stack clients stall on Happy-Eyeballs. Load it via the HOST's
+              # modprobe (nsenter into PID 1's mount ns) — it handles Ubuntu's zstd
+              # modules, which busybox's modprobe can't. Non-fatal: v4 exit still works.
+              nsenter -t 1 -m /usr/sbin/modprobe ip6table_nat \
+                || echo "WARN: could not load ip6table_nat; IPv6 exit NAT unavailable"
+              echo "IP forwarding enabled (v4 + v6); ip6table_nat ensured."
           securityContext:
             privileged: true
           resources:
