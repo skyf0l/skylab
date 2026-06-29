@@ -19,7 +19,7 @@ authelia:
   publicHost: ""
 
 nginx:
-  image: nginx:1.27-alpine
+  image: nginx:1.31-alpine
 
 ingress:
   enabled: true
