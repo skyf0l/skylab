@@ -28,7 +28,7 @@ jobs:
     env:
       KUBECONFORM_VERSION: v0.6.7
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: azure/setup-helm@v5
       - uses: azure/setup-kubectl@v4 # `make render` uses `kubectl kustomize`
 
@@ -64,7 +64,7 @@ jobs:
   terraform:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_wrapper: false
@@ -74,7 +74,7 @@ jobs:
   format:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
         with:
           node-version: 20
@@ -86,7 +86,7 @@ jobs:
   actionlint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # rhysd ships no marketplace action; the official Docker image is the
       # cleanest non-curl install. (Renovate keeps this tag current.)
       - uses: docker://rhysd/actionlint:1.7.12
