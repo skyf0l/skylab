@@ -1,8 +1,11 @@
 {{- if .Values.authkeyMint.enabled }}
 # Mints a REUSABLE Headscale pre-auth key (tagged .Values.tag = tag:tail-exit) for
-# the exit node and writes it into authKeySecret. Reusable + skip-if-present so it
-# doesn't pile up keys. PreSync hook (NOT PostSync): the exit Deployment can't go
-# Healthy without this secret, and PostSync waits for Healthy. SA/RBAC weight 0, Job 1.
+# the exit node and writes it into authKeySecret. Self-healing: re-mints only when
+# the stored key is missing OR no longer present in Headscale, so it never piles up
+# keys yet also can't strand the node on a stale key (a deleted/pruned key leaves
+# the secret populated but fails registration with "auth-key not found" on the next
+# pod restart). PreSync hook (NOT PostSync): the exit Deployment can't go Healthy
+# without this secret, and PostSync waits for Healthy. SA/RBAC weight 0, Job 1.
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -116,16 +119,28 @@ spec:
           args:
             - |
               set -eu
-              # Idempotent: skip if the key Secret is already populated (reusable key).
-              if kubectl get secret "$SECRET" -o jsonpath='{.data.authkey}' 2>/dev/null | grep -q .; then
-                echo "$SECRET already populated; nothing to mint."; exit 0
-              fi
               hs() { kubectl -n "$HS_NS" exec "$HS_POD" -c headscale -- headscale "$@"; }
               echo "Waiting for the Headscale CLI..."
               i=0; until hs users list >/dev/null 2>&1; do
                 i=$((i+1)); [ "$i" -ge 30 ] && { echo "headscale not responding" >&2; exit 1; }
                 sleep 2
               done
+              # Self-healing guard: skip ONLY if the stored key is still present in
+              # Headscale. A plain "secret populated?" check can't tell a live key from
+              # a stale one, so a deleted/pruned key leaves the secret full but strands
+              # the exit node on its next restart. `preauthkeys list` MASKS the secret
+              # (hskey-auth-<id>-***), so match on the key's stable prefix, not the
+              # full string. (Doesn't catch an expired-but-still-listed key, but the
+              # key is minted with .Values.authkeyMint.expiration = 999d.)
+              STORED=$(kubectl get secret "$SECRET" -o jsonpath='{.data.authkey}' 2>/dev/null | base64 -d 2>/dev/null || true)
+              if [ -n "${STORED:-}" ]; then
+                PREFIX=$(printf '%s' "$STORED" | cut -c1-20)
+                if hs preauthkeys list -o json 2>/dev/null | grep -qF "$PREFIX"; then
+                  echo "$SECRET holds a key still present in Headscale ($PREFIX...); nothing to mint."
+                  exit 0
+                fi
+                echo "stored key ($PREFIX...) is gone from Headscale (stale); re-minting."
+              fi
               # Resolve the numeric user id for HS_USER (tabs stripped — 0.28 JSON is tab-indented).
               UID_=$(hs users list -o json 2>/dev/null \
                 | tr -d ' \t\n' | grep -oE '\{"id":"?[0-9]+"?,"name":"'"$HS_USER"'"' | grep -oE '[0-9]+' | head -1)
