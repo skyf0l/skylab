@@ -64,7 +64,7 @@ jobs:
       # ends; the Headscale ACL limits tag:ci to the Vault proxy only. The key
       # itself carries the tag + ephemeral flag (minted like headscale-proxy's).
       - name: Join tailnet (Headscale)
-        uses: tailscale/github-action@v3
+        uses: tailscale/github-action@v4
         with:
           authkey: ${{ secrets.HEADSCALE_CI_AUTHKEY }}
           args: --login-server=${{ env.HEADSCALE_URL }} --accept-dns --hostname=gha-vault-ci
@@ -114,7 +114,7 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
 
       - name: Join tailnet (Headscale)
-        uses: tailscale/github-action@v3
+        uses: tailscale/github-action@v4
         with:
           authkey: ${{ secrets.HEADSCALE_CI_AUTHKEY }}
           args: --login-server=${{ env.HEADSCALE_URL }} --accept-dns --hostname=gha-vault-ci
