@@ -2,6 +2,13 @@ cilium:
   rollOutCiliumPods: true
   kubeProxyReplacement: "true"
 
+  # AUDIT MODE (temporary): CiliumNetworkPolicies are evaluated and would-be-drops are
+  # logged to Hubble as verdict AUDIT, but NOTHING is actually dropped. This lets the
+  # network-policies chart (security-stack) roll out zero-risk: watch
+  # `hubble observe --verdict AUDIT` to see what a policy WOULD block, add exceptions,
+  # then set this back to false to ENFORCE. Cluster-wide setting (no per-policy audit).
+  policyAuditMode: true
+
   cni:
     install: true
     uninstall: false
