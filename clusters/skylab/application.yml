@@ -56,6 +56,10 @@ spec:
       namespace: logging
     - server: https://kubernetes.default.svc
       namespace: opencost
+    - server: https://kubernetes.default.svc
+      namespace: vpa
+    - server: https://kubernetes.default.svc
+      namespace: goldilocks
     # kube-prometheus-stack creates control-plane scrape Services (kubelet,
     # kube-controller-manager, kube-scheduler, ...) in kube-system.
     - server: https://kubernetes.default.svc
