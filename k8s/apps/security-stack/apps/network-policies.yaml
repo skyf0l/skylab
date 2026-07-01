@@ -1,0 +1,55 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: network-policies
+  annotations:
+    # After Cilium (the CNI that enforces these). Late wave so target namespaces exist.
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          # Auto updated by parent ApplicationSet
+          - list:
+              elements:
+                - name: skylab
+          - git:
+              repoURL: https://github.com/skyf0l/skylab.git
+              revision: main
+              files:
+                - path: clusters/{{.name }}/config.json
+  template:
+    metadata:
+      name: "{{.name}}-network-policies"
+      annotations:
+        argocd.argoproj.io/sync-wave: "5"
+    spec:
+      # platform project: destinations "*" + namespaceResourceWhitelist "*", so this app
+      # may create CiliumNetworkPolicies across every isolated namespace.
+      project: platform
+      source:
+        repoURL: "{{.repo.url}}"
+        targetRevision: "{{.repo.revision}}"
+        path: k8s/projects/security-stack/network-policies
+        helm:
+          releaseName: network-policies
+          valueFiles:
+            - values.yaml
+      destination:
+        server: https://kubernetes.default.svc
+        # Nominal only — each CiliumNetworkPolicy sets its own metadata.namespace.
+        namespace: kube-system
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - Validate=true
+          - PrunePropagationPolicy=foreground
+          - PruneLast=true
+          - RespectIgnoreDifferences=true
+          - ServerSideApply=true
+        retry:
+          limit: 5

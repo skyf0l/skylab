@@ -12,3 +12,4 @@ resources:
   - apps/defectdojo.yaml
   - apps/falco.yaml
   - apps/keycloak.yaml
+  - apps/network-policies.yaml

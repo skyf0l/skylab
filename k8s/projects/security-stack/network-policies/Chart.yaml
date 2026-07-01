@@ -1,0 +1,10 @@
+apiVersion: v2
+name: network-policies
+type: application
+version: 0.1.0
+# Layer 1 of the network-policy model: general per-namespace isolation. Renders one
+# CiliumNetworkPolicy per listed namespace = allow-all intra-namespace + universal
+# ingress allows (DNS/apiserver/host, Prometheus scrape, Traefik ingress), which makes
+# each listed namespace ingress default-deny for everything else. Per-app cross-namespace
+# exceptions live in each app's OWN chart (Layer 2, additive via Cilium's policy union).
+# Rolled out in Cilium AUDIT mode first (cluster-stack/cilium policyAuditMode: true).

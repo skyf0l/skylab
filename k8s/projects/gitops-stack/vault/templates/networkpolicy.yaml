@@ -1,0 +1,25 @@
+# Layer 2 — Vault's cross-namespace ingress exception. The network-policies chart
+# (security-stack) makes the vault namespace ingress default-deny + allow-all intra-NS +
+# universal allows (Prometheus metrics scrape, Traefik = the tailnet UI + Vault CI path,
+# host/apiserver). This adds the one remaining real client: External-Secrets reaching the
+# Vault API on 8200. Additive — Cilium unions this with the Layer-1 policy.
+#
+# Observed clients on vault:8200 (Hubble): traefik (universal), monitoring (universal),
+# external-secrets (here), vault-0 (intra). Everything else is denied under enforce.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: vault-allow-external-secrets
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/part-of: vault
+spec:
+  endpointSelector: {}
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: external-secrets
+      toPorts:
+        - ports:
+            - port: "8200"
+              protocol: TCP

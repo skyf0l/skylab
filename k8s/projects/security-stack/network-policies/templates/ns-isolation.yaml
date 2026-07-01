@@ -1,0 +1,30 @@
+{{- range $ns := .Values.namespaces }}
+---
+# {{ $ns }}: allow all intra-namespace traffic + universal ingress allows. Specifying only
+# `ingress` makes the namespace ingress default-deny (egress stays open). App-specific
+# cross-namespace allows are added by that app's own chart (additive).
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: ns-isolation
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/part-of: network-policies
+spec:
+  endpointSelector: {}
+  ingress:
+    # allow ALL traffic from pods in the same namespace
+    - fromEndpoints:
+        - {}
+    # universal: node/kubelet health probes + apiserver -> pod (admission webhooks)
+    - fromEntities:
+        {{- range $.Values.universal.entities }}
+        - {{ . }}
+        {{- end }}
+    # universal: cross-namespace infra (Prometheus scrape, Traefik ingress)
+    {{- range $.Values.universal.fromNamespaces }}
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: {{ . }}
+    {{- end }}
+{{- end }}

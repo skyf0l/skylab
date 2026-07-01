@@ -1,0 +1,34 @@
+# Layer 1 — general namespace isolation (INGRESS default-deny + allow-all intra-NS +
+# universal allows). Each namespace in `namespaces` gets ONE CiliumNetworkPolicy.
+#
+# Only `ingress` is specified, so namespaces become ingress default-deny while EGRESS
+# stays open (the pragmatic ingress-first posture — egress FQDN control is a later phase).
+#
+# Cross-namespace exceptions ("who else may reach me") live in each APP's own chart as a
+# small additive CiliumNetworkPolicy — NOT here. Example: the vault chart allows ingress
+# from external-secrets. Prometheus + Traefik are universal (below) so most apps need no
+# Layer-2 policy at all.
+#
+# SAFETY: deployed while Cilium is in policyAuditMode -> nothing is dropped, would-be-drops
+# show as `hubble observe --verdict AUDIT`. The `namespaces` list IS the rollout: add one,
+# verify with Hubble, add the next. System namespaces (kube-system, cilium-secrets,
+# local-path-storage, kube-public, kube-node-lease) must NEVER be listed here.
+
+# Universal ingress allows, added to every listed namespace.
+universal:
+  # Cilium reserved entities: node/kubelet (health probes) + apiserver (admission webhooks
+  # are apiserver -> webhook-pod). Without these, probes and webhooks break under enforce.
+  entities:
+    - host
+    - remote-node
+    - kube-apiserver
+  # Namespaces whose pods may reach any listed namespace: Prometheus (scrape) + Traefik
+  # (ingress to exposed UIs, incl. the tailnet path via headscale-proxy -> Traefik).
+  fromNamespaces:
+    - monitoring
+    - traefik
+
+# Namespaces to isolate. Start with vault (the crown jewel / secret plane). Add more as
+# each is validated in audit mode. System namespaces are deliberately absent.
+namespaces:
+  - vault
