@@ -69,6 +69,9 @@ spec:
   # node-exporter, kube-state-metrics, alloy and opencost. Everything else must
   # be namespaced. Extend if a sync reports "resource not permitted in project".
   clusterResourceWhitelist:
+    # Namespace: the vpa/goldilocks apps self-create their namespace (CreateNamespace=true).
+    - group: ""
+      kind: Namespace
     - group: apiextensions.k8s.io
       kind: CustomResourceDefinition
     - group: rbac.authorization.k8s.io
