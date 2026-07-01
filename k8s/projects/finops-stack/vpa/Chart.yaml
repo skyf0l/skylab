@@ -1,0 +1,12 @@
+apiVersion: v2
+name: vpa
+type: application
+version: 0.1.0
+# Vertical Pod Autoscaler — RECOMMENDER ONLY (no updater, no admission controller), so
+# nothing is ever evicted or mutated. It only computes right-sizing recommendations that
+# Goldilocks surfaces. We bake the numbers into Helm values by hand (GitOps stays source
+# of truth); VPA-Auto is deliberately avoided (fights HPA/KEDA + drifts from git).
+dependencies:
+  - name: vpa
+    repository: https://charts.fairwinds.com/stable
+    version: 4.12.2

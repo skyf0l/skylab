@@ -1,0 +1,53 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: goldilocks
+  annotations:
+    # After VPA (needs the VerticalPodAutoscaler CRD to create recommend-mode VPAs).
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          # Auto updated by parent ApplicationSet
+          - list:
+              elements:
+                - name: skylab
+          - git:
+              repoURL: https://github.com/skyf0l/skylab.git
+              revision: main
+              files:
+                - path: clusters/{{.name }}/config.json
+  template:
+    metadata:
+      name: "{{.name}}-goldilocks"
+      annotations:
+        argocd.argoproj.io/sync-wave: "3"
+    spec:
+      project: observability
+      source:
+        repoURL: "{{.repo.url}}"
+        targetRevision: "{{.repo.revision}}"
+        path: k8s/projects/finops-stack/goldilocks
+        helm:
+          releaseName: goldilocks
+          valueFiles:
+            - values.yaml
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: goldilocks
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - Validate=true
+          - PrunePropagationPolicy=foreground
+          - PruneLast=true
+          - RespectIgnoreDifferences=true
+          - ServerSideApply=true
+        retry:
+          limit: 5

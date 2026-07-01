@@ -1,0 +1,25 @@
+# Goldilocks — dashboard of right-sizing recommendations. Values nest under `goldilocks`.
+goldilocks:
+  # VPA + metrics-server come from elsewhere (our vpa chart + rke2-metrics-server), so the
+  # bundled subcharts stay off.
+  vpa:
+    enabled: false
+  metrics-server:
+    enabled: false
+
+  controller:
+    enabled: true
+    flags:
+      # Create a VPA (updateMode: Off = recommend only) for every workload, so the
+      # dashboard covers the whole cluster out of the box.
+      on-by-default: true
+      # ...except cluster machinery, to cut noise (recommendations there aren't actionable).
+      exclude-namespaces: kube-system,kube-public,kube-node-lease,local-path-storage,cilium-secrets
+
+  # Dashboard: current vs recommended requests/limits per workload. Reached tailnet-only via
+  # the headscale-proxy IngressRoute (goldilocks.tail.<domain>), like the other admin UIs.
+  dashboard:
+    enabled: true
+    service:
+      type: ClusterIP
+      port: 80

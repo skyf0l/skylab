@@ -93,6 +93,11 @@ services:
     service: opencost
     namespace: opencost
     port: 9090
+  - name: goldilocks
+    # Goldilocks dashboard — VPA right-sizing recommendations (current vs recommended).
+    service: goldilocks-dashboard
+    namespace: goldilocks
+    port: 80
   - name: traefik
     # Traefik's own dashboard/API (api@internal). Reached at
     # traefik.tail.<domain>/dashboard/ — tailnet-only, never publicly exposed

@@ -1,0 +1,36 @@
+# Recommend-only VPA. Values nest under the `vpa` subchart.
+vpa:
+  # The recommender computes CPU/memory recommendations from observed usage
+  # (rke2-metrics-server, in-memory ~8d history + checkpoints).
+  recommender:
+    enabled: true
+    extraArgs:
+      v: "4"
+      # floor the recommendations so tiny idle pods don't get absurdly small asks
+      pod-recommendation-min-cpu-millicores: 15
+      pod-recommendation-min-memory-mb: 100
+    # native metrics scraped by the select-all Prometheus
+    podMonitor:
+      enabled: true
+    resources:
+      requests:
+        cpu: 25m
+        memory: 100Mi
+      limits:
+        memory: 500Mi
+
+  # Recommend-ONLY: no updater (never evicts) and no admission controller (never mutates
+  # pod specs). VPA is a pure advisor; we apply its numbers by hand in Helm values.
+  updater:
+    enabled: false
+  admissionController:
+    enabled: false
+
+  # NOTE (follow-up): to back the recommender with Prometheus/Thanos for longer, restart-
+  # surviving history, add to recommender.extraArgs:
+  #   storage: prometheus
+  #   prometheus-address: "http://kube-prometheus-kube-prome-prometheus.monitoring.svc:9090"
+  #   prometheus-cadvisor-job-name: kubelet   # kube-prometheus's cadvisor job label
+  #   history-length: "8d"
+  # It needs the cadvisor job/label to match kube-prometheus exactly, so validate the
+  # recommendations aren't empty before relying on it.

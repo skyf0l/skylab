@@ -1,0 +1,12 @@
+apiVersion: v2
+name: goldilocks
+type: application
+version: 0.1.0
+# Goldilocks — creates a VPA (updateMode: Off) per workload and shows current-vs-recommended
+# requests/limits in a dashboard. Pairs with OpenCost: OpenCost = what it costs, Goldilocks =
+# how to right-size it. Uses the separately-installed VPA recommender + the existing
+# rke2-metrics-server (both subcharts disabled here).
+dependencies:
+  - name: goldilocks
+    repository: https://charts.fairwinds.com/stable
+    version: 10.4.0
