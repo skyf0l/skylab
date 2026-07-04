@@ -21,6 +21,27 @@ authelia:
 nginx:
   image: nginx:1.31-alpine
 
+# Scale-to-zero for the upstream MCP server via the KEDA HTTP add-on.
+# Only garmin-mcp scales to zero — this gateway stays
+# always-on because it serves the OAuth discovery doc clients probe before
+# ever reaching the MCP. When enabled the gateway proxies to the interceptor,
+# which wakes garmin-mcp 0->1 and holds the request until it is ready.
+keda:
+  enabled: true
+  # KEDA HTTP add-on interceptor proxy Service (keda namespace).
+  interceptorService: keda-add-ons-http-interceptor-proxy.keda.svc.cluster.local
+  interceptorPort: 8080
+  # Synthetic Host header the interceptor routes on. Must match both the Host the
+  # gateway sets when proxying AND spec.hosts on the HTTPScaledObject.
+  host: garmin-mcp.internal
+  # Upstream garmin_mcp Deployment (releaseName garmin-mcp from the fork chart).
+  scaleTargetName: garmin-mcp
+  minReplicas: 0
+  maxReplicas: 1
+  # Seconds to stay warm after the last in-flight request drains. Kept high so we
+  # don't re-do the Garmin login (garth token refresh) on every cold start.
+  scaledownPeriod: 600
+
 ingress:
   enabled: true
   className: traefik

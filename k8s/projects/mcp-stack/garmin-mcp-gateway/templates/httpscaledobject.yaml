@@ -1,0 +1,23 @@
+{{- if .Values.keda.enabled }}
+# Scales the upstream garmin-mcp Deployment to zero and wakes it on the first
+# request routed through the KEDA HTTP add-on interceptor. In-flight requests are
+# the scaling metric, so a live streamable-http MCP connection keeps it warm and
+# scaledownPeriod starts once the connection drains.
+apiVersion: http.keda.sh/v1alpha1
+kind: HTTPScaledObject
+metadata:
+  name: {{ .Values.keda.scaleTargetName }}
+  labels:
+    app: garmin-mcp-gateway
+spec:
+  hosts:
+    - {{ .Values.keda.host }}
+  scaleTargetRef:
+    name: {{ .Values.keda.scaleTargetName }}
+    service: {{ .Values.mcp.service }}
+    port: {{ .Values.mcp.port }}
+  replicas:
+    min: {{ .Values.keda.minReplicas }}
+    max: {{ .Values.keda.maxReplicas }}
+  scaledownPeriod: {{ .Values.keda.scaledownPeriod }}
+{{- end }}

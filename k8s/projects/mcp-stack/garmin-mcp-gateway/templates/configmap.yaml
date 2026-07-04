@@ -12,9 +12,15 @@ data:
       access_log /dev/stdout;
       error_log  /dev/stderr;
 
-      # Upstream MCP (deployed by the upstream garmin_mcp chart, same namespace).
+      # Upstream MCP. With KEDA enabled we proxy to the HTTP add-on interceptor,
+      # which wakes garmin-mcp from zero and holds the request; otherwise we hit
+      # the MCP Service directly (deployed by the upstream garmin_mcp chart).
       upstream mcp {
+      {{- if .Values.keda.enabled }}
+        server {{ .Values.keda.interceptorService }}:{{ .Values.keda.interceptorPort }};
+      {{- else }}
         server {{ .Values.mcp.service }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.mcp.port }};
+      {{- end }}
       }
 
       server {
@@ -59,7 +65,13 @@ data:
           error_page 401 = @unauthorized;
           proxy_pass http://mcp{{ .Values.mcp.path }};
           proxy_http_version 1.1;
+        {{- if .Values.keda.enabled }}
+          # Interceptor routes to the target Deployment by matching this Host
+          # against the HTTPScaledObject's spec.hosts.
+          proxy_set_header Host {{ .Values.keda.host | quote }};
+        {{- else }}
           proxy_set_header Host $host;
+        {{- end }}
           proxy_set_header Connection "";
           proxy_set_header Authorization $http_authorization;
           proxy_buffering off;

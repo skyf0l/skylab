@@ -74,6 +74,15 @@ spec:
       destination:
         server: https://kubernetes.default.svc
         namespace: mcp
+      ignoreDifferences:
+        # KEDA owns the replica count (scale-to-zero). Without this, ArgoCD
+        # selfHeal reverts garmin-mcp back to the chart's static replicas and
+        # fights the HTTPScaledObject.
+        - group: apps
+          kind: Deployment
+          name: garmin-mcp
+          jsonPointers:
+            - /spec/replicas
       syncPolicy:
         automated:
           prune: true
