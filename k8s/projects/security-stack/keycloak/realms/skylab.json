@@ -4,6 +4,9 @@
   "displayName": "skylab",
   "loginWithEmailAllowed": true,
   "registrationAllowed": false,
+  "offlineSessionIdleTimeout": 3600,
+  "offlineSessionMaxLifespanEnabled": true,
+  "offlineSessionMaxLifespan": 86400,
   "roles": {
     "realm": [
       { "name": "grafana-admin", "description": "Grafana org admin" }
