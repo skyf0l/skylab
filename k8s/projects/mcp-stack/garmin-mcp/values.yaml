@@ -1,0 +1,35 @@
+# Values for the upstream garmin_mcp chart (github.com/skyf0l/garmin_mcp).
+# Referenced by the garmin-mcp ApplicationSet via ArgoCD multi-source $values.
+
+image:
+  repository: ghcr.io/skyf0l/garmin_mcp
+  tag: "1.0.0"
+
+transport:
+  mode: streamable-http
+
+# Vault (via the gateway's ESO secret) is the ONE-TIME seed: the chart's init
+# container copies GARMINTOKENS onto the PVC on first boot. After that the app
+# owns the token — Garmin's refresh token rotates on every refresh, and the pod
+# writes each rotation back to the PVC, so cold starts (KEDA scale-to-zero)
+# replay the latest token, not the stale Vault seed.
+garmin:
+  existingSecret: garmin-mcp-tokens
+
+persistence:
+  enabled: true
+  # Single-node VPS: local-path is the only provisioner.
+  storageClass: local-path
+
+# Exposure is the gateway's job, not this chart's.
+ingress:
+  enabled: false
+
+# KEDA scale-to-zero: poll /healthz every 1s so the pod goes Ready (and the
+# interceptor forwards) the instant it serves, instead of the chart's 10s
+# default. failureThreshold bumped to keep the same ~30s startup budget
+# (1s * 30) — the app needs ~7s to log into Garmin, so the chart default of 3
+# would kill it before it boots.
+probes:
+  startupPeriodSeconds: 1
+  startupFailureThreshold: 30
