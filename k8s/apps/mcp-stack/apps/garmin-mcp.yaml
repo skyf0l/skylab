@@ -49,12 +49,19 @@ spec:
                 value: "1.0.0"
               - name: "transport.mode"
                 value: "streamable-http"
-              # Tokens come from Vault via the gateway's ESO secret.
+              # Vault (via the gateway's ESO secret) is the ONE-TIME seed: the
+              # chart's init container copies GARMINTOKENS onto the PVC on first
+              # boot. After that the app owns the token — Garmin's refresh token
+              # rotates on every refresh, and the pod writes each rotation back to
+              # the PVC, so cold starts (KEDA scale-to-zero) replay the latest
+              # token, not the stale Vault seed.
               - name: "garmin.existingSecret"
                 value: "garmin-mcp-tokens"
-              # existingSecret provides GARMINTOKENS; the PVC path would override it.
               - name: "persistence.enabled"
-                value: "false"
+                value: "true"
+              # Single-node VPS: local-path is the only provisioner.
+              - name: "persistence.storageClass"
+                value: "local-path"
               # Exposure is the gateway's job, not this chart's.
               - name: "ingress.enabled"
                 value: "false"
