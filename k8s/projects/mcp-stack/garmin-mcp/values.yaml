@@ -3,7 +3,7 @@
 
 image:
   repository: ghcr.io/skyf0l/garmin_mcp
-  tag: "1.0.0"
+  tag: "1.0.1"
 
 transport:
   mode: streamable-http
