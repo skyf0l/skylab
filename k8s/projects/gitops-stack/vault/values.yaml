@@ -26,6 +26,8 @@ vault:
         config: |
           ui = true
 
+          plugin_directory = "/vault/plugins"
+
           listener "tcp" {
             tls_disable = 1
             address = "[::]:8200"
@@ -45,6 +47,41 @@ vault:
             prometheus_retention_time = "24h"
             disable_hostname = true
           }
+
+    # Deliver the Cloudflare secrets-engine plugin into the server pods. The
+    # initContainer downloads a pinned, checksum-verified release binary into a
+    # shared emptyDir that Vault reads via plugin_directory (set in the raft
+    # config above). It re-runs on every pod start, so the binary is versioned
+    # and declarative — no kubectl cp, no baked image. Bump PLUGIN_VERSION here
+    # AND cloudflare_plugin_version/sha256 in vault/terraform/cloudflare.tf
+    # together, then restart+unseal to load the new version.
+    volumes:
+      - name: plugins
+        emptyDir: {}
+    volumeMounts:
+      - name: plugins
+        mountPath: /vault/plugins
+    extraInitContainers:
+      - name: fetch-cloudflare-plugin
+        image: curlimages/curl:8.11.1
+        env:
+          - name: PLUGIN_VERSION
+            value: "1.2.0"
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            set -eu
+            cd /plugins
+            base="https://github.com/skyf0l/vault-cloudflare-secret-engine/releases/download/v${PLUGIN_VERSION}"
+            fn="vault-cloudflare-secret-engine_${PLUGIN_VERSION}_linux_amd64"
+            curl -fsSLO "${base}/${fn}"
+            curl -fsSLO "${base}/checksums.txt"
+            grep " ${fn}$" checksums.txt | sha256sum -c -
+            install -m 0755 "${fn}" /plugins/vault-cloudflare-secret-engine
+            rm -f "${fn}" checksums.txt
+        volumeMounts:
+          - name: plugins
+            mountPath: /plugins
 
     ingress:
       enabled: true

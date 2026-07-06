@@ -1,0 +1,40 @@
+# Ongoing rotation of the Cloudflare parent token. A monthly CronJob authenticates
+# via the existing Kubernetes auth backend (role "cloudflare-rotate", created in
+# vault/terraform/cloudflare.tf) and rolls the parent token's value in place. No
+# secret is stored anywhere; the job only holds the "cloudflare-rotate-root"
+# policy (update on cloudflare/config/rotate-root).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cloudflare-rotate
+  namespace: vault
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cloudflare-rotate-root
+  namespace: vault
+spec:
+  schedule: "0 3 1 * *" # 03:00 on the 1st of each month
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          serviceAccountName: cloudflare-rotate
+          restartPolicy: OnFailure
+          containers:
+            - name: rotate
+              image: hashicorp/vault:2.0.3
+              env:
+                - name: VAULT_ADDR
+                  value: "http://vault.vault.svc:8200"
+              command: ["/bin/sh", "-ec"]
+              args:
+                - |
+                  vault login -method=kubernetes role=cloudflare-rotate \
+                    jwt="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" >/dev/null
+                  vault write -f cloudflare/config/rotate-root token_type=account
