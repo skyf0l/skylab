@@ -47,6 +47,37 @@ and root token are written only to the gitignored Ansible workdir.
    `PLACEHOLDER` (e.g. Authelia's `users_yaml`) must be filled in via the Vault
    UI/CLI — re-running the script leaves whatever you set untouched.
 
+## Cloudflare engine (one-time seed)
+
+The `cloudflare` secrets engine (dynamic Cloudflare API tokens + opt-in R2 S3
+creds) is structure-as-code in `terraform/cloudflare.tf` (plugin registration,
+mount, roles, rotation policy/role); the plugin binary is delivered to the Vault
+pods by an initContainer in `k8s/projects/gitops-stack/vault`. Adding or bumping
+the plugin needs a Vault restart + unseal (the `plugin_directory` lives in server
+config), so:
+
+1. **Helm first** — merge the values change (initContainer + `plugin_directory`),
+   let ArgoCD sync, then **unseal** (`gitops/install`). Only then does
+   `terraform apply` succeed (the mount spawns the plugin, which must be on disk).
+2. **Seed the parent token once, via CLI** — it is a real credential, so it is
+   never put in git or Terraform state. Write it, then immediately roll it so
+   Vault owns a fresh value and the seeded one dies:
+
+   ```sh
+   export VAULT_ADDR=https://vault.skyf0l.dev VAULT_TOKEN=<root-or-admin>
+   CF_BOOTSTRAP='<parent token: Account API Tokens Edit + Workers R2 Storage Edit>'
+   vault write cloudflare/config \
+     cloudflare_account_id=72daf8bcee8eb1ea408602f0d509a61f \
+     cloudflare_api_token="$CF_BOOTSTRAP"
+   vault write -f cloudflare/config/rotate-root token_type=account
+   unset CF_BOOTSTRAP
+   ```
+
+Ongoing rotation is automatic: the `cloudflare-rotate-root` CronJob (vault chart)
+rolls the parent value monthly via the `cloudflare-rotate` k8s-auth role. On a
+full Vault rebuild the Vault-owned value is lost (as with the database engine's
+`vault_mgr`), so DR = create a fresh parent token and re-run the seed above.
+
 ## Ongoing changes
 
 Structure changes go through `terraform/` and are applied by the GitHub Action
