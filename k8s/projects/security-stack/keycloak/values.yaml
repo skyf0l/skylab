@@ -4,7 +4,7 @@
 # Keycloak bootstrap-admin password lives in Vault. Realm config is imported as code.
 
 # Pin to the current stable (verified on quay).
-image: quay.io/keycloak/keycloak:26.6.4
+image: quay.io/keycloak/keycloak:26.7.0
 
 # Hostnames (injected from global.domain by the ApplicationSet, like authelia):
 #   host       = PUBLIC OIDC endpoint (issuer/authorize/token/jwks). External OAuth
