@@ -56,10 +56,10 @@ pods by an initContainer in `k8s/projects/gitops-stack/vault`. Adding or bumping
 the plugin needs a Vault restart + unseal (the `plugin_directory` lives in server
 config), so:
 
-1. **Helm first** — merge the values change (initContainer + `plugin_directory`),
+1. **Helm first**: merge the values change (initContainer + `plugin_directory`),
    let ArgoCD sync, then **unseal** (`gitops/install`). Only then does
    `terraform apply` succeed (the mount spawns the plugin, which must be on disk).
-2. **Seed the parent token once, via CLI** — it is a real credential, so it is
+2. **Seed the parent token once, via CLI**: it is a real credential, so it is
    never put in git or Terraform state. Write it, then immediately roll it so
    Vault owns a fresh value and the seeded one dies:
 

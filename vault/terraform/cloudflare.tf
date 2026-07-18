@@ -1,4 +1,4 @@
-# Cloudflare secrets engine — mints short-lived Cloudflare API tokens (and,
+# Cloudflare secrets engine: mints short-lived Cloudflare API tokens (and,
 # opt-in, derived R2 S3 credentials) on demand. The plugin binary is delivered
 # into the Vault pods by an initContainer (k8s/projects/gitops-stack/vault);
 # here we register the versioned plugin and mount it.
@@ -28,7 +28,7 @@ variable "cloudflare_plugin_sha256" {
 
 # Register the versioned plugin in Vault's catalog. The binary must already be
 # in /vault/plugins (delivered by the initContainer) before the mount below
-# spawns it — so apply the Helm change (restart + unseal) first.
+# spawns it, so apply the Helm change (restart + unseal) first.
 resource "vault_plugin" "cloudflare" {
   type    = "secret"
   name    = "vault-cloudflare-secret-engine"
