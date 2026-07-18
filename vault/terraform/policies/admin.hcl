@@ -98,6 +98,33 @@ path "database/rotate-root/*" {
   capabilities = ["create", "update"]
 }
 
+## Cloudflare Secrets Engine
+
+# Manage the Cloudflare engine STRUCTURE: parent config, roles, and root-token
+# rotation. Excludes cloudflare/creds/* — the CI configures the engine but never
+# mints tokens (that path belongs to workloads via ESO), mirroring database/.
+path "cloudflare/config" {
+  capabilities = ["create", "read", "update", "delete"]
+}
+path "cloudflare/config/rotate-root" {
+  capabilities = ["create", "update"]
+}
+path "cloudflare/role/*" {
+  capabilities = ["create", "read", "update", "delete", "list"]
+}
+
+## Plugin Catalog
+
+# Register and upgrade external secret-engine plugins (the Cloudflare engine).
+# sys/plugins/catalog is a root-protected path, so it also needs sudo.
+path "sys/plugins/catalog/*" {
+  capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+}
+# Reload a plugin in place after a version/binary change.
+path "sys/plugins/reload/backend" {
+  capabilities = ["create", "update"]
+}
+
 # Manage secrets engine
 path "sys/mounts/*" {
   capabilities = ["create", "read", "update", "delete", "list", "sudo"]
