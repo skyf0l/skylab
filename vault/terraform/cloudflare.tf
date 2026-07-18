@@ -11,7 +11,7 @@
 variable "cloudflare_account_id" {
   type        = string
   description = "Cloudflare account ID that owns the minted tokens and R2 buckets."
-  default     = "72daf8bcee8eb1ea408602f0d509a61f"
+  default     = "2620dc6ee3d578b27347d8e5efd95f32"
 }
 
 variable "cloudflare_plugin_version" {

@@ -67,7 +67,7 @@ config), so:
    export VAULT_ADDR=https://vault.skyf0l.dev VAULT_TOKEN=<root-or-admin>
    CF_BOOTSTRAP='<parent token: Account API Tokens Edit + Workers R2 Storage Edit>'
    vault write cloudflare/config \
-     cloudflare_account_id=72daf8bcee8eb1ea408602f0d509a61f \
+     cloudflare_account_id=2620dc6ee3d578b27347d8e5efd95f32 \
      cloudflare_api_token="$CF_BOOTSTRAP"
    vault write -f cloudflare/config/rotate-root token_type=account
    unset CF_BOOTSTRAP
