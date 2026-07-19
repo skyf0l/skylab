@@ -19,6 +19,11 @@ spec:
       recordTTL: 300
       targets: [{{ .Values.ingressDns.publicIp | quote }}]
     # Apex stays Cloudflare-proxied (origin IP hidden; TTL is auto when proxied).
+    # NOTE: external-dns silently skips a name that holds records it does not
+    # own — the apex still carries Cloudflare Email Routing's MX/SPF, so this
+    # endpoint stays pending (a manual proxied A covers the apex meanwhile).
+    # It activates on its own at mail cutover, once Email Routing's records AND
+    # the manual apex A are deleted (see the stalwart cutover checklist).
     - dnsName: {{ .Values.ingressDns.domain | quote }}
       recordType: A
       targets: [{{ .Values.ingressDns.publicIp | quote }}]
