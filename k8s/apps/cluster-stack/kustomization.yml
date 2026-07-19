@@ -7,3 +7,4 @@ resources:
   - apps/trivy.yaml
   - apps/cloudnative-pg.yaml
   - apps/reloader.yaml
+  - apps/external-dns.yaml

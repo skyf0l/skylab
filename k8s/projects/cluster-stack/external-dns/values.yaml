@@ -1,0 +1,52 @@
+# DNS-as-code (Cloudflare). external-dns only acts on DNSEndpoint CRs shipped
+# by app charts (CRD source) — it never scans Services/Ingresses and never
+# touches records it didn't create (txt registry ownership). Current consumer:
+# mail-stack/stalwart (mail zones). Blast radius is bounded by the Cloudflare
+# token scope (Vault), NOT by a --domain-filter: a filter listing the private
+# zones here would leak their names in a public repo.
+external-dns:
+  # Token is env-injected (read at startup): restart on rotation via Reloader.
+  deploymentAnnotations:
+    secret.reloader.stakater.com/reload: external-dns-cloudflare
+
+  provider:
+    name: cloudflare
+  sources:
+    - crd
+
+  # sync (not upsert-only) so deleting a DNSEndpoint from git deletes the record.
+  # Safe because ownership TXTs limit deletion to records this instance created.
+  policy: sync
+  registry: txt
+  txtOwnerId: skylab
+  # Prefix keeps ownership TXTs out of the way of SPF/DKIM/DMARC TXTs and avoids
+  # the TXT-vs-CNAME same-name collision.
+  txtPrefix: "edns-%{record_type}-"
+
+  interval: 5m
+  # React to DNSEndpoint changes immediately instead of waiting for the interval.
+  triggerLoopOnEvent: true
+
+  # Cloudflare API token (Zone.DNS:Edit + Zone.Zone:Read, scoped to the mail
+  # zones only) from Vault via the ExternalSecret in this chart's templates.
+  env:
+    - name: CF_API_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: external-dns-cloudflare
+          key: api_token
+
+  serviceMonitor:
+    enabled: true
+
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      memory: 128Mi
+
+externalSecret:
+  enabled: true
+  storeName: vault-backend
+  vaultKey: cluster/skylab/apps/external-dns
