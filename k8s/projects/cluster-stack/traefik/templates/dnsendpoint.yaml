@@ -1,0 +1,28 @@
+{{- if and .Values.ingressDns.enabled .Values.ingressDns.publicIp }}
+# The cluster's public entrypoint (the de facto LB — hostPort DaemonSet, no
+# cloud LB): wildcard for every *.<domain> app + the apex. Both values are
+# injected by the ApplicationSet from clusters/<name>/config.json
+# (global.domain / global.publicIp), so an IP change is one config.json edit.
+# Owned by external-dns (cluster-stack) via its TXT registry.
+apiVersion: externaldns.k8s.io/v1alpha1
+kind: DNSEndpoint
+metadata:
+  name: traefik-ingress
+  labels:
+    app.kubernetes.io/name: traefik
+spec:
+  endpoints:
+    # DNS-only: subdomains include non-proxiable endpoints (mail, tailnet);
+    # per-host proxying can be added later as explicit records.
+    - dnsName: "*.{{ .Values.ingressDns.domain }}"
+      recordType: A
+      recordTTL: 300
+      targets: [{{ .Values.ingressDns.publicIp | quote }}]
+    # Apex stays Cloudflare-proxied (origin IP hidden; TTL is auto when proxied).
+    - dnsName: {{ .Values.ingressDns.domain | quote }}
+      recordType: A
+      targets: [{{ .Values.ingressDns.publicIp | quote }}]
+      providerSpecific:
+        - name: external-dns.alpha.kubernetes.io/cloudflare-proxied
+          value: "true"
+{{- end }}

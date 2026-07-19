@@ -14,3 +14,11 @@ traefik:
       # they exist in-cluster (kube-prometheus). Skip the API check so offline
       # `make template` renders the ServiceMonitor instead of failing.
       disableAPICheck: true
+
+# Cluster entrypoint DNS (wildcard + apex A records) — see
+# templates/dnsendpoint.yaml. domain/publicIp are injected by the
+# ApplicationSet from clusters/<name>/config.json.
+ingressDns:
+  enabled: true
+  domain: ""
+  publicIp: ""

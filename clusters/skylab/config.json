@@ -5,6 +5,7 @@
     "revision": "main"
   },
   "global": {
-    "domain": "skyf0l.dev"
+    "domain": "skyf0l.dev",
+    "publicIp": "54.36.175.107"
   }
 }

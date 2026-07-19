@@ -42,6 +42,12 @@ spec:
             # Ingress .status instead (see additionalArguments in values/skylab.yaml).
             - name: "traefik.additionalArguments[0]"
               value: "--providers.kubernetesingress.ingressendpoint.hostname={{.global.domain}}"
+            # Cluster entrypoint records (wildcard + apex), managed as code via
+            # external-dns from the cluster's config.json.
+            - name: "ingressDns.domain"
+              value: "{{.global.domain}}"
+            - name: "ingressDns.publicIp"
+              value: "{{.global.publicIp}}"
       destination:
         server: https://kubernetes.default.svc
         namespace: traefik
