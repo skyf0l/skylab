@@ -27,6 +27,10 @@ external-dns:
   # React to DNSEndpoint changes immediately instead of waiting for the interval.
   triggerLoopOnEvent: true
 
+  # Default is [A AAAA CNAME] which silently drops the mail records (MX, SPF/
+  # DKIM/DMARC TXTs, SRV discovery). Ownership TXTs are unaffected (registry).
+  managedRecordTypes: [A, AAAA, CNAME, MX, TXT, SRV]
+
   # Cloudflare API token (Zone.DNS:Edit + Zone.Zone:Read, scoped to the mail
   # zones only) from Vault via the ExternalSecret in this chart's templates.
   env:
