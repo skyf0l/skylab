@@ -46,7 +46,14 @@ external-dns:
     limits:
       memory: 128Mi
 
-externalSecret:
+# Cloudflare token minted on demand by Vault's custom cloudflare secrets engine
+# (role dns-edit: Zone Read + DNS Write, 24h lease, VPS-IP-pinned) — nothing to
+# seed in KV. See vault/terraform/cloudflare.tf.
+dynamicCreds:
   enabled: true
-  storeName: vault-backend
-  vaultKey: cluster/skylab/apps/external-dns
+  serviceAccount: external-dns # SA the generator authenticates as (this ns)
+  vaultServer: "http://vault.vault.svc:8200"
+  vaultAuthMount: kubernetes
+  vaultRole: external-dns-cf # Vault k8s auth role bound to the SA above
+  credsPath: "cloudflare/creds/dns-edit"
+  refreshInterval: 8h

@@ -62,3 +62,24 @@ resource "vault_kubernetes_auth_backend_role" "defectdojo_db" {
   token_ttl     = 90000 # 25h
   token_max_ttl = 90000
 }
+
+# external-dns dynamic Cloudflare DNS tokens. Same shape as defectdojo-db: the
+# ESO VaultDynamicSecret generator is namespaced, so it authenticates as the
+# external-dns SA (created by the upstream chart) in its own namespace.
+resource "vault_kubernetes_auth_backend_role" "external_dns_cf" {
+  backend   = vault_auth_backend.kubernetes.path
+  role_name = "external-dns-cf"
+
+  bound_service_account_names      = ["external-dns"]
+  bound_service_account_namespaces = ["external-dns"]
+
+  token_policies = [
+    vault_policy.external_dns_cf_creds.name
+  ]
+
+  # The Cloudflare token lease is a child of this auth token — keep it alive
+  # longer than the role's ttl (24h) so the lease lives its full life; ESO
+  # refreshes (8h) well inside that, with overlap.
+  token_ttl     = 90000 # 25h
+  token_max_ttl = 90000
+}

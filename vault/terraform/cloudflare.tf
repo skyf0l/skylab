@@ -67,6 +67,40 @@ resource "vault_generic_endpoint" "cloudflare_role_r2" {
   })
 }
 
+# DNS-as-code (external-dns): Zone-read + DNS-write tokens, minted on demand and
+# consumed via the ESO VaultDynamicSecret generator in the external-dns
+# namespace (see k8s/projects/cluster-stack/external-dns). Scope is all zones in
+# the account ON PURPOSE — naming the private mail zones (even by opaque id)
+# would tie them to this public repo. Compensating controls: 24h lease (token
+# dies with it) and the token only works from the VPS egress IP.
+variable "cloudflare_dns_token_request_ips" {
+  type        = string
+  description = "Comma-separated CIDRs the minted DNS tokens may be used from (VPS egress)."
+  default     = "54.36.175.107/32"
+}
+
+resource "vault_generic_endpoint" "cloudflare_role_dns_edit" {
+  depends_on           = [vault_mount.cloudflare]
+  path                 = "cloudflare/role/dns-edit"
+  disable_read         = true # plugin canonicalises policies JSON; avoid perpetual diffs
+  disable_delete       = false
+  ignore_absent_fields = true
+
+  data_json = jsonencode({
+    token_type    = "account"
+    ttl           = "24h"
+    max_ttl       = "48h"
+    request_ip_in = var.cloudflare_dns_token_request_ips
+    policies = jsonencode([{
+      effect            = "allow"
+      permission_groups = [{ name = "DNS Write" }, { name = "Zone Read" }]
+      resources = {
+        "com.cloudflare.api.account.${var.cloudflare_account_id}" = { "com.cloudflare.api.account.zone.*" = "*" }
+      }
+    }])
+  })
+}
+
 # --- Ongoing parent-token rotation ---------------------------------------------
 # The initial roll happens once at seed time (CLI, see README). This grants the
 # rotation CronJob (k8s/projects/gitops-stack/vault templates) permission to roll

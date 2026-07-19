@@ -41,3 +41,8 @@ resource "vault_policy" "defectdojo_db_creds" {
   name   = "defectdojo-db-creds"
   policy = file("policies/defectdojo_db_creds.hcl")
 }
+
+resource "vault_policy" "external_dns_cf_creds" {
+  name   = "external-dns-cf-creds"
+  policy = file("policies/external_dns_cf_creds.hcl")
+}
