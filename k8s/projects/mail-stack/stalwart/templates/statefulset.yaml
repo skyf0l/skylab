@@ -110,6 +110,11 @@ spec:
         - name: tls-{{ .slug }}
           secret:
             secretName: stalwart-tls-{{ .slug }}
+            # optional: a per-domain cert takes minutes to issue (DNS-01), and a
+            # hard mount would keep the pod in ContainerCreating until then —
+            # taking ALL mail down to add one domain. With optional the server
+            # starts without it; Reloader restarts the pod once it appears.
+            optional: true
         {{- end }}
         {{- end }}
   volumeClaimTemplates:
