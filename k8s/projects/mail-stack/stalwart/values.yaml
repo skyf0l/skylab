@@ -151,10 +151,13 @@ dns:
 # skyf0l.dev stays mx:false until Cloudflare Email Routing is retired — flip is
 # a one-line commit.
 domains:
-  - name: "mailtest.{{ .Values.global.domain }}"
-    mx: true
+  # CUT OVER 2026-07-22: the pilot (mailtest.<domain>) proved the full path —
+  # public MX -> :25 -> delivery -> IMAP, plus authenticated submission — so the
+  # real domain now receives its own mail here. Cloudflare Email Routing must be
+  # disabled first: it API-locks the apex MX/SPF, so external-dns cannot replace
+  # them while it is on.
   - name: "{{ .Values.global.domain }}"
-    mx: false
+    mx: true
 extraDomains: []
 
 # ---- accounts (ensure-only: never pruned, credentials never touched). ----
