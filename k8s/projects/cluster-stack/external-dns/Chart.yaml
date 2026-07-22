@@ -6,10 +6,4 @@ version: 0.1.0
 dependencies:
   - name: external-dns
     repository: https://kubernetes-sigs.github.io/external-dns/
-    # Pinned to 1.20.0 (app 0.20.0): 1.21.1 rewrites MX records on EVERY
-    # reconcile (verified DELETE+CREATE each loop, with and without a trailing
-    # dot in the target), leaving a sub-second window with no MX. Harmless for a
-    # domain whose A record accepts SMTP, but fatal once the apex is
-    # Cloudflare-proxied — the implicit-MX fallback would hand mail to proxy IPs
-    # that don't speak SMTP. Revisit when the upstream MX handling is fixed.
-    version: 1.20.0
+    version: 1.21.1
