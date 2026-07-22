@@ -17,6 +17,13 @@ the DNSEndpoint template and the provisioning ConfigMap so both always agree.
      `dmarc:` key if one ever needs a softer policy. */}}
 {{- $_ := set $d "dmarc" (default (printf "v=DMARC1; p=reject; rua=mailto:postmaster@%s" $name) .dmarc) -}}
 {{- $_ := set $d "catchAll" (tpl (default "" .catchAll) $root) -}}
+{{/* Optional per-domain mail hostname. Defaults to the shared .Values.host, so
+     one server name and one certificate serve every domain. Setting it gives
+     the domain its own MX target + A record + SEPARATE certificate (never a SAN
+     on the shared cert, which would place both names in one Certificate
+     Transparency entry and publicly tie the domains together). */}}
+{{- $_ := set $d "mailHost" (default $root.Values.host (tpl (default "" .mailHost) $root)) -}}
+{{- $_ := set $d "slug" (replace "." "-" $name) -}}
 {{- $out = append $out $d -}}
 {{- end -}}
 {{- $out | toJson -}}

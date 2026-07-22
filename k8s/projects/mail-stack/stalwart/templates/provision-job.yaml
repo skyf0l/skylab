@@ -9,7 +9,13 @@ metadata:
     app: stalwart
 data:
   provision.json: |
-    {{ dict "hostname" .Values.host "defaultDomain" .Values.global.domain "domains" (include "stalwart.domains" . | fromJsonArray) "accounts" (include "stalwart.accounts" . | fromJsonArray) | toJson }}
+    {{- $certs := list (dict "host" .Values.host "path" "/etc/stalwart/tls") -}}
+    {{- range include "stalwart.domains" . | fromJsonArray -}}
+    {{- if ne .mailHost $.Values.host -}}
+    {{- $certs = append $certs (dict "host" .mailHost "path" (printf "/etc/stalwart/tls-%s" .slug)) -}}
+    {{- end -}}
+    {{- end }}
+    {{ dict "hostname" .Values.host "defaultDomain" .Values.global.domain "certificates" $certs "domains" (include "stalwart.domains" . | fromJsonArray) "accounts" (include "stalwart.accounts" . | fromJsonArray) | toJson }}
   provision.sh: |
 {{ .Files.Get "files/provision.sh" | indent 4 }}
 ---

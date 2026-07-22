@@ -7,7 +7,7 @@ metadata:
   annotations:
     # Restart on cert renewal (mail listeners read the PEM files at startup)
     # and on admin-secret rotation.
-    secret.reloader.stakater.com/reload: "{{ .Values.tls.secretName }},stalwart-secrets,stalwart-pg-app"
+    secret.reloader.stakater.com/reload: "{{ .Values.tls.secretName }},stalwart-secrets,stalwart-pg-app{{- range include "stalwart.domains" . | fromJsonArray }}{{- if ne .mailHost $.Values.host }},stalwart-tls-{{ .slug }}{{- end }}{{- end }}"
 spec:
   replicas: 1
   serviceName: stalwart
@@ -87,6 +87,15 @@ spec:
             - name: tls
               mountPath: /etc/stalwart/tls
               readOnly: true
+            {{- range include "stalwart.domains" . | fromJsonArray }}
+            {{- if ne .mailHost $.Values.host }}
+            # Per-domain cert; Stalwart picks between them by SNI once the
+            # provisioning job registers each one as a Certificate object.
+            - name: tls-{{ .slug }}
+              mountPath: /etc/stalwart/tls-{{ .slug }}
+              readOnly: true
+            {{- end }}
+            {{- end }}
             - name: data
               mountPath: /var/lib/stalwart
       volumes:
@@ -96,6 +105,13 @@ spec:
         - name: tls
           secret:
             secretName: {{ .Values.tls.secretName }}
+        {{- range include "stalwart.domains" . | fromJsonArray }}
+        {{- if ne .mailHost $.Values.host }}
+        - name: tls-{{ .slug }}
+          secret:
+            secretName: stalwart-tls-{{ .slug }}
+        {{- end }}
+        {{- end }}
   volumeClaimTemplates:
     - metadata:
         name: data

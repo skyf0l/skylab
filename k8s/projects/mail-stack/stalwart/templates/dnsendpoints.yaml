@@ -22,7 +22,16 @@ spec:
     - dnsName: {{ .name | quote }}
       recordType: MX
       recordTTL: {{ $root.Values.dns.ttl }}
-      targets: ["{{ $root.Values.dns.mxPriority }} {{ $root.Values.host }}"]
+      targets: ["{{ $root.Values.dns.mxPriority }} {{ $d.mailHost }}"]
+    {{- if ne $d.mailHost $root.Values.host }}
+    # This domain uses its own mail hostname, so it needs its own A record
+    # (an MX target must be an A record, never a CNAME). Same IP as the shared
+    # host — this changes the NAME clients and senders see, not the machine.
+    - dnsName: {{ $d.mailHost | quote }}
+      recordType: A
+      recordTTL: {{ $root.Values.dns.ttl }}
+      targets: [{{ $root.Values.publicIp | quote }}]
+    {{- end }}
     - dnsName: {{ .name | quote }}
       recordType: TXT
       recordTTL: {{ $root.Values.dns.ttl }}

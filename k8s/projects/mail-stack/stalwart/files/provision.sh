@@ -42,17 +42,27 @@ done
 # create is invisible and the job just says "failed".
 why() { echo "$1" | jq -c '.methodResponses[0][1] | (.notCreated // .notUpdated // .)' 2>/dev/null; }
 
-# ---- file-backed TLS certificate object (cert-manager mounts the PEMs) ----
-NCERTS=$(jmap '[["x:Certificate/get",{"ids":null},"c0"]]' \
-  | jq '[.methodResponses[0][1].list[]?] | length')
-if [ "$NCERTS" = "0" ]; then
-  echo "Creating file-backed TLS Certificate object"
-  RESP=$(jmap '[["x:Certificate/set",{"create":{"c1":{
-      "certificate":{"@type":"File","filePath":"/etc/stalwart/tls/tls.crt"},
-      "privateKey":{"@type":"File","filePath":"/etc/stalwart/tls/tls.key"}}}},"c0"]]')
+# ---- file-backed TLS certificate objects (cert-manager mounts the PEMs) ----
+# One per configured hostname: the shared mail host, plus any domain that sets
+# its own mailHost. Stalwart selects between them by SNI. Existing objects are
+# matched on their server-set subjectAlternativeNames so re-runs don't duplicate.
+CERTS_JSON=$(jmap '[["x:Certificate/get",{"ids":null,"properties":["subjectAlternativeNames"]},"c0"]]')
+jq -c '.certificates[]' "$CFG" | while read -r c; do
+  CHOST=$(echo "$c" | jq -r .host)
+  CPATH=$(echo "$c" | jq -r .path)
+  if echo "$CERTS_JSON" | jq -e --arg h "$CHOST" \
+    '[.methodResponses[0][1].list[]? | (.subjectAlternativeNames // {}) | keys[]?] | index($h)' >/dev/null 2>&1; then
+    echo "Certificate for $CHOST: exists"
+    continue
+  fi
+  echo "Certificate for $CHOST: creating (from $CPATH)"
+  RESP=$(jmap "$(jq -nc --arg crt "$CPATH/tls.crt" --arg key "$CPATH/tls.key" \
+    '[["x:Certificate/set",{"create":{"c1":{
+        "certificate":{"@type":"File","filePath":$crt},
+        "privateKey":{"@type":"File","filePath":$key}}}},"c0"]]')")
   echo "$RESP" | jq -e '.methodResponses[0][1].created.c1' >/dev/null \
-    || { echo "ERROR: Certificate create failed: $(why "$RESP")" >&2; exit 1; }
-fi
+    || { echo "ERROR: Certificate create failed for $CHOST: $(why "$RESP")" >&2; exit 1; }
+done
 
 # ---- domains ----
 ensure_domain() { # $1=name $2=catchAll

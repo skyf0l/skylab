@@ -22,3 +22,25 @@ spec:
     {{- range .Values.tls.extraDnsNames }}
     - {{ tpl . $ | quote }}
     {{- end }}
+{{- range include "stalwart.domains" . | fromJsonArray }}
+{{- if ne .mailHost $.Values.host }}
+---
+# Own certificate for a domain that sets its own mailHost. Deliberately a
+# SEPARATE Certificate rather than a SAN on the shared one: SANs would put both
+# hostnames in a single Certificate Transparency entry, publicly linking the
+# domains forever.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: stalwart-{{ .slug }}
+  labels:
+    app: stalwart
+spec:
+  secretName: stalwart-tls-{{ .slug }}
+  issuerRef:
+    name: {{ $.Values.tls.clusterIssuer }}
+    kind: ClusterIssuer
+  dnsNames:
+    - {{ .mailHost | quote }}
+{{- end }}
+{{- end }}
