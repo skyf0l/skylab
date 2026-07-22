@@ -23,9 +23,6 @@ external-dns:
   # the TXT-vs-CNAME same-name collision.
   txtPrefix: "edns-%{record_type}-"
 
-  # TEMPORARY: diagnosing why MX records are rewritten every reconcile.
-  logLevel: debug
-
   interval: 5m
   # React to DNSEndpoint changes immediately instead of waiting for the interval.
   triggerLoopOnEvent: true

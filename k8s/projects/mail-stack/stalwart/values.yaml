@@ -130,6 +130,12 @@ externalSecret:
 
 dns:
   ttl: 300
+  # MUST stay 0. external-dns's Cloudflare provider reads back EVERY MX record's
+  # priority as 0 (Cloudflare deprecated the top-level priority field), so any
+  # other value never matches the desired state and the record is deleted and
+  # recreated on every single reconcile — a ~1s window with no MX each time.
+  # Priority is meaningless here anyway: one mail host, no fallback.
+  mxPriority: 0
   # Defaults for every served domain; override per domain with spf:/dmarc:.
   # DMARC default is per-domain (rua=postmaster@<domain>) — cross-domain rua
   # would need an external-reporting authorization record.

@@ -22,7 +22,7 @@ spec:
     - dnsName: {{ .name | quote }}
       recordType: MX
       recordTTL: {{ $root.Values.dns.ttl }}
-      targets: ["10 {{ $root.Values.host }}"]
+      targets: ["{{ $root.Values.dns.mxPriority }} {{ $root.Values.host }}"]
     - dnsName: {{ .name | quote }}
       recordType: TXT
       recordTTL: {{ $root.Values.dns.ttl }}
