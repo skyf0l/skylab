@@ -117,9 +117,26 @@ fi
 # the public half is derivable from it. One DNSEndpoint per domain; leftovers
 # from a removed domain are pruned by hand (harmless residue).
 NS="${POD_NAMESPACE:?}"
+# dkimManagement Automatic generates ed25519 AND RSA, but ASYNCHRONOUSLY and at
+# different speeds (RSA-2048 keygen is much slower). Reading the zone file right
+# after creating a domain therefore yields only the ed25519 record, silently
+# publishing half the DKIM set. Poll until both are present.
+EXPECT_DKIM=2
 jq -r '.domains[].name' "$CFG" | while read -r NAME; do
-  ZONE=$(echo "$DOMAINS_JSON" | jq -r --arg n "$NAME" \
-    '.methodResponses[0][1].list[]? | select(.name == $n) | .dnsZoneFile // ""')
+  k=0
+  while :; do
+    ZONE=$(echo "$DOMAINS_JSON" | jq -r --arg n "$NAME" \
+      '.methodResponses[0][1].list[]? | select(.name == $n) | .dnsZoneFile // ""')
+    FOUND=$(printf '%s\n' "$ZONE" | grep -c '_domainkey' || true)
+    [ "$FOUND" -ge "$EXPECT_DKIM" ] && break
+    k=$((k+1))
+    if [ "$k" -ge 20 ]; then
+      echo "WARN: $NAME has $FOUND/$EXPECT_DKIM DKIM records after 60s — publishing what exists" >&2
+      break
+    fi
+    sleep 3
+    DOMAINS_JSON=$(jmap '[["x:Domain/get",{"ids":null},"c0"]]')
+  done
   # BIND zone lines, NO ttl field: `<fqdn>. IN TXT "value"`. Values over 255
   # bytes (every RSA DKIM key) are emitted as a parenthesized MULTI-LINE block
   # of quoted chunks, which must be concatenated back into one string:
