@@ -1,0 +1,24 @@
+# Prometheus scrape of Stalwart's metrics endpoint (admin-authenticated).
+# NOTE: verify the metrics path on the deployed v0.16 (web-admin > telemetry)
+# — adjust `path` here if it moved.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: stalwart
+  labels:
+    app: stalwart
+spec:
+  selector:
+    matchLabels:
+      app: stalwart
+  endpoints:
+    - port: http
+      path: /metrics/prometheus
+      interval: 60s
+      basicAuth:
+        username:
+          name: stalwart-secrets
+          key: username
+        password:
+          name: stalwart-secrets
+          key: password

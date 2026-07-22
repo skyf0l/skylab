@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: stalwart
+  labels:
+    app: stalwart
+spec:
+  type: ClusterIP
+  selector:
+    app: stalwart
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+    # In-cluster authenticated submission (future app relaying, alerts, ...).
+    - name: submission
+      port: 587
+      targetPort: submission

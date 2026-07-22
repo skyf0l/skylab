@@ -1,0 +1,70 @@
+# DNS-as-code: the static records for every served domain, reconciled into
+# Cloudflare by external-dns (CRD source, ownership TXTs, never proxied).
+# DKIM TXTs are NOT here — the key material only exists after the server
+# generates it, so the provisioning job publishes those DNSEndpoints.
+#
+# `mx: false` = outbound-identity only (DKIM/DMARC); `mx: true` also publishes
+# MX+SPF, i.e. this server owns the domain's inbound mail. That flag IS the
+# phased cutover.
+{{- $root := . -}}
+{{- range include "stalwart.domains" . | fromJsonArray }}
+{{- $d := . }}
+---
+apiVersion: externaldns.k8s.io/v1alpha1
+kind: DNSEndpoint
+metadata:
+  name: stalwart-{{ .name | replace "." "-" }}
+  labels:
+    app: stalwart
+spec:
+  endpoints:
+    {{- if .mx }}
+    - dnsName: {{ .name | quote }}
+      recordType: MX
+      recordTTL: {{ $root.Values.dns.ttl }}
+      targets: ["10 {{ $root.Values.host }}"]
+    - dnsName: {{ .name | quote }}
+      recordType: TXT
+      recordTTL: {{ $root.Values.dns.ttl }}
+      targets: [{{ .spf | quote }}]
+    {{- end }}
+    - dnsName: "_dmarc.{{ .name }}"
+      recordType: TXT
+      recordTTL: {{ $root.Values.dns.ttl }}
+      targets: [{{ .dmarc | quote }}]
+    {{- if $root.Values.dns.srvRecords }}
+    {{- range $srv := list (dict "svc" "_imaps" "port" 993) (dict "svc" "_submissions" "port" 465) (dict "svc" "_submission" "port" 587) }}
+    - dnsName: "{{ $srv.svc }}._tcp.{{ $d.name }}"
+      recordType: SRV
+      recordTTL: {{ $root.Values.dns.ttl }}
+      targets: ["0 1 {{ $srv.port }} {{ $root.Values.host }}"]
+    {{- end }}
+    {{- end }}
+{{- end }}
+{{- if .Values.publicIp }}
+---
+# The mail host itself: A record (MUST stay DNS-only/unproxied — Cloudflare
+# does not proxy SMTP/IMAP) + client-discovery CNAMEs.
+apiVersion: externaldns.k8s.io/v1alpha1
+kind: DNSEndpoint
+metadata:
+  name: stalwart-mailhost
+  labels:
+    app: stalwart
+spec:
+  endpoints:
+    - dnsName: {{ .Values.host | quote }}
+      recordType: A
+      recordTTL: {{ .Values.dns.ttl }}
+      targets: [{{ .Values.publicIp | quote }}]
+    {{- if .Values.autodiscovery }}
+    - dnsName: "autoconfig.{{ .Values.global.domain }}"
+      recordType: CNAME
+      recordTTL: {{ .Values.dns.ttl }}
+      targets: [{{ .Values.host | quote }}]
+    - dnsName: "autodiscover.{{ .Values.global.domain }}"
+      recordType: CNAME
+      recordTTL: {{ .Values.dns.ttl }}
+      targets: [{{ .Values.host | quote }}]
+    {{- end }}
+{{- end }}

@@ -1,0 +1,76 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: stalwart
+  annotations:
+    # After cert-manager/ESO (security-stack) and the DNSEndpoint CRD
+    # (cluster-stack external-dns).
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          # Auto updated by parent ApplicationSet
+          - list:
+              elements:
+                - name: skylab
+          - git:
+              repoURL: https://github.com/skyf0l/skylab.git
+              revision: main
+              files:
+                - path: clusters/{{.name}}/config.json
+  template:
+    metadata:
+      name: "{{.name}}-stalwart"
+      labels:
+        app.kubernetes.io/part-of: mail-stack
+        skylab.dev/tier: workloads
+      annotations:
+        argocd.argoproj.io/sync-wave: "2"
+    spec:
+      project: workloads
+      sources:
+        - repoURL: "{{.repo.url}}"
+          targetRevision: "{{.repo.revision}}"
+          path: k8s/projects/mail-stack/stalwart
+          helm:
+            releaseName: stalwart
+            valueFiles:
+              - values.yaml
+              - values/{{.name}}.yaml
+              # Private per-cluster overlay (extraDomains/extraAccounts) from
+              # skylab-private — private domain names never touch this repo.
+              # ignoreMissingValueFiles keeps it safe if a cluster has no overlay.
+              - $private/clusters/{{.name}}/stalwart/values.yaml
+            ignoreMissingValueFiles: true
+            # host = the MX target every served domain points at; domain-derived
+            # values (test domain, aliases) resolve from global.domain via tpl.
+            parameters:
+              - name: "global.domain"
+                value: "{{.global.domain}}"
+              - name: "host"
+                value: "mail.{{.global.domain}}"
+              # Mail A record target — the cluster entrypoint from config.json.
+              - name: "publicIp"
+                value: "{{.global.publicIp}}"
+        # values-only ref that makes $private resolvable; same GitHub App serves it.
+        - repoURL: https://github.com/skyf0l/skylab-private.git
+          targetRevision: main
+          ref: private
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: stalwart
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - Validate=true
+          - PrunePropagationPolicy=foreground
+          - PruneLast=true
+          - RespectIgnoreDifferences=true
+        retry:
+          limit: 5

@@ -32,3 +32,5 @@ universal:
 # each is validated in audit mode. System namespaces are deliberately absent.
 namespaces:
   - vault
+  - external-dns
+  - stalwart

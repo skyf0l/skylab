@@ -101,6 +101,30 @@ resource "vault_generic_endpoint" "cloudflare_role_dns_edit" {
   })
 }
 
+# Stalwart Postgres backups (CNPG barman -> R2). Longer-lived than the r2-objects
+# example role because WAL archiving runs continuously: barman re-reads the
+# mounted secret per invocation, so ESO can refresh well inside the lease.
+resource "vault_generic_endpoint" "cloudflare_role_r2_stalwart_backup" {
+  depends_on           = [vault_mount.cloudflare]
+  path                 = "cloudflare/role/r2-stalwart-backup"
+  disable_read         = true # plugin canonicalises policies JSON; avoid perpetual diffs
+  disable_delete       = false
+  ignore_absent_fields = true
+
+  data_json = jsonencode({
+    token_type        = "account"
+    r2_s3_credentials = true
+    ttl               = "24h"
+    max_ttl           = "48h"
+    request_ip_in     = var.cloudflare_dns_token_request_ips
+    policies = jsonencode([{
+      effect            = "allow"
+      permission_groups = [{ name = "Workers R2 Storage Bucket Item Write" }]
+      resources         = { "com.cloudflare.api.account.${var.cloudflare_account_id}" = "*" }
+    }])
+  })
+}
+
 # --- Ongoing parent-token rotation ---------------------------------------------
 # The initial roll happens once at seed time (CLI, see README). This grants the
 # rotation CronJob (k8s/projects/gitops-stack/vault templates) permission to roll

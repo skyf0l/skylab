@@ -1,0 +1,108 @@
+{{- if .Values.provision.enabled }}
+# Desired mail state (rendered from values, public + private overlay) + the
+# reconcile script. Not a hook: the Job mounts it, and hooks re-render anyway.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: stalwart-provision
+  labels:
+    app: stalwart
+data:
+  provision.json: |
+    {{ dict "hostname" .Values.host "domains" (include "stalwart.domains" . | fromJsonArray) "accounts" (include "stalwart.accounts" . | fromJsonArray) | toJson }}
+  provision.sh: |
+{{ .Files.Get "files/provision.sh" | indent 4 }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: stalwart-provision
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "0"
+    helm.sh/hook-delete-policy: hook-succeeded,before-hook-creation
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: stalwart-provision
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "0"
+    helm.sh/hook-delete-policy: hook-succeeded,before-hook-creation
+rules:
+  # Only the DKIM DNSEndpoints — everything else goes through the mail API.
+  - apiGroups: ["externaldns.k8s.io"]
+    resources: ["dnsendpoints"]
+    verbs: ["get", "list", "create", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: stalwart-provision
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "0"
+    helm.sh/hook-delete-policy: hook-succeeded,before-hook-creation
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: stalwart-provision
+subjects:
+  - kind: ServiceAccount
+    name: stalwart-provision
+---
+# Reconciles domains/DKIM/accounts/cert/hostname on every sync (idempotent,
+# ensure-only — see files/provision.sh). before-hook-creation keeps a failed
+# run from wedging the next sync.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: stalwart-provision
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "1"
+    helm.sh/hook-delete-policy: hook-succeeded,before-hook-creation
+spec:
+  backoffLimit: 5
+  activeDeadlineSeconds: 900
+  template:
+    spec:
+      serviceAccountName: stalwart-provision
+      restartPolicy: Never
+      containers:
+        - name: provision
+          image: {{ .Values.provision.jobImage | quote }}
+          command: ["/bin/sh", "/etc/provision/provision.sh"]
+          env:
+            - name: STALWART_URL
+              value: "http://stalwart:8080"
+            - name: STALWART_ADMIN_USER
+              value: {{ .Values.provision.adminUser | quote }}
+            - name: STALWART_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: stalwart-secrets
+                  key: admin_password
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          envFrom:
+            # password_<account> hashes; optional so a not-yet-seeded Vault
+            # property only degrades to a warning in the script.
+            - secretRef:
+                name: stalwart-account-passwords
+                optional: true
+          volumeMounts:
+            - name: provision
+              mountPath: /etc/provision
+              readOnly: true
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { memory: 128Mi }
+      volumes:
+        - name: provision
+          configMap:
+            name: stalwart-provision
+{{- end }}

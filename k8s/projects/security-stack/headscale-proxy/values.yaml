@@ -98,6 +98,14 @@ services:
     service: goldilocks-dashboard
     namespace: goldilocks
     port: 80
+  - name: stalwart
+    # Stalwart web-admin + management API (tailnet-only). The public Ingress
+    # (mail.<domain>) only routes /.well-known + /jmap — admin never leaves
+    # the tailnet.
+    service: stalwart
+    namespace: stalwart
+    port: 8080
+    scheme: http
   - name: traefik
     # Traefik's own dashboard/API (api@internal). Reached at
     # traefik.tail.<domain>/dashboard/ — tailnet-only, never publicly exposed

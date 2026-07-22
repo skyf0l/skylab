@@ -1,0 +1,23 @@
+# v0.16 local config = ONLY the datastore location; every other setting lives
+# in the database (reconciled by the provisioning job / managed in web-admin).
+# The password is read from $DB_PASSWORD (CNPG's generated secret) so no
+# credential ever lands in this ConfigMap.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: stalwart-config
+  labels:
+    app: stalwart
+data:
+  config.json: |
+    {
+      "@type": "PostgreSql",
+      "host": "stalwart-pg-rw",
+      "port": 5432,
+      "database": {{ .Values.postgres.database | quote }},
+      "authUsername": {{ .Values.postgres.owner | quote }},
+      "authSecret": {
+        "@type": "EnvironmentVariable",
+        "variableName": "DB_PASSWORD"
+      }
+    }

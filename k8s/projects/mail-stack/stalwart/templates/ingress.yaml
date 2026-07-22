@@ -1,0 +1,69 @@
+{{- if .Values.ingress.enabled }}
+# Public HTTPS surface, path-scoped ON PURPOSE: JMAP + client discovery only.
+# `/` and `/manage` are NOT routed, so the web-admin and management API stay
+# unreachable from the internet — they are served tailnet-only through
+# headscale-proxy (stalwart.tail.<domain> -> stalwart:8080).
+# No cert-manager annotation: the TLS secret comes from the Certificate CR.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: stalwart
+  labels:
+    app: stalwart
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  tls:
+    - hosts:
+        - {{ .Values.host | quote }}
+        {{- if .Values.autodiscovery }}
+        - "autoconfig.{{ .Values.global.domain }}"
+        - "autodiscover.{{ .Values.global.domain }}"
+        {{- end }}
+      secretName: {{ .Values.tls.secretName }}
+  rules:
+    - host: {{ .Values.host | quote }}
+      http:
+        paths:
+          # JMAP discovery + MTA-STS/autoconfig well-known endpoints.
+          - path: /.well-known
+            pathType: Prefix
+            backend:
+              service:
+                name: stalwart
+                port:
+                  name: http
+          - path: /jmap
+            pathType: Prefix
+            backend:
+              service:
+                name: stalwart
+                port:
+                  name: http
+    {{- if .Values.autodiscovery }}
+    # Thunderbird: /mail/config-v1.1.xml — Outlook: /autodiscover/autodiscover.xml
+    - host: "autoconfig.{{ .Values.global.domain }}"
+      http:
+        paths:
+          {{- range $p := list "/mail" "/.well-known" }}
+          - path: {{ $p }}
+            pathType: Prefix
+            backend:
+              service:
+                name: stalwart
+                port:
+                  name: http
+          {{- end }}
+    - host: "autodiscover.{{ .Values.global.domain }}"
+      http:
+        paths:
+          {{- range $p := list "/autodiscover" "/.well-known" }}
+          - path: {{ $p }}
+            pathType: Prefix
+            backend:
+              service:
+                name: stalwart
+                port:
+                  name: http
+          {{- end }}
+    {{- end }}
+{{- end }}

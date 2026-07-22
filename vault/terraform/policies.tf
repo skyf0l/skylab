@@ -46,3 +46,8 @@ resource "vault_policy" "external_dns_cf_creds" {
   name   = "external-dns-cf-creds"
   policy = file("policies/external_dns_cf_creds.hcl")
 }
+
+resource "vault_policy" "stalwart_backup_creds" {
+  name   = "stalwart-backup-creds"
+  policy = file("policies/stalwart_backup_creds.hcl")
+}

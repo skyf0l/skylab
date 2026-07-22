@@ -7,5 +7,6 @@ resources:
   - monitoring-stack/applications.yaml
   - logging-stack/applications.yaml
   - mcp-stack/applications.yaml
+  - mail-stack/applications.yaml
   - finops-stack/applications.yaml
   - serverless-stack/applications.yaml

@@ -1,0 +1,2 @@
+# Skylab overrides. host/domain/publicIp all derive from
+# clusters/skylab/config.json via the ApplicationSet — nothing to set here.

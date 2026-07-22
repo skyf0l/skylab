@@ -1,0 +1,63 @@
+# CloudNativePG Cluster backing Stalwart's data store (and, via the blob
+# store's Default variant, the message bodies). The cloudnative-pg operator
+# (cluster-stack) reconciles this into a Postgres instance, the
+# stalwart-pg-rw/-ro/-r services, a PodMonitor, the generated stalwart-pg-app
+# credential secret, and — when backup is enabled — WAL archiving to R2.
+#
+# Plain CNPG credential model (no Vault dynamic logins, unlike defectdojo):
+# Stalwart reads its password once at startup, so a leased credential would
+# force a scheduled mail-server restart. CNPG owns the password instead.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: stalwart-pg
+  labels:
+    app: stalwart
+  annotations:
+    # Postgres must exist before the mail server tries to open its data store.
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  instances: {{ .Values.postgres.instances }}
+  {{- with .Values.postgres.imageName }}
+  imageName: {{ . | quote }}
+  {{- end }}
+  storage:
+    size: {{ .Values.postgres.storage.size }}
+    storageClass: {{ .Values.postgres.storage.storageClass }}
+  monitoring:
+    enablePodMonitor: true
+  bootstrap:
+    initdb:
+      database: {{ .Values.postgres.database }}
+      owner: {{ .Values.postgres.owner }}
+  resources: {{- toYaml .Values.postgres.resources | nindent 4 }}
+  {{- if .Values.backup.enabled }}
+  backup:
+    retentionPolicy: {{ .Values.backup.retentionPolicy | quote }}
+    barmanObjectStore:
+      destinationPath: {{ .Values.backup.destinationPath | quote }}
+      endpointURL: {{ .Values.backup.endpointURL | quote }}
+      s3Credentials:
+        accessKeyId:
+          name: stalwart-pg-backup
+          key: ACCESS_KEY_ID
+        secretAccessKey:
+          name: stalwart-pg-backup
+          key: ACCESS_SECRET_KEY
+      wal:
+        compression: gzip
+  {{- end }}
+{{- if .Values.backup.enabled }}
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: stalwart-pg-daily
+  labels:
+    app: stalwart
+spec:
+  schedule: {{ .Values.backup.scheduleCron | quote }}
+  backupOwnerReference: self
+  cluster:
+    name: stalwart-pg
+{{- end }}

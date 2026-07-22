@@ -1,0 +1,24 @@
+# TLS for the mail protocols AND the public HTTPS hosts — one secret, referenced
+# by the Ingress and mounted into the pod (the provisioning job registers a
+# file-backed Certificate object pointing at the mounted PEMs). Explicit CR
+# (not an ingress-shim cert): SMTP/IMAP need the files regardless of Ingress.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: stalwart
+  labels:
+    app: stalwart
+spec:
+  secretName: {{ .Values.tls.secretName }}
+  issuerRef:
+    name: {{ .Values.tls.clusterIssuer }}
+    kind: ClusterIssuer
+  dnsNames:
+    - {{ .Values.host | quote }}
+    {{- if .Values.autodiscovery }}
+    - "autoconfig.{{ .Values.global.domain }}"
+    - "autodiscover.{{ .Values.global.domain }}"
+    {{- end }}
+    {{- range .Values.tls.extraDnsNames }}
+    - {{ tpl . $ | quote }}
+    {{- end }}

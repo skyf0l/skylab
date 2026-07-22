@@ -101,6 +101,8 @@ spec:
   destinations:
     - server: https://kubernetes.default.svc
       namespace: mcp
+    - server: https://kubernetes.default.svc
+      namespace: stalwart
   # No clusterResourceWhitelist on purpose: app workloads must not create
   # cluster-scoped objects. Add namespaces above as new apps land.
   namespaceResourceWhitelist:

@@ -83,3 +83,23 @@ resource "vault_kubernetes_auth_backend_role" "external_dns_cf" {
   token_ttl     = 90000 # 25h
   token_max_ttl = 90000
 }
+
+# Stalwart CNPG backups: the ESO VaultDynamicSecret generator leases R2 S3
+# credentials as a dedicated SA in the stalwart namespace (namespaced generator,
+# so it cannot use the external-secrets SA cross-namespace).
+resource "vault_kubernetes_auth_backend_role" "stalwart_backup" {
+  backend   = vault_auth_backend.kubernetes.path
+  role_name = "stalwart-backup"
+
+  bound_service_account_names      = ["stalwart-backup"]
+  bound_service_account_namespaces = ["stalwart"]
+
+  token_policies = [
+    vault_policy.stalwart_backup_creds.name
+  ]
+
+  # Keep the auth token alive longer than the R2 role's ttl (24h) so the lease
+  # lives its full life; ESO refreshes (8h) well inside that, with overlap.
+  token_ttl     = 90000 # 25h
+  token_max_ttl = 90000
+}

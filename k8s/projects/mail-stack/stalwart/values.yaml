@@ -1,0 +1,173 @@
+# Stalwart mail server (SMTP + IMAP + JMAP). Public mail host is
+# mail.<global.domain>; MX for every served domain points at it, so private
+# domains never need their own A record or certificate (no CT-log leaks).
+#
+# v0.16 model: the local config file only holds the RocksDB datastore location.
+# Domains, DKIM keys, accounts and TLS certificate objects live in the server's
+# database and are reconciled from THIS values file by the provisioning hook
+# job (files/provision.sh) — that is the GitOps-as-code surface. Anything else
+# changed in the web-admin is runtime state, not git.
+image:
+  repository: stalwartlabs/stalwart
+  tag: v0.16.13
+  pullPolicy: IfNotPresent
+
+# Injected by the ApplicationSet from the cluster's global.domain:
+#   global.domain -> bare domain (default account/alias domain)
+#   host          -> mail.<domain>: MX target, SMTP hostname, cert CN
+global:
+  domain: ""
+host: ""
+
+# Public IP of the node that receives mail — the A record target for `host`.
+# Cluster-specific: set in values/<cluster>.yaml.
+publicIp: ""
+
+# Mail listeners exposed directly on the node via hostPort (no Traefik in the
+# mail path — source IP must survive for SPF/DNSBL checks). The pod lands on
+# the VPS because it does NOT tolerate the Pi's light taint and its local-path
+# PVC pins it there. Plaintext IMAP (143) and POP3 are deliberately absent.
+mailPorts:
+  - name: smtp
+    port: 25
+  - name: submissions
+    port: 465
+  - name: submission
+    port: 587
+  - name: imaps
+    port: 993
+
+# Scratch volume only. With Postgres as the data store (and blobs living inside
+# it), /var/lib/stalwart holds no mail — just temp files. It still pins the pod
+# to the VPS, which is what the hostPort listeners need.
+storage:
+  size: 2Gi
+  storageClassName: local-path
+
+# CloudNativePG-managed Postgres: the data store AND, via the blob store's
+# "Default" variant, the message bodies themselves. Chosen over the embedded
+# RocksDB because Stalwart's own docs say the export/import tool "is not a
+# substitute for proper backup procedures" and to rely on the backend's native
+# tooling — RocksDB on a single local-path PV has none, while CNPG brings
+# barman/PITR + the PodMonitor and dashboard 20417.
+#
+# Blobs stay in the database on purpose: one backup and one point-in-time
+# restore then cover metadata AND message bodies consistently. Split them to an
+# S3/R2 blob store only once volume justifies it (a restore then has to
+# reconcile DB state against a bucket that moved on independently).
+#
+# Credentials come from CNPG's generated stalwart-pg-app secret, NOT Vault
+# dynamic creds: Stalwart reads the password once at startup, so a rotating
+# credential would mean restarting the mail server on a schedule.
+postgres:
+  instances: 1 # single node for now; bump once a second node joins (HA-ready)
+  database: stalwart
+  owner: stalwart # also the login user; CNPG generates its password
+  # imageName: "" # optional pin; CNPG default is a recent PostgreSQL
+  storage:
+    size: 20Gi
+    storageClass: local-path
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 1Gi
+
+# Barman continuous WAL archiving + scheduled base backups to Cloudflare R2 —
+# this is the whole reason for CNPG, so turn it on as soon as the bucket exists.
+# DISABLED by default because a Cluster pointed at a non-existent bucket fails
+# WAL archiving, which eventually wedges the primary (defectdojo learned this).
+# To enable: create the R2 bucket, set destinationPath/endpointURL in
+# values/<cluster>.yaml, then flip enabled: true.
+backup:
+  enabled: false
+  retentionPolicy: "30d"
+  scheduleCron: "0 0 3 * * *" # CNPG 6-field cron (sec min hour ...) — 03:00 daily
+  destinationPath: "" # s3://<bucket>/<path>, per-cluster
+  endpointURL: "" # https://<account>.r2.cloudflarestorage.com, per-cluster
+  # R2 S3 credentials minted by Vault's cloudflare engine (r2-stalwart-backup
+  # role) and leased by the ESO generator — same model as external-dns, no KV.
+  serviceAccount: stalwart-backup
+  vaultServer: "http://vault.vault.svc:8200"
+  vaultAuthMount: kubernetes
+  vaultRole: stalwart-backup
+  credsPath: "cloudflare/creds/r2-stalwart-backup"
+  refreshInterval: 8h
+
+tls:
+  # Use letsencrypt-staging first to avoid rate limits, then switch to prod.
+  clusterIssuer: letsencrypt-staging
+  secretName: stalwart-tls
+  # Extra SANs on the mail certificate (tpl'd). Keep public+private domains on
+  # separate certs — SANs end up in Certificate-Transparency logs.
+  extraDnsNames: []
+
+# Public HTTPS surface, deliberately path-scoped: JMAP + discovery only. The
+# web-admin and management API are NOT routed here — they are tailnet-only via
+# headscale-proxy (stalwart.tail.<domain> -> :8080).
+ingress:
+  enabled: true
+  className: traefik
+
+# autoconfig.<domain>/autodiscover.<domain> hosts (Thunderbird/Outlook client
+# discovery): CNAMEs, cert SANs and ingress rules.
+autodiscovery: true
+
+# ESO pulls these from Vault at: kvv2/cluster/skylab/apps/stalwart
+# Fields the user must populate in that Vault secret:
+#   admin_password       PLAINTEXT admin password (feeds STALWART_RECOVERY_ADMIN
+#                        and the provisioning job's Basic auth — a hash cannot
+#                        authenticate a client)
+#   password_<account>   one per declared account, argon2id/bcrypt hash
+#                        (mkpasswd -m argon2id) — stored as the account secret
+externalSecret:
+  enabled: true
+  storeName: vault-backend
+  vaultKey: cluster/skylab/apps/stalwart
+
+dns:
+  ttl: 300
+  # Defaults for every served domain; override per domain with spf:/dmarc:.
+  # DMARC default is per-domain (rua=postmaster@<domain>) — cross-domain rua
+  # would need an external-reporting authorization record.
+  spf: "v=spf1 mx -all"
+  # RFC 6186/8314 SRV client-discovery records. Off until SRV support of the
+  # external-dns Cloudflare provider is verified on this setup.
+  srvRecords: false
+
+# ---- served domains (public). skylab-private appends to extraDomains. ----
+# Fields: name (tpl'd), mx (CUTOVER GATE: false = DKIM/DMARC only, true = also
+# publish MX+SPF, i.e. this server receives the domain's mail), optional
+# spf/dmarc overrides, optional catchAll (full address).
+# skyf0l.dev stays mx:false until Cloudflare Email Routing is retired — flip is
+# a one-line commit.
+domains:
+  - name: "mailtest.{{ .Values.global.domain }}"
+    mx: true
+  - name: "{{ .Values.global.domain }}"
+    mx: false
+extraDomains: []
+
+# ---- accounts (ensure-only: never pruned, passwords never overwritten). ----
+# name = local part ([a-z0-9_] — it becomes part of an env var name), domain
+# defaults to global.domain, aliases are local parts on the same domain.
+# Every mx:true domain should have a postmaster alias (DMARC rua target).
+accounts:
+  - name: skyf0l
+    aliases: [postmaster, admin, contact]
+extraAccounts: []
+
+provision:
+  enabled: true
+  # Needs sh + kubectl (curl/jq are apk-added at runtime, same pragmatism as
+  # the headscale-proxy authkey-mint job).
+  jobImage: alpine/kubectl:1.36.2
+  adminUser: admin
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    memory: 1536Mi

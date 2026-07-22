@@ -1,0 +1,11 @@
+apiVersion: v2
+name: stalwart
+description: >-
+  Custom chart deploying upstream Stalwart (mail server) as a single-replica
+  StatefulSet with hostPort mail listeners, cert-manager TLS from files, and a
+  values-driven provisioning job that reconciles domains/DKIM/accounts through
+  the JMAP management API and publishes DKIM records as external-dns
+  DNSEndpoints.
+type: application
+version: 0.1.0
+appVersion: "0.16.13"
