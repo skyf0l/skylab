@@ -93,8 +93,11 @@ spec:
               mountPath: /etc/provision
               readOnly: true
           resources:
-            requests: { cpu: 10m, memory: 32Mi }
-            limits: { memory: 128Mi }
+            # 128Mi OOMKilled this: `apk add curl jq` writes into the container
+            # filesystem and that page cache counts against the cgroup limit,
+            # on top of jq holding whole API responses in memory.
+            requests: { cpu: 10m, memory: 64Mi }
+            limits: { memory: 256Mi }
       volumes:
         - name: provision
           configMap:
