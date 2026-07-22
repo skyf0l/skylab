@@ -96,8 +96,9 @@ backup:
   refreshInterval: 8h
 
 tls:
-  # Use letsencrypt-staging first to avoid rate limits, then switch to prod.
-  clusterIssuer: letsencrypt-staging
+  # Staging first to avoid rate limits; switched to prod once the cert issued
+  # cleanly — mail clients and TLS-verifying senders reject a staging chain.
+  clusterIssuer: letsencrypt-prod
   secretName: stalwart-tls
   # Extra SANs on the mail certificate (tpl'd). Keep public+private domains on
   # separate certs — SANs end up in Certificate-Transparency logs.
