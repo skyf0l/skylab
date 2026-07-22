@@ -8,12 +8,10 @@
       - lookup('ansible.builtin.pipe', 'command -v openssl || true') | length > 0
       - r2_access_key_id | default('') | length > 0
       - r2_secret_access_key | default('') | length > 0
-      - cf_api_token | default('') | length > 0
     fail_msg: >-
       Bootstrap prerequisites missing. Need these CLIs on PATH: terraform, vault,
       openssl; and in secrets.local.yml: r2_access_key_id / r2_secret_access_key
-      (Cloudflare R2 token for the Terraform state backend) + cf_api_token
-      (Cloudflare DNS API token for cert-manager DNS-01).
+      (Cloudflare R2 token for the Terraform state backend).
     quiet: true
 
 # Save a kubeconfig under artifacts/ (gitignored) pointed at the tailnet API
@@ -71,21 +69,6 @@
       kind: Namespace
       metadata:
         name: cert-manager
-
-- name: Create the Cloudflare DNS-01 API token secret
-  kubernetes.core.k8s:
-    kubeconfig: "{{ kubeconfig_local_path }}"
-    state: present
-    definition:
-      apiVersion: v1
-      kind: Secret
-      metadata:
-        name: cloudflare-api-token
-        namespace: cert-manager
-      type: Opaque
-      stringData:
-        api-token: "{{ cf_api_token }}"
-  no_log: true
 
 # Mint a 24h single-use Headscale pre-auth key for the personal user and drop a
 # ready `tailscale up` join script in artifacts/. Headscale is ArgoCD-synced, so

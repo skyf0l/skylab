@@ -9,11 +9,11 @@ issuers:
 email: ""
 
 # Cloudflare API token Secret, read from the cert-manager namespace.
-# Now minted by Vault's cloudflare secrets engine (role dns-edit: Zone Read +
-# DNS Write across the whole account) and leased by ESO — see
-# templates/externalsecret.yaml. The old hand-created `cloudflare-api-token`
-# secret was scoped to a single zone, which broke DNS-01 for every domain added
-# afterwards; delete it once this is verified.
+# Minted by Vault's cloudflare secrets engine (role dns-edit: Zone Read + DNS
+# Write across the whole account) and leased by ESO — see
+# templates/externalsecret.yaml. It replaced a hand-created, single-zone token
+# that silently broke DNS-01 for every domain added afterwards: the only symptom
+# was a Challenge stuck pending with "Found no Zones for domain ...".
 cloudflare:
   fromVault: true
   tokenSecretName: cloudflare-cf-token
