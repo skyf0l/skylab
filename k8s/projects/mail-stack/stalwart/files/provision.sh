@@ -162,11 +162,13 @@ jq -c '.accounts[]' "$CFG" | while read -r a; do
     echo "Account $NAME@$DOMAIN: exists (password/aliases left untouched)"
     continue
   fi
-  # Password hash from the stalwart-account-passwords secret (envFrom).
-  PW=$(printenv "password_${NAME}" || true)
-  [ -z "$PW" ] && echo "WARN: no password_${NAME} in Vault — account created without credentials" >&2
+  # Created WITHOUT credentials on purpose: only the admin password lives in
+  # Vault. Set the mailbox password once from the web-admin (tailnet-only) —
+  # user passwords are personal, rotate independently, and must never be
+  # declarative state.
   echo "Account $NAME@$DOMAIN: creating (aliases: $(echo "$a" | jq -cr .aliases))"
-  jmap "$(echo "$a" | jq -c --arg did "$DID" --arg pw "$PW" '[["x:Account/set",{"create":{"a1":
+  echo "  -> set its password in the web-admin; it cannot log in until you do"
+  jmap "$(echo "$a" | jq -c --arg did "$DID" '[["x:Account/set",{"create":{"a1":
     {
       "@type":"User",
       "name":.name,
@@ -178,7 +180,7 @@ jq -c '.accounts[]' "$CFG" | while read -r a; do
       "memberGroupIds":{},
       "aliases":([.aliases[] | {enabled:true, name:., domainId:$did}]
                  | to_entries | map({(.key|tostring): .value}) | add // {}),
-      "credentials":(if $pw == "" then {} else {"0":{"@type":"Password","secret":$pw}} end)
+      "credentials":{}
     }
   }},"c0"]]')" \
     | jq -e '.methodResponses[0][1].created.a1' >/dev/null \

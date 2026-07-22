@@ -88,12 +88,6 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
-          envFrom:
-            # password_<account> hashes; optional so a not-yet-seeded Vault
-            # property only degrades to a warning in the script.
-            - secretRef:
-                name: stalwart-account-passwords
-                optional: true
           volumeMounts:
             - name: provision
               mountPath: /etc/provision

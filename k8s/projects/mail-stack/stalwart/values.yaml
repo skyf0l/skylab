@@ -114,13 +114,14 @@ ingress:
 # discovery): CNAMEs, cert SANs and ingress rules.
 autodiscovery: true
 
-# ESO pulls these from Vault at: kvv2/cluster/skylab/apps/stalwart
-# Fields the user must populate in that Vault secret:
-#   admin_password       PLAINTEXT admin password (feeds STALWART_RECOVERY_ADMIN
-#                        and the provisioning job's Basic auth — a hash cannot
-#                        authenticate a client)
-#   password_<account>   one per declared account, argon2id/bcrypt hash
-#                        (mkpasswd -m argon2id) — stored as the account secret
+# ESO pulls this from Vault at: kvv2/cluster/skylab/apps/stalwart
+# The ONLY field to populate:
+#   admin_password   PLAINTEXT admin password (feeds STALWART_RECOVERY_ADMIN and
+#                    the provisioning job's Basic auth — a hash cannot
+#                    authenticate a client)
+# Mailbox passwords are deliberately NOT here: accounts are provisioned without
+# credentials and their passwords are set once from the web-admin. Personal
+# passwords rotate independently and shouldn't be declarative state.
 externalSecret:
   enabled: true
   storeName: vault-backend
@@ -149,9 +150,11 @@ domains:
     mx: false
 extraDomains: []
 
-# ---- accounts (ensure-only: never pruned, passwords never overwritten). ----
-# name = local part ([a-z0-9_] — it becomes part of an env var name), domain
-# defaults to global.domain, aliases are local parts on the same domain.
+# ---- accounts (ensure-only: never pruned, credentials never touched). ----
+# Declares WHICH mailboxes and aliases exist, not their passwords: each account
+# is created without credentials, then given a password from the web-admin.
+# name = local part, domain defaults to global.domain, aliases are local parts
+# on the same domain.
 # Every mx:true domain should have a postmaster alias (DMARC rua target).
 accounts:
   - name: skyf0l
