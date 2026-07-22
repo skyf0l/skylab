@@ -9,10 +9,18 @@ issuers:
 email: ""
 
 # Cloudflare API token Secret, read from the cert-manager namespace.
-# The token needs Zone:DNS:Edit + Zone:Zone:Read on the zone. Create it once:
-#   kubectl -n cert-manager create secret generic cloudflare-api-token \
-#     --from-literal=api-token='<CLOUDFLARE_TOKEN>'
-# (later: source it from Vault via ESO instead of a manual secret)
+# Now minted by Vault's cloudflare secrets engine (role dns-edit: Zone Read +
+# DNS Write across the whole account) and leased by ESO — see
+# templates/externalsecret.yaml. The old hand-created `cloudflare-api-token`
+# secret was scoped to a single zone, which broke DNS-01 for every domain added
+# afterwards; delete it once this is verified.
 cloudflare:
-  tokenSecretName: cloudflare-api-token
+  fromVault: true
+  tokenSecretName: cloudflare-cf-token
   tokenSecretKey: api-token
+  serviceAccount: cert-manager-cf # SA the generator authenticates as (this ns)
+  vaultServer: "http://vault.vault.svc:8200"
+  vaultAuthMount: kubernetes
+  vaultRole: cert-manager-cf # Vault k8s auth role bound to the SA above
+  credsPath: "cloudflare/creds/dns-edit"
+  refreshInterval: 8h

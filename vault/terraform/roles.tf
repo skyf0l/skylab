@@ -103,3 +103,24 @@ resource "vault_kubernetes_auth_backend_role" "stalwart_backup" {
   token_ttl     = 90000 # 25h
   token_max_ttl = 90000
 }
+
+# cert-manager DNS-01 solver credentials. The ESO VaultDynamicSecret generator
+# is namespaced, so it authenticates as a dedicated SA in the cert-manager
+# namespace. Replaces the hand-created, single-zone Cloudflare token.
+resource "vault_kubernetes_auth_backend_role" "cert_manager_cf" {
+  backend   = vault_auth_backend.kubernetes.path
+  role_name = "cert-manager-cf"
+
+  bound_service_account_names      = ["cert-manager-cf"]
+  bound_service_account_namespaces = ["cert-manager"]
+
+  token_policies = [
+    vault_policy.cert_manager_cf_creds.name
+  ]
+
+  # Outlive the engine role's 24h ttl so the lease runs its full life; ESO
+  # refreshes (8h) well inside it. cert-manager reads the token per API call,
+  # so a rotation needs no restart.
+  token_ttl     = 90000 # 25h
+  token_max_ttl = 90000
+}
