@@ -9,7 +9,7 @@ metadata:
     app: stalwart
 data:
   provision.json: |
-    {{ dict "hostname" .Values.host "domains" (include "stalwart.domains" . | fromJsonArray) "accounts" (include "stalwart.accounts" . | fromJsonArray) | toJson }}
+    {{ dict "hostname" .Values.host "defaultDomain" .Values.global.domain "domains" (include "stalwart.domains" . | fromJsonArray) "accounts" (include "stalwart.accounts" . | fromJsonArray) | toJson }}
   provision.sh: |
 {{ .Files.Get "files/provision.sh" | indent 4 }}
 ---
