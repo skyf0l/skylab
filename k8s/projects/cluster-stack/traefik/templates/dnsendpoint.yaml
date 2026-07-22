@@ -19,11 +19,15 @@ spec:
       recordTTL: 300
       targets: [{{ .Values.ingressDns.publicIp | quote }}]
     # Apex stays Cloudflare-proxied (origin IP hidden; TTL is auto when proxied).
-    # NOTE: external-dns silently skips a name that holds records it does not
-    # own — the apex still carries Cloudflare Email Routing's MX/SPF, so this
-    # endpoint stays pending (a manual proxied A covers the apex meanwhile).
-    # It activates on its own at mail cutover, once Email Routing's records AND
-    # the manual apex A are deleted (see the stalwart cutover checklist).
+    # NOTE: ownership (txtPrefix edns-%{record_type}-) is per (name, type) rrset
+    # — Email Routing's MX/SPF do NOT block this A. Only the pre-existing manual
+    # apex A does: no ownership TXT, so external-dns silently drops the update.
+    # Zero-downtime handover = create the adoption TXT once (then this record is
+    # reconciled in place, proxied kept):
+    #   edns-a-<domain> TXT "heritage=external-dns,external-dns/owner=skylab,external-dns/resource=crd/traefik/traefik-ingress"
+    # (Alternative: delete the manual A and wait one sync — brief apex gap.)
+    # The apex MX/SPF cutover gate (stalwart domains[].mx) is separate and still
+    # requires disabling Email Routing: CF locks its records against the API.
     - dnsName: {{ .Values.ingressDns.domain | quote }}
       recordType: A
       targets: [{{ .Values.ingressDns.publicIp | quote }}]
