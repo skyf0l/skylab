@@ -64,6 +64,20 @@ jq -c '.certificates[]' "$CFG" | while read -r c; do
     || { echo "ERROR: Certificate create failed for $CHOST: $(why "$RESP")" >&2; exit 1; }
 done
 
+# ---- special-use folders for new mailboxes ----
+# Stalwart leaves defaultFolders unset, which gives new accounts only Inbox and
+# Drafts. Clients expect Sent/Trash/Junk/Archive to exist server-side.
+# NOTE: this applies to mailboxes created AFTER it is set; existing accounts
+# keep the folders they already have.
+FOLDERS=$(jq -c '.defaultFolders' "$CFG")
+if [ "$FOLDERS" != "null" ] && [ "$FOLDERS" != "{}" ]; then
+  echo "Ensuring default folders: $(echo "$FOLDERS" | jq -r 'keys | join(", ")')"
+  RESP=$(jmap "$(jq -nc --argjson f "$FOLDERS" \
+    '[["x:Email/set",{"update":{"singleton":{"defaultFolders":$f}}},"c0"]]')")
+  echo "$RESP" | jq -e '.methodResponses[0][1] | (.notUpdated // {}) | length == 0' >/dev/null \
+    || echo "WARN: defaultFolders update rejected: $(why "$RESP")" >&2
+fi
+
 # ---- domains ----
 ensure_domain() { # $1=name $2=catchAll
   # dkimManagement Automatic generates the keypairs (ed25519 + RSA). Rotation is

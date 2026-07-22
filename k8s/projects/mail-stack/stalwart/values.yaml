@@ -128,6 +128,19 @@ externalSecret:
   storeName: vault-backend
   vaultKey: cluster/skylab/apps/stalwart
 
+# Special-use folders created (and subscribed) for new mailboxes. Stalwart ships
+# with defaultFolders UNSET, so a fresh account only gets Inbox and Drafts —
+# Apple Mail and most clients expect Sent/Trash/Junk/Archive to exist server-side
+# and misbehave without them (no Sent copies, deletes with nowhere to go).
+# Keys are Stalwart's special-use names; values are the folder names clients see.
+defaultFolders:
+  inbox: Inbox
+  drafts: Drafts
+  sent: Sent
+  trash: Trash
+  junk: Junk
+  archive: Archive
+
 dns:
   ttl: 300
   # MUST stay 0. external-dns's Cloudflare provider reads back EVERY MX record's

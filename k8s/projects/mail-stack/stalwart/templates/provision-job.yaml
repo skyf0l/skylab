@@ -15,7 +15,11 @@ data:
     {{- $certs = append $certs (dict "host" .mailHost "path" (printf "/etc/stalwart/tls-%s" .slug)) -}}
     {{- end -}}
     {{- end }}
-    {{ dict "hostname" .Values.host "defaultDomain" .Values.global.domain "certificates" $certs "domains" (include "stalwart.domains" . | fromJsonArray) "accounts" (include "stalwart.accounts" . | fromJsonArray) | toJson }}
+    {{- $folders := dict -}}
+    {{- range $use, $name := .Values.defaultFolders -}}
+    {{- $_ := set $folders $use (dict "name" $name "create" true "subscribe" true) -}}
+    {{- end }}
+    {{ dict "hostname" .Values.host "defaultDomain" .Values.global.domain "certificates" $certs "defaultFolders" $folders "domains" (include "stalwart.domains" . | fromJsonArray) "accounts" (include "stalwart.accounts" . | fromJsonArray) | toJson }}
   provision.sh: |
 {{ .Files.Get "files/provision.sh" | indent 4 }}
 ---
