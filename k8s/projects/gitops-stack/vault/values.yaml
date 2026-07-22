@@ -63,7 +63,7 @@ vault:
         mountPath: /vault/plugins
     extraInitContainers:
       - name: fetch-cloudflare-plugin
-        image: curlimages/curl:8.11.1
+        image: curlimages/curl:8.21.0
         env:
           - name: PLUGIN_VERSION
             value: "1.2.0"
