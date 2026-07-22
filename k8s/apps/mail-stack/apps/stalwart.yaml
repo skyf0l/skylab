@@ -67,7 +67,10 @@ spec:
           prune: true
           selfHeal: true
         syncOptions:
-          - CreateNamespace=true
+          # No CreateNamespace: the workloads project grants no cluster-scoped
+          # resources, so ArgoCD may not create the Namespace itself. Like `mcp`,
+          # the stalwart namespace is applied out-of-band once:
+          #   kubectl create namespace stalwart
           - Validate=true
           - PrunePropagationPolicy=foreground
           - PruneLast=true
