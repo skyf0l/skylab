@@ -1,5 +1,28 @@
 trivy-operator:
+  # ClientServer mode: a single persistent trivy-server holds the ~100MB
+  # vulnerability DB (cached on a PVC), and scan jobs become thin clients that
+  # send the SBOM and get results back. In Standalone mode EVERY scan pod
+  # re-downloaded the whole DB and logged a per-chunk progress bar — ~700MB/day
+  # of pure log noise (half of all cluster logs) and repeated egress. This
+  # removes both: the DB is fetched once and refreshed on the server's own
+  # schedule.
+  trivy:
+    # Persist the DB cache (PVC at /home/scanner/.cache) so a server restart
+    # doesn't re-download the ~100MB DB.
+    storageClassEnabled: true
+    storageClassName: local-path
+    storageSize: 2Gi
+    server:
+      replicas: 1
+      resources:
+        requests: { cpu: 100m, memory: 256Mi }
+        limits: { memory: 1Gi }
+
   operator:
+    # Deploy the built-in Trivy server; this alone flips scan jobs to
+    # ClientServer mode and points them at trivy-service:4954 (the chart derives
+    # mode + serverURL from this flag).
+    builtInTrivyServer: true
     # Reduce concurrent scan jobs to limit resource usage
     scanJobsConcurrentLimit: 2
     # Show CVE IDs in vulnerability reports
