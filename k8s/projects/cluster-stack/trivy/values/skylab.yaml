@@ -1,11 +1,9 @@
 trivy-operator:
   # ClientServer mode: a single persistent trivy-server holds the ~100MB
-  # vulnerability DB (cached on a PVC), and scan jobs become thin clients that
-  # send the SBOM and get results back. In Standalone mode EVERY scan pod
-  # re-downloaded the whole DB and logged a per-chunk progress bar — ~700MB/day
-  # of pure log noise (half of all cluster logs) and repeated egress. This
-  # removes both: the DB is fetched once and refreshed on the server's own
-  # schedule.
+  # vulnerability DB (cached on a PVC), and scan jobs are thin clients that send
+  # the SBOM and get results back. This is the right shape at any scale — the DB
+  # is fetched once and refreshed on the server's schedule, instead of every
+  # scan pod re-downloading it (repeated egress + slower scans under Standalone).
   trivy:
     # Persist the DB cache (PVC at /home/scanner/.cache) so a server restart
     # doesn't re-download the ~100MB DB.
