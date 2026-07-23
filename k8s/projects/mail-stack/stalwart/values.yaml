@@ -9,7 +9,7 @@
 # changed in the web-admin is runtime state, not git.
 image:
   repository: stalwartlabs/stalwart
-  tag: v0.16.13
+  tag: v0.16.14
   pullPolicy: IfNotPresent
 
 # Injected by the ApplicationSet from the cluster's global.domain:
