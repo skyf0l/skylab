@@ -181,8 +181,8 @@ extraDomains: []
 # on the same domain.
 # Every mx:true domain should have a postmaster alias (DMARC rua target).
 accounts:
-  - name: skyf0l
-    aliases: [postmaster, admin, contact]
+  - name: admin
+    aliases: [skyf0l, postmaster, contact]
 extraAccounts: []
 
 provision:
