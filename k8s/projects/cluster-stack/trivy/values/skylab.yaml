@@ -13,8 +13,8 @@ trivy-operator:
     server:
       replicas: 1
       resources:
-        requests: { cpu: 100m, memory: 256Mi }
-        limits: { memory: 1Gi }
+        requests: {cpu: 100m, memory: 256Mi}
+        limits: {memory: 1Gi}
 
   operator:
     # Deploy the built-in Trivy server; this alone flips scan jobs to
