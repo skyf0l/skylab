@@ -55,6 +55,26 @@ path "sys/audit" {
   capabilities = ["read"]
 }
 
+# Client-count / activity tracking config (refresh vault_generic_endpoint.client_count).
+path "sys/internal/counters/config" {
+  capabilities = ["read"]
+}
+
+# Cloudflare engine STRUCTURE — read-only, so plan can refresh config/role state.
+# Excludes cloudflare/creds/* so a PR plan can't mint tokens (mirrors database/).
+path "cloudflare/config" {
+  capabilities = ["read"]
+}
+path "cloudflare/role/*" {
+  capabilities = ["read", "list"]
+}
+
+# Plugin catalog — read-only refresh of vault_plugin.cloudflare. The catalog is a
+# root-protected path, so even a read needs sudo.
+path "sys/plugins/catalog/*" {
+  capabilities = ["read", "sudo"]
+}
+
 # Own token lookup
 path "auth/token/lookup-self" {
   capabilities = ["read"]
