@@ -34,4 +34,9 @@ provider "vault" {
   # This will default to using $VAULT_ADDR
   # But can be set explicitly
   # address = "https://vault.example.net:8200"
+
+  # Use the vault-action token directly instead of minting a child token. The
+  # read-only tf-plan role has no auth/token/create capability by design, so the
+  # provider's default child-token creation 403s the whole plan.
+  skip_child_token = true
 }
