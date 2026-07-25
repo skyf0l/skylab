@@ -189,7 +189,7 @@ provision:
   enabled: true
   # Needs sh + kubectl (curl/jq are apk-added at runtime, same pragmatism as
   # the headscale-proxy authkey-mint job).
-  jobImage: alpine/kubectl:1.36.2
+  jobImage: alpine/kubectl:1.36.3
   adminUser: admin
 
 resources:
