@@ -1,6 +1,6 @@
 image:
   # tailnet node (kernel mode — needs NET_ADMIN + /dev/net/tun).
-  tailscale: tailscale/tailscale:v1.78.1
+  tailscale: tailscale/tailscale:v1.84.3
   # Tiny image for the privileged init step that enables host IP forwarding.
   init: busybox:1.37.0
 

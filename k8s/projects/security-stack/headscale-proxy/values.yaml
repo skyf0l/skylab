@@ -1,6 +1,6 @@
 image:
   # tailnet node (kernel mode — needs NET_ADMIN + /dev/net/tun).
-  tailscale: tailscale/tailscale:v1.78.1
+  tailscale: tailscale/tailscale:v1.84.3
   # socket proxy: listens on the pod's tailnet interface and dials Traefik from
   # its own socket (so the ClusterIP is translated under Cilium KPR).
   socat: alpine/socat:1.8.0.0
