@@ -37,14 +37,24 @@ opencost:
       enabled: true
       provider: custom
       createConfigmap: true
+      # OpenCost custom pricing is PER-HOUR, not per-month. The previous values
+      # were the monthly per-unit rates, so OpenCost billed a full month's price
+      # every hour -> ~$5k/week for a $28.80/mo VPS. These are the same rates
+      # converted to hourly (monthly / 730.5 h/mo).
+      #
+      # Target: $28.80/mo flat over 8 vCPU / 62.5 GiB.
+      #   CPU  = 1.756  /mo per vCPU -> 1.756  / 730.5 = 0.0024040 /hr
+      #   RAM  = 0.2358 /mo per GiB  -> 0.2358 / 730.5 = 0.0003228 /hr
+      #   sum: 8*0.0024040 + 62.5*0.0003228 = ~$0.0394/hr = ~$28.8/mo. correct.
+      #   storage = 0.04 /mo per GB  -> 0.04   / 730.5 = 0.0000548 /hr
       costModel:
-        description: "skylab VPS flat $28.80/mo over 8 vCPU / 62.5 GiB (monthly per-unit)"
-        CPU: 1.756
-        spotCPU: 1.756
-        RAM: 0.2358
-        spotRAM: 0.2358
+        description: "skylab VPS flat $28.80/mo over 8 vCPU / 62.5 GiB (HOURLY per-unit)"
+        CPU: 0.0024040
+        spotCPU: 0.0024040
+        RAM: 0.0003228
+        spotRAM: 0.0003228
         GPU: 0
-        storage: 0.04
+        storage: 0.0000548
         zoneNetworkEgress: 0
         regionNetworkEgress: 0
         internetNetworkEgress: 0
