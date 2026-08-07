@@ -184,9 +184,12 @@ validate: validate-schema validate-policy
 # vault/terraform/.terraform (which would make validate try to read R2 state).
 tf-validate:
 	@cd vault/terraform && terraform fmt -check -recursive
+	@# VAULT_ADDR is only to satisfy the provider's required `address` during the
+	@# offline validate (skip_child_token makes the block non-empty, so terraform
+	@# enforces it). validate never connects, so a dummy value is fine.
 	@d=$$(mktemp -d); cd vault/terraform \
-	  && TF_DATA_DIR=$$d terraform init -backend=false -input=false >/dev/null \
-	  && TF_DATA_DIR=$$d terraform validate; rc=$$?; rm -rf "$$d"; exit $$rc
+	  && VAULT_ADDR=https://vault.invalid TF_DATA_DIR=$$d terraform init -backend=false -input=false >/dev/null \
+	  && VAULT_ADDR=https://vault.invalid TF_DATA_DIR=$$d terraform validate; rc=$$?; rm -rf "$$d"; exit $$rc
 
 # Diff rendered charts against the live cluster (requires kubectl context).
 preview:

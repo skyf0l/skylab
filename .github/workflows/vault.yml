@@ -67,7 +67,8 @@ jobs:
         uses: tailscale/github-action@v4
         with:
           authkey: ${{ secrets.HEADSCALE_CI_AUTHKEY }}
-          args: --login-server=${{ env.HEADSCALE_URL }} --accept-dns --hostname=gha-vault-ci
+          hostname: gha-vault-ci
+          args: --login-server=${{ env.HEADSCALE_URL }} --accept-dns
 
       - name: Import Secrets
         uses: hashicorp/vault-action@v4
@@ -117,7 +118,8 @@ jobs:
         uses: tailscale/github-action@v4
         with:
           authkey: ${{ secrets.HEADSCALE_CI_AUTHKEY }}
-          args: --login-server=${{ env.HEADSCALE_URL }} --accept-dns --hostname=gha-vault-ci
+          hostname: gha-vault-ci
+          args: --login-server=${{ env.HEADSCALE_URL }} --accept-dns
 
       - name: Import Secrets
         uses: hashicorp/vault-action@v4
