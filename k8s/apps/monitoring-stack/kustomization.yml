@@ -4,3 +4,4 @@ resources:
   - apps/kube-prometheus.yaml
   - apps/grafana-dashboards.yaml
   - apps/thanos.yaml
+  - apps/uptime-kuma.yaml

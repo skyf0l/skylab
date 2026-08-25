@@ -1,0 +1,76 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: uptime-kuma
+  annotations:
+    # After cert-manager (public TLS) and the ESO store (admin credential).
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          # Auto updated by parent ApplicationSet
+          - list:
+              elements:
+                - name: skylab
+          - git:
+              repoURL: https://github.com/skyf0l/skylab.git
+              revision: main
+              files:
+                - path: clusters/{{.name }}/config.json
+  template:
+    metadata:
+      name: "{{.name}}-uptime-kuma"
+      labels:
+        app.kubernetes.io/part-of: monitoring-stack
+        skylab.dev/tier: observability
+      annotations:
+        argocd.argoproj.io/sync-wave: "1"
+    spec:
+      project: observability
+      sources:
+        - repoURL: "{{.repo.url}}"
+          targetRevision: "{{.repo.revision}}"
+          path: k8s/projects/monitoring-stack/uptime-kuma
+          helm:
+            releaseName: uptime-kuma
+            valueFiles:
+              - values.yaml
+              - values/{{.name}}.yaml
+              # Private per-cluster overlay (extraGroups) from skylab-private —
+              # private monitors never touch this repo or the public page.
+              # ignoreMissingValueFiles keeps it safe if a cluster has no overlay.
+              - $private/clusters/{{.name}}/uptime-kuma/values.yaml
+            ignoreMissingValueFiles: true
+            # Domain-derived values: monitor targets resolve from global.domain
+            # via tpl; `host` is the public status hostname.
+            parameters:
+              - name: "global.domain"
+                value: "{{.global.domain}}"
+              - name: "host"
+                value: "status.{{.global.domain}}"
+        # values-only ref that makes $private resolvable; same GitHub App serves it.
+        - repoURL: https://github.com/skyf0l/skylab-private.git
+          targetRevision: main
+          ref: private
+      # monitoring: already on the universal netpol allow-list (like
+      # Prometheus), so probes into isolated namespaces keep working once
+      # Cilium leaves audit mode.
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: monitoring
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - Validate=true
+          - PrunePropagationPolicy=foreground
+          - PruneLast=true
+          - RespectIgnoreDifferences=true
+          - ServerSideApply=true
+        retry:
+          limit: 5

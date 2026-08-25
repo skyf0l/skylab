@@ -85,8 +85,9 @@ projects/ansible/context
 projects/ansible/artifacts
 projects/ansible/inventory
 
-# venv
+# Python
 .venv
+__pycache__
 
 # Helm
 **/Chart.lock
