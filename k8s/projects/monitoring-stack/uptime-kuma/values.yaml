@@ -9,8 +9,10 @@
 image:
   kuma: louislam/uptime-kuma:2.5.3
   # Sidecar: reconciles monitors/groups from the static files rendered out of
-  # `groups` below. Image line 2.x targets Uptime Kuma 2.x.
-  autokuma: ghcr.io/bigboot/autokuma:2.0.0
+  # `groups` below. Image line 2.x targets Uptime Kuma 2.x. The 2.1 rc carries
+  # the fix for duplicate monitors created in a batch (#177) and reconnection
+  # after a Kuma restart; drop back to a stable tag once 2.1.0 is out.
+  autokuma: ghcr.io/bigboot/autokuma:2.1.0-rc.2
   provisionJob: python:3.13-alpine
 
 # Injected by the ApplicationSet from the cluster's global.domain:
