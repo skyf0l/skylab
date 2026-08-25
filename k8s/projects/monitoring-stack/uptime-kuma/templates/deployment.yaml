@@ -54,9 +54,9 @@ spec:
             - name: data
               mountPath: /app/data
         # Reconciles monitors/groups from the rendered static files (files
-        # source only). Entities it created carry the AutoKuma tag; a file that
-        # disappears deletes its monitor. Retries until the provisioning job has
-        # created the admin account it logs in with.
+        # source only); a file that disappears deletes its monitor. Retries
+        # until the provisioning job has created the admin account it logs in
+        # with.
         - name: autokuma
           image: {{ .Values.image.autokuma | quote }}
           env:
@@ -89,6 +89,12 @@ spec:
             - name: monitors
               mountPath: /monitors
               readOnly: true
+            # AutoKuma's own state (its id -> Kuma monitor mapping). Without it a
+            # restart forgets what it owns and re-creates every monitor. Kept on
+            # the Kuma PVC so both reset together.
+            - name: data
+              mountPath: /data
+              subPath: autokuma
       volumes:
         - name: data
           persistentVolumeClaim:
