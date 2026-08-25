@@ -1,0 +1,19 @@
+# AutoKuma static entities, one file per monitor so its AutoKuma id (the file
+# stem) stays stable when neighbours are added or removed — the id is what ties
+# a file to a Kuma monitor and its heartbeat history. Groups are entities too:
+# monitors reference theirs through parent_name.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: uptime-kuma-monitors
+  labels:
+    app: uptime-kuma
+data:
+  {{- range $g := include "uptime-kuma.groups" $ | fromJsonArray }}
+  group-{{ $g.id }}.json: |
+    {{ dict "type" "group" "name" $g.name "description" (tpl ($g.description | default "") $) "interval" $.Values.defaults.interval | toJson }}
+  {{- range $m := $g.monitors }}
+  {{ $g.id }}-{{ $m.id }}.json: |
+    {{ include "uptime-kuma.monitor" (dict "root" $ "group" $g "monitor" $m) }}
+  {{- end }}
+  {{- end }}

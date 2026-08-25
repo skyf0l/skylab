@@ -106,6 +106,12 @@ services:
     namespace: stalwart
     port: 8080
     scheme: http
+  - name: status
+    # Uptime Kuma ADMIN dashboard (tailnet-only). The public status page is the
+    # path-scoped IngressRoute in the uptime-kuma chart (status.<domain>).
+    service: uptime-kuma
+    namespace: monitoring
+    port: 3001
   - name: traefik
     # Traefik's own dashboard/API (api@internal). Reached at
     # traefik.tail.<domain>/dashboard/ — tailnet-only, never publicly exposed

@@ -1,0 +1,98 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: uptime-kuma
+  labels:
+    app: uptime-kuma
+spec:
+  replicas: 1
+  # SQLite on RWO PVC — never run two writers at once.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: uptime-kuma
+  template:
+    metadata:
+      labels:
+        app: uptime-kuma
+    spec:
+      # k8s would inject UPTIME_KUMA_PORT=tcp://<clusterip>:3001 for the Service
+      # of the same name, which Kuma reads as its listen port.
+      enableServiceLinks: false
+      securityContext:
+        fsGroup: 1000
+      containers:
+        - name: uptime-kuma
+          image: {{ .Values.image.kuma | quote }}
+          env:
+            # Skips the first-boot database wizard (SQLite in DATA_DIR).
+            - name: UPTIME_KUMA_DB_TYPE
+              value: sqlite
+          ports:
+            - name: http
+              containerPort: 3001
+          startupProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 5
+            failureThreshold: 36
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 10
+          resources:
+{{ toYaml .Values.resources.kuma | indent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+        # Reconciles monitors/groups from the rendered static files (files
+        # source only). Entities it created carry the AutoKuma tag; a file that
+        # disappears deletes its monitor. Retries until the provisioning job has
+        # created the admin account it logs in with.
+        - name: autokuma
+          image: {{ .Values.image.autokuma | quote }}
+          env:
+            - name: AUTOKUMA__KUMA__URL
+              value: http://localhost:3001
+            - name: AUTOKUMA__KUMA__USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: uptime-kuma-secrets
+                  key: username
+            - name: AUTOKUMA__KUMA__PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: uptime-kuma-secrets
+                  key: password
+            - name: AUTOKUMA__DOCKER__ENABLED
+              value: "false"
+            - name: AUTOKUMA__FILES__ENABLED
+              value: "true"
+            # ConfigMap volumes expose each key as a symlink.
+            - name: AUTOKUMA__FILES__FOLLOW_SYMLINKS
+              value: "true"
+            - name: AUTOKUMA__STATIC_MONITORS
+              value: /monitors
+            - name: AUTOKUMA__ON_DELETE
+              value: {{ .Values.autokuma.onDelete | quote }}
+          resources:
+{{ toYaml .Values.resources.autokuma | indent 12 }}
+          volumeMounts:
+            - name: monitors
+              mountPath: /monitors
+              readOnly: true
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: uptime-kuma-data
+        - name: monitors
+          configMap:
+            name: uptime-kuma-monitors

@@ -1,0 +1,10 @@
+apiVersion: v2
+name: uptime-kuma
+description: >-
+  Custom chart deploying upstream Uptime Kuma as a single-replica Deployment
+  (SQLite on a PVC) with an AutoKuma sidecar that reconciles monitors from
+  values-rendered static files, a provisioning job that bootstraps the admin
+  account and the public status page, and a path-scoped public IngressRoute.
+type: application
+version: 0.1.0
+appVersion: "2.5.3"

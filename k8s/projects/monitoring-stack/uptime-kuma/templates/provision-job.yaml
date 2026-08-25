@@ -1,0 +1,83 @@
+{{- if .Values.provision.enabled }}
+# Desired status-page state (rendered from values, public + private overlay) +
+# the reconcile script. Not a hook: the Job mounts it, and hooks re-render anyway.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: uptime-kuma-provision
+  labels:
+    app: uptime-kuma
+data:
+  provision.json: |
+    {{- $groups := list }}
+    {{- range $g := include "uptime-kuma.groups" $ | fromJsonArray }}
+    {{- $names := list }}
+    {{- range $g.monitors }}
+    {{- $names = append $names .name }}
+    {{- end }}
+    {{- $groups = append $groups (dict "name" $g.name "slo" $g.slo "public" $g.public "monitors" $names) }}
+    {{- end }}
+    {{- $page := dict }}
+    {{- range $k, $v := .Values.statusPage }}
+    {{- if kindIs "string" $v }}
+    {{- $_ := set $page $k (tpl $v $) }}
+    {{- else }}
+    {{- $_ := set $page $k $v }}
+    {{- end }}
+    {{- end }}
+    {{ dict "statusPage" $page "groups" $groups | toJson }}
+  provision.py: |
+{{ .Files.Get "files/provision.py" | indent 4 }}
+---
+# Bootstraps the admin account on first run, then reconciles the public status
+# page on every sync (idempotent — see files/provision.py). Monitors themselves
+# belong to the AutoKuma sidecar; the job only waits for them to exist.
+# before-hook-creation keeps a failed run from wedging the next sync.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: uptime-kuma-provision
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "1"
+    helm.sh/hook-delete-policy: hook-succeeded,before-hook-creation
+spec:
+  backoffLimit: 3
+  activeDeadlineSeconds: 1500
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: provision
+          image: {{ .Values.image.provisionJob | quote }}
+          command: ["/bin/sh", "-c"]
+          # Kuma's management surface is socket.io only (no REST), hence the client lib.
+          args:
+            - pip install --no-cache-dir --quiet "python-socketio[client]=={{ .Values.provision.socketioVersion }}" && python /etc/provision/provision.py
+          env:
+            - name: KUMA_URL
+              value: "http://uptime-kuma:3001"
+            - name: KUMA_ADMIN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: uptime-kuma-secrets
+                  key: username
+            - name: KUMA_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: uptime-kuma-secrets
+                  key: password
+            - name: MONITOR_WAIT_SECONDS
+              value: {{ .Values.provision.monitorWaitSeconds | quote }}
+          volumeMounts:
+            - name: provision
+              mountPath: /etc/provision
+              readOnly: true
+          resources:
+            requests: { cpu: 10m, memory: 64Mi }
+            limits: { memory: 256Mi }
+      volumes:
+        - name: provision
+          configMap:
+            name: uptime-kuma-provision
+{{- end }}

@@ -1,0 +1,386 @@
+# Uptime Kuma — public status page + tailnet-only admin, ONE instance:
+#   status.<domain>       public, path-scoped IngressRoute (status page only)
+#   status.tail.<domain>  admin dashboard via headscale-proxy (tailnet-only)
+# Kuma only serves monitors that sit on a published status page (page API and
+# badges alike) and never shows their targets, so probing tailnet-only services
+# by cluster-internal address is safe. Groups from the $private overlay
+# (extraGroups) stay off the page entirely.
+
+image:
+  kuma: louislam/uptime-kuma:2.5.3
+  # Sidecar: reconciles monitors/groups from the static files rendered out of
+  # `groups` below. Image line 2.x targets Uptime Kuma 2.x.
+  autokuma: ghcr.io/bigboot/autokuma:2.0.0
+  provisionJob: python:3.13-alpine
+
+# Injected by the ApplicationSet from the cluster's global.domain:
+#   global.domain -> bare domain, used by monitor targets via tpl
+#   host          -> status.<domain>, the public hostname
+global:
+  domain: ""
+host: ""
+
+ingress:
+  enabled: true
+  entryPoint: websecure
+  clusterIssuer: letsencrypt-prod
+  tlsSecretName: uptime-kuma-tls
+
+storage:
+  size: 5Gi
+  storageClassName: local-path
+
+resources:
+  kuma:
+    requests: {cpu: 50m, memory: 192Mi}
+    limits: {memory: 512Mi}
+  autokuma:
+    requests: {cpu: 10m, memory: 32Mi}
+    limits: {memory: 128Mi}
+
+# Local admin account (Kuma has no OIDC; the dashboard is tailnet-only anyway).
+# The password lives in Vault and is used by the provisioning job to create
+# the account on first run, then by AutoKuma to log in. Rotating it later means
+# changing it inside Kuma as well — the DB copy is what login checks.
+admin:
+  username: admin
+
+# ESO pulls from Vault at kvv2/cluster/skylab/apps/uptime-kuma:
+#   admin_password   random (seeded by vault/seed-secrets.sh)
+externalSecret:
+  enabled: true
+  storeName: vault-backend
+  vaultKey: cluster/skylab/apps/uptime-kuma
+
+autokuma:
+  # A monitor whose file disappears is deleted (keep = orphan it instead).
+  onDelete: delete
+
+# Post-sync job: admin bootstrap + status page reconcile (files/provision.py).
+provision:
+  enabled: true
+  socketioVersion: 5.16.4
+  # How long to wait for AutoKuma to have created every monitor on the page.
+  monitorWaitSeconds: 900
+
+# Applied to every monitor unless the entry overrides them.
+defaults:
+  interval: 60
+  retryInterval: 30
+  maxRetries: 2
+
+# Public status page. The provisioning job appends an SLO table (one row per
+# public group: target vs. measured uptime badge over sloWindow) to the
+# description and builds the sections: overviewSection lists the group
+# monitors, then one section per group with its monitors.
+statusPage:
+  slug: skylab
+  title: skylab
+  description: |
+    Live health of every service running on [skylab](https://github.com/skyf0l/skylab), a GitOps-managed
+    RKE2 cluster. Public endpoints are probed through their public hostnames; everything else is probed from
+    inside the cluster, as those services are reachable only over a private tailnet.
+  footerText: |
+    Monitors, groups and this page are declared in the skylab repository and reconciled by AutoKuma.
+  theme: auto
+  showCertificateExpiry: true
+  showPoweredBy: false
+  autoRefreshInterval: 300
+  overviewSection: Overview
+  sloHeading: Service level objectives
+  # Kuma badge duration: 24h, 7d, 30d, 1y ...
+  sloWindow: 30d
+
+# Monitor groups, one Kuma group monitor each (a group is down when any member
+# is). `slo` is the availability target shown next to the measured uptime.
+# Monitor entries use AutoKuma's snake_case schema and are passed through as-is
+# (type, url, hostname, port, accepted_statuscodes, ignore_tls, keyword,
+# dns_resolve_*, ...); `id` is the stable file/AutoKuma id. Strings may
+# reference {{ .Values.global.domain }}.
+groups:
+  - id: edge
+    name: Public endpoints
+    slo: 99.9
+    description: Internet-facing services, probed through their public hostnames.
+    monitors:
+      - id: authelia
+        name: Authelia (SSO)
+        type: http
+        url: "https://auth.{{ .Values.global.domain }}/api/health"
+      - id: keycloak
+        name: Keycloak (OIDC)
+        type: http
+        url: "https://keycloak.{{ .Values.global.domain }}/realms/skylab/.well-known/openid-configuration"
+      - id: mcp
+        name: Garmin MCP gateway
+        type: http
+        url: "https://mcp.{{ .Values.global.domain }}/healthz"
+      - id: headscale
+        name: Headscale (tailnet control plane)
+        type: http
+        url: "https://headscale.{{ .Values.global.domain }}/health"
+
+  - id: mail
+    name: Mail
+    slo: 99.9
+    description: Stalwart mail server — public listeners, JMAP discovery, DNS and the server itself.
+    monitors:
+      - id: smtp
+        name: SMTP (25)
+        type: port
+        hostname: "mail.{{ .Values.global.domain }}"
+        port: 25
+      - id: submissions
+        name: SMTP submission (465)
+        type: port
+        hostname: "mail.{{ .Values.global.domain }}"
+        port: 465
+      - id: submission
+        name: SMTP submission (587)
+        type: port
+        hostname: "mail.{{ .Values.global.domain }}"
+        port: 587
+      - id: imaps
+        name: IMAPS (993)
+        type: port
+        hostname: "mail.{{ .Values.global.domain }}"
+        port: 993
+      - id: jmap
+        name: JMAP discovery
+        type: http
+        url: "https://mail.{{ .Values.global.domain }}/.well-known/jmap"
+        # Unauthenticated discovery answers 401; it's the reachability that counts.
+        accepted_statuscodes: ["200-299", "401"]
+      - id: mx
+        name: MX record
+        type: dns
+        hostname: "{{ .Values.global.domain }}"
+        dns_resolve_server: 1.1.1.1
+        dns_resolve_type: MX
+        port: 53
+      - id: stalwart
+        name: Stalwart
+        type: http
+        url: http://stalwart.stalwart:8080/healthz/live
+
+  - id: cluster
+    name: Cluster
+    slo: 99.9
+    description: Kubernetes control plane, CNI, ingress, DNS and the Postgres operator.
+    monitors:
+      - id: apiserver
+        name: Kubernetes API
+        type: http
+        url: https://kubernetes.default.svc/livez
+        ignore_tls: true
+      - id: coredns
+        name: CoreDNS
+        type: dns
+        hostname: kubernetes.default.svc.cluster.local
+        dns_resolve_server: 10.43.0.10
+        dns_resolve_type: A
+        port: 53
+      - id: cilium
+        name: Cilium operator
+        type: http
+        url: http://cilium-operator.kube-system:9963/metrics
+      - id: hubble
+        name: Hubble UI
+        type: http
+        url: http://hubble-ui.kube-system:80/
+      - id: traefik
+        name: Traefik
+        type: http
+        url: http://traefik-metrics.traefik:9100/metrics
+      - id: external-dns
+        name: external-dns
+        type: http
+        url: http://external-dns.external-dns:7979/healthz
+      - id: cnpg
+        name: CloudNativePG operator
+        type: port
+        hostname: cnpg-webhook-service.cnpg-system
+        port: 443
+      - id: pg-keycloak
+        name: PostgreSQL (keycloak)
+        type: port
+        hostname: keycloak-pg-rw.keycloak
+        port: 5432
+      - id: pg-defectdojo
+        name: PostgreSQL (defectdojo)
+        type: port
+        hostname: defectdojo-pg-rw.defectdojo
+        port: 5432
+      - id: pg-stalwart
+        name: PostgreSQL (stalwart)
+        type: port
+        hostname: stalwart-pg-rw.stalwart
+        port: 5432
+      - id: trivy
+        name: Trivy operator
+        type: http
+        url: http://trivy-trivy-operator.trivy:80/metrics
+
+  - id: gitops
+    name: GitOps
+    slo: 99.5
+    description: Continuous delivery and the secrets backend.
+    monitors:
+      - id: argocd
+        name: ArgoCD
+        type: http
+        url: http://argocd-server.argocd:80/healthz
+      - id: argocd-repo
+        name: ArgoCD repo server
+        type: port
+        hostname: argocd-repo-server.argocd
+        port: 8081
+      - id: vault
+        name: Vault
+        type: http
+        # 200 only when initialised AND unsealed; a sealed Vault is a real outage.
+        url: http://vault.vault:8200/v1/sys/health?standbyok=true
+
+  - id: security
+    name: Security
+    slo: 99.5
+    description: Identity, certificates, secrets sync, runtime detection and vulnerability management.
+    monitors:
+      - id: authelia
+        name: Authelia
+        type: http
+        url: http://authelia.authelia:80/api/health
+      - id: keycloak
+        name: Keycloak
+        type: http
+        url: http://keycloak.keycloak:9000/health/ready
+      - id: cert-manager
+        name: cert-manager
+        type: http
+        url: http://cert-manager.cert-manager:9402/metrics
+      - id: cert-manager-webhook
+        name: cert-manager webhook
+        type: port
+        hostname: cert-manager-webhook.cert-manager
+        port: 443
+      - id: external-secrets
+        name: External Secrets
+        type: http
+        url: http://external-secrets-metrics.external-secrets:8080/metrics
+      - id: external-secrets-webhook
+        name: External Secrets webhook
+        type: port
+        hostname: external-secrets-webhook.external-secrets
+        port: 443
+      - id: falco
+        name: Falco
+        type: http
+        url: http://falco-metrics.falco:8765/metrics
+      - id: falcosidekick
+        name: Falcosidekick
+        type: http
+        url: http://falco-falcosidekick.falco:2801/healthz
+      - id: falcosidekick-ui
+        name: Falcosidekick UI
+        type: http
+        url: http://falco-falcosidekick-ui.falco:2802/
+      - id: defectdojo
+        name: DefectDojo
+        type: http
+        url: http://defectdojo-django.defectdojo:80/login?next=/
+
+  - id: monitoring
+    name: Monitoring
+    slo: 99.5
+    description: Metrics pipeline, alerting, dashboards and long-term storage.
+    monitors:
+      - id: prometheus
+        name: Prometheus
+        type: http
+        url: http://kube-prometheus-kube-prome-prometheus.monitoring:9090/-/healthy
+      - id: alertmanager
+        name: Alertmanager
+        type: http
+        url: http://kube-prometheus-kube-prome-alertmanager.monitoring:9093/-/healthy
+      - id: grafana
+        name: Grafana
+        type: http
+        url: http://kube-prometheus-grafana.monitoring:80/api/health
+      - id: kube-state-metrics
+        name: kube-state-metrics
+        type: http
+        url: http://kube-prometheus-kube-state-metrics.monitoring:8080/healthz
+      - id: node-exporter
+        name: node-exporter
+        type: http
+        url: http://kube-prometheus-prometheus-node-exporter.monitoring:9100/
+      - id: thanos-query
+        name: Thanos Query
+        type: http
+        url: http://thanos-query.monitoring:9090/-/healthy
+      - id: thanos-store
+        name: Thanos Store
+        type: http
+        url: http://thanos-store.monitoring:10902/-/healthy
+      - id: thanos-compactor
+        name: Thanos Compactor
+        type: http
+        url: http://thanos-compactor.monitoring:10902/-/healthy
+
+  - id: logging
+    name: Logging
+    slo: 99.5
+    description: Log aggregation and collection.
+    monitors:
+      - id: loki
+        name: Loki
+        type: http
+        url: http://loki.logging:3100/ready
+      - id: alloy
+        name: Alloy
+        type: http
+        url: http://alloy.logging:12345/-/ready
+
+  - id: serverless
+    name: Serverless
+    slo: 99.0
+    description: Event-driven autoscaling (KEDA) and its HTTP add-on.
+    monitors:
+      - id: keda
+        name: KEDA operator
+        type: http
+        url: http://keda-operator.keda:8080/metrics
+      - id: keda-metrics
+        name: KEDA metrics API
+        type: port
+        hostname: keda-operator-metrics-apiserver.keda
+        port: 443
+      - id: keda-http-interceptor
+        name: KEDA HTTP interceptor
+        type: port
+        hostname: keda-add-ons-http-interceptor-proxy.keda
+        port: 8080
+      - id: keda-http-scaler
+        name: KEDA HTTP scaler
+        type: port
+        hostname: keda-add-ons-http-external-scaler.keda
+        port: 9090
+
+  - id: finops
+    name: FinOps
+    slo: 99.0
+    description: Cost allocation and right-sizing.
+    monitors:
+      - id: opencost
+        name: OpenCost
+        type: http
+        url: http://opencost.opencost:9003/healthz
+      - id: goldilocks
+        name: Goldilocks
+        type: http
+        url: http://goldilocks-dashboard.goldilocks:80/
+
+# Same schema as `groups`, private by default (`public: false` -> reconciled
+# into Kuma, visible on the tailnet dashboard, never on the status page).
+# Populated by the $private overlay; nothing private belongs in this file.
+extraGroups: []
