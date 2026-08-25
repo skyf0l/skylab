@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 # Reconciles Uptime Kuma to /etc/provision/provision.json (rendered from the
 # chart values): initialises a fresh instance, then creates or updates the
-# public status page — one section per public group, an "overview"
-# section holding the group monitors, and an SLO table in the description with
-# live 30-day uptime badges (served by Kuma's badge API, so the numbers are the
-# real measured ones, not text).
+# public status page — an "overview" section holding the group monitors, then
+# one section per public group.
 #
 # Monitors and groups are NOT managed here: the AutoKuma sidecar owns them.
 # This script only waits until every monitor the page needs exists, then maps
@@ -120,7 +118,7 @@ def resolve_monitors():
                     ids.append(children[name])
                 else:
                     missing.append(f"{g['name']}/{name}")
-            resolved.append({"name": g["name"], "slo": g["slo"], "id": gid, "monitors": ids})
+            resolved.append({"name": g["name"], "id": gid, "monitors": ids})
         if not missing:
             return resolved
         if time.time() > deadline:
@@ -128,20 +126,6 @@ def resolve_monitors():
         log(f"waiting for AutoKuma: {len(missing)} missing ({missing[0]} ...)")
         state["monitors"] = None
         time.sleep(15)
-
-
-def slo_table(groups):
-    window = PAGE["sloWindow"]
-    rows = [
-        f"### {PAGE['sloHeading']}",
-        "",
-        "| Service group | SLO target | Measured |",
-        "| --- | :-: | :-: |",
-    ]
-    for g in groups:
-        badge = f"/api/badge/{g['id']}/uptime/{window}?label={window}"
-        rows.append(f"| {g['name']} | {g['slo']} % | ![{g['name']} uptime, last {window}]({badge}) |")
-    return "\n".join(rows)
 
 
 def save_status_page(groups):
@@ -155,7 +139,7 @@ def save_status_page(groups):
     config = {
         "slug": slug,
         "title": PAGE["title"],
-        "description": PAGE["description"].rstrip() + "\n\n" + slo_table(groups),
+        "description": PAGE["description"].rstrip(),
         "footerText": PAGE["footerText"],
         "theme": PAGE["theme"],
         "published": True,

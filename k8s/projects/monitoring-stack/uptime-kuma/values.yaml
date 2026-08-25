@@ -58,30 +58,26 @@ defaults:
   retryInterval: 30
   maxRetries: 2
 
-# Public status page. The provisioning job appends an SLO table (one row per
-# public group: target vs. measured uptime badge over sloWindow) to the
-# description and builds the sections: overviewSection lists the group
-# monitors, then one section per group with its monitors.
+# Public status page. The provisioning job builds the sections:
+# overviewSection lists the group monitors, then one section per group with
+# its monitors.
 statusPage:
   slug: skylab
   title: skylab
   description: |
     Live health of every service running on [skylab](https://github.com/skyf0l/skylab), a GitOps-managed
     RKE2 cluster. Public endpoints are probed through their public hostnames; everything else is probed from
-    inside the cluster, as those services are reachable only over a private tailnet.
+    inside the cluster.
   footerText: |
     Monitors, groups and this page are declared in the skylab repository and reconciled by AutoKuma.
   theme: auto
   showCertificateExpiry: true
   showPoweredBy: false
-  autoRefreshInterval: 300
+  autoRefreshInterval: 60
   overviewSection: Overview
-  sloHeading: Service level objectives
-  # Kuma badge duration: 24h, 7d, 30d, 1y ...
-  sloWindow: 30d
 
 # Monitor groups, one Kuma group monitor each (a group is down when any member
-# is). `slo` is the availability target shown next to the measured uptime.
+# is).
 # Monitor entries use AutoKuma's snake_case schema and are passed through as-is
 # (type, url, hostname, port, accepted_statuscodes, ignore_tls, keyword,
 # dns_resolve_*, ...); `id` is the stable file/AutoKuma id. Strings may
@@ -89,7 +85,6 @@ statusPage:
 groups:
   - id: edge
     name: Public endpoints
-    slo: 99.9
     description: Internet-facing services, probed through their public hostnames.
     monitors:
       - id: authelia
@@ -111,7 +106,6 @@ groups:
 
   - id: mail
     name: Mail
-    slo: 99.9
     description: Stalwart mail server — public listeners, JMAP discovery, DNS and the server itself.
     monitors:
       - id: smtp
@@ -154,7 +148,6 @@ groups:
 
   - id: cluster
     name: Cluster
-    slo: 99.9
     description: Kubernetes control plane, CNI, ingress, DNS and the Postgres operator.
     monitors:
       - id: apiserver
@@ -215,7 +208,6 @@ groups:
 
   - id: gitops
     name: GitOps
-    slo: 99.5
     description: Continuous delivery and the secrets backend.
     monitors:
       - id: argocd
@@ -235,7 +227,6 @@ groups:
 
   - id: security
     name: Security
-    slo: 99.5
     description: Identity, certificates, secrets sync, runtime detection and vulnerability management.
     monitors:
       - id: authelia
@@ -285,7 +276,6 @@ groups:
 
   - id: monitoring
     name: Monitoring
-    slo: 99.5
     description: Metrics pipeline, alerting, dashboards and long-term storage.
     monitors:
       - id: prometheus
@@ -323,7 +313,6 @@ groups:
 
   - id: logging
     name: Logging
-    slo: 99.5
     description: Log aggregation and collection.
     monitors:
       - id: loki
@@ -337,7 +326,6 @@ groups:
 
   - id: serverless
     name: Serverless
-    slo: 99.0
     description: Event-driven autoscaling (KEDA) and its HTTP add-on.
     monitors:
       - id: keda
@@ -362,7 +350,6 @@ groups:
 
   - id: finops
     name: FinOps
-    slo: 99.0
     description: Cost allocation and right-sizing.
     monitors:
       - id: opencost

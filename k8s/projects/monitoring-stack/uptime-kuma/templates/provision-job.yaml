@@ -15,7 +15,7 @@ data:
     {{- range $g.monitors }}
     {{- $names = append $names .name }}
     {{- end }}
-    {{- $groups = append $groups (dict "name" $g.name "slo" $g.slo "public" $g.public "monitors" $names) }}
+    {{- $groups = append $groups (dict "name" $g.name "public" $g.public "monitors" $names) }}
     {{- end }}
     {{- $page := dict }}
     {{- range $k, $v := .Values.statusPage }}
