@@ -149,6 +149,8 @@ def save_status_page(groups):
         "showPoweredBy": PAGE["showPoweredBy"],
         "showCertificateExpiry": PAGE["showCertificateExpiry"],
         "autoRefreshInterval": PAGE["autoRefreshInterval"],
+        # Validated as `!== null`: the key must be present, not merely absent.
+        "analyticsType": None,
     }
     sections = [
         {"name": PAGE["overviewSection"], "monitorList": [{"id": g["id"], "sendUrl": 0} for g in groups]},
