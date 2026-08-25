@@ -64,6 +64,29 @@ jq -c '.certificates[]' "$CFG" | while read -r c; do
     || { echo "ERROR: Certificate create failed for $CHOST: $(why "$RESP")" >&2; exit 1; }
 done
 
+# ---- listeners ----
+# Stalwart's bootstrap set has no STARTTLS submission listener (587) although
+# the chart exposes it (hostPort, Service, _submission SRV), and it creates a
+# pop3s listener (995) that nothing exposes. Listeners are read at startup:
+# a change here only takes effect after a pod restart.
+LISTENERS_JSON=$(jmap '[["x:NetworkListener/get",{"ids":null,"properties":["name"]},"c0"]]')
+if echo "$LISTENERS_JSON" | jq -e '.methodResponses[0][1].list[]? | select(.name == "submission")' >/dev/null; then
+  echo "Listener submission: exists"
+else
+  echo "Listener submission: creating (587, STARTTLS) - restart the pod to open the port"
+  RESP=$(jmap '[["x:NetworkListener/set",{"create":{"l1":{
+    "name":"submission","bind":{"[::]:587":true},"protocol":"smtp","useTls":true,"tlsImplicit":false}}},"c0"]]')
+  echo "$RESP" | jq -e '.methodResponses[0][1].created.l1' >/dev/null \
+    || echo "WARN: Listener submission create rejected: $(why "$RESP")" >&2
+fi
+POP3S_ID=$(echo "$LISTENERS_JSON" | jq -r '.methodResponses[0][1].list[]? | select(.name == "pop3s") | .id')
+if [ -n "$POP3S_ID" ]; then
+  echo "Listener pop3s: removing (not exposed)"
+  RESP=$(jmap "$(jq -nc --arg id "$POP3S_ID" '[["x:NetworkListener/set",{"destroy":[$id]},"c0"]]')")
+  echo "$RESP" | jq -e --arg id "$POP3S_ID" '.methodResponses[0][1].destroyed // [] | index($id) != null' >/dev/null \
+    || echo "WARN: Listener pop3s destroy rejected: $(why "$RESP")" >&2
+fi
+
 # ---- special-use folders for new mailboxes ----
 # Stalwart leaves defaultFolders unset, which gives new accounts only Inbox and
 # Drafts. Clients expect Sent/Trash/Junk/Archive to exist server-side.
