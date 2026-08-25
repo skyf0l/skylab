@@ -173,6 +173,8 @@ groups:
         type: http
         url: https://kubernetes.default.svc/livez
         ignore_tls: true
+        # Anonymous auth is off: 401 means the apiserver is up and authenticating.
+        accepted_statuscodes: ["200-299", "401"]
       - id: coredns
         name: CoreDNS
         type: dns
@@ -219,7 +221,8 @@ groups:
       - id: trivy
         name: Trivy operator
         type: http
-        url: http://trivy-trivy-operator.trivy:80/metrics
+        # Headless Service: DNS yields the pod IP, so the port is the pod's.
+        url: http://trivy-trivy-operator.trivy:8080/metrics
 
   - id: gitops
     name: GitOps
@@ -288,6 +291,8 @@ groups:
         name: DefectDojo
         type: http
         url: http://defectdojo-django.defectdojo:80/login?next=/
+        # Django ALLOWED_HOSTS only knows the tailnet hostname.
+        headers: '{"Host": "defectdojo.tail.{{ .Values.global.domain }}"}'
 
   - id: monitoring
     name: Monitoring
