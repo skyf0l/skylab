@@ -54,24 +54,14 @@ spec:
             - name: data
               mountPath: /app/data
         # Reconciles monitors/groups from the rendered static files (files
-        # source only); a file that disappears deletes its monitor. Retries
-        # until the provisioning job has created the admin account it logs in
-        # with.
+        # source only); a file that disappears deletes its monitor. No
+        # credentials: Kuma's login is off. Retries until the provisioning job
+        # has initialised a fresh instance.
         - name: autokuma
           image: {{ .Values.image.autokuma | quote }}
           env:
             - name: AUTOKUMA__KUMA__URL
               value: http://localhost:3001
-            - name: AUTOKUMA__KUMA__USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: uptime-kuma-secrets
-                  key: username
-            - name: AUTOKUMA__KUMA__PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: uptime-kuma-secrets
-                  key: password
             - name: AUTOKUMA__DOCKER__ENABLED
               value: "false"
             - name: AUTOKUMA__FILES__ENABLED

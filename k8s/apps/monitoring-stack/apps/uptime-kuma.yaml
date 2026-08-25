@@ -3,7 +3,7 @@ kind: ApplicationSet
 metadata:
   name: uptime-kuma
   annotations:
-    # After cert-manager (public TLS) and the ESO store (admin credential).
+    # After cert-manager (public TLS).
     argocd.argoproj.io/sync-wave: "1"
 spec:
   goTemplate: true

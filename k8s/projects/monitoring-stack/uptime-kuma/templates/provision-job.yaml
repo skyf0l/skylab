@@ -29,9 +29,10 @@ data:
   provision.py: |
 {{ .Files.Get "files/provision.py" | indent 4 }}
 ---
-# Bootstraps the admin account on first run, then reconciles the public status
-# page on every sync (idempotent — see files/provision.py). Monitors themselves
-# belong to the AutoKuma sidecar; the job only waits for them to exist.
+# Initialises a fresh instance (Kuma's mandatory setup step, login switched
+# off), then reconciles the public status page on every sync (idempotent — see
+# files/provision.py). Monitors belong to the AutoKuma sidecar; the job only
+# waits for them to exist.
 # before-hook-creation keeps a failed run from wedging the next sync.
 apiVersion: batch/v1
 kind: Job
@@ -57,16 +58,6 @@ spec:
           env:
             - name: KUMA_URL
               value: "http://uptime-kuma:3001"
-            - name: KUMA_ADMIN_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: uptime-kuma-secrets
-                  key: username
-            - name: KUMA_ADMIN_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: uptime-kuma-secrets
-                  key: password
             - name: MONITOR_WAIT_SECONDS
               value: {{ .Values.provision.monitorWaitSeconds | quote }}
           volumeMounts:

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Reconciles Uptime Kuma to /etc/provision/provision.json (rendered from the
-# chart values): creates the admin account on a fresh instance, then creates or
-# updates the public status page — one section per public group, an "overview"
+# chart values): initialises a fresh instance, then creates or updates the
+# public status page — one section per public group, an "overview"
 # section holding the group monitors, and an SLO table in the description with
 # live 30-day uptime badges (served by Kuma's badge API, so the numbers are the
 # real measured ones, not text).
@@ -13,9 +13,11 @@
 # Everything goes through the socket.io API (Kuma has no REST for management):
 #   setup(username, password)              first-run only, errors afterwards
 #   login({username, password, token})     -> monitorList event
+#   getSettings / setSettings(settings, currentPassword)
 #   getStatusPage / addStatusPage / saveStatusPage(slug, config, logo, groups)
 import json
 import os
+import secrets
 import sys
 import time
 import urllib.request
@@ -23,8 +25,6 @@ import urllib.request
 import socketio
 
 URL = os.environ["KUMA_URL"]
-USERNAME = os.environ["KUMA_ADMIN_USERNAME"]
-PASSWORD = os.environ["KUMA_ADMIN_PASSWORD"]
 MONITOR_WAIT = int(os.environ.get("MONITOR_WAIT_SECONDS", "900"))
 
 with open("/etc/provision/provision.json") as f:
@@ -70,16 +70,32 @@ def call(event, *args, timeout=60):
     return res if isinstance(res, dict) else {"ok": False, "msg": str(res)}
 
 
-def ensure_admin():
-    res = call("setup", USERNAME, PASSWORD)
+def ensure_initialised():
+    """Kuma refuses to run without an admin account, but the dashboard is only
+    reachable over the tailnet, which already authenticates. So a fresh
+    instance gets an account with a throwaway password and Kuma's own login is
+    switched off in the same breath; from then on every socket (this job,
+    AutoKuma, the dashboard) is auto-logged in."""
+    password = secrets.token_hex(32)
+    res = call("setup", "admin", password)
     if res.get("ok"):
-        log("admin account created")
-    else:
-        log(f"setup skipped: {res.get('msg')}")
-    res = call("login", {"username": USERNAME, "password": PASSWORD, "token": ""})
+        log("instance initialised")
+        res = call("login", {"username": "admin", "password": password, "token": ""})
+        if not res.get("ok"):
+            fail(f"login failed: {res.get('msg')}")
+        res = call("getSettings")
+        if not res.get("ok"):
+            fail(f"getSettings failed: {res.get('msg')}")
+        settings = res["data"]
+        settings["disableAuth"] = True
+        res = call("setSettings", settings, password)
+        if not res.get("ok"):
+            fail(f"setSettings failed: {res.get('msg')}")
+        log("login switched off")
+        return
+    res = call("getSettings")
     if not res.get("ok"):
-        fail(f"login failed: {res.get('msg')}")
-    log("logged in")
+        fail("instance is initialised but requires a login; reset its data volume")
 
 
 def resolve_monitors():
@@ -168,7 +184,7 @@ def save_status_page(groups):
 wait_http(URL + "/")
 sio.connect(URL, transports=["websocket"])
 try:
-    ensure_admin()
+    ensure_initialised()
     groups = resolve_monitors()
     save_status_page(groups)
 finally:
