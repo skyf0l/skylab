@@ -5,11 +5,11 @@ account config later. Manual `plan`/`apply` for now (no CI).
 
 ## Boundary — what this does and does NOT manage
 
-| Resource | Owner |
-|---|---|
-| R2 buckets, zone settings, account config | **this module** |
-| DNS records (A/MX/TXT/DKIM/…) | **external-dns** (in-cluster) — never add `cloudflare_record` here, it will fight external-dns |
-| API tokens | **Vault** cloudflare secrets engine |
+| Resource                                  | Owner                                                                                          |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| R2 buckets, zone settings, account config | **this module**                                                                                |
+| DNS records (A/MX/TXT/DKIM/…)             | **external-dns** (in-cluster) — never add `cloudflare_record` here, it will fight external-dns |
+| API tokens                                | **Vault** cloudflare secrets engine                                                            |
 
 State lives in R2 (`tfstates` bucket, key `cloudflare.tfstate`) — separate from
 `vault/terraform`'s `vault.tfstate`.
@@ -41,7 +41,7 @@ terraform apply
 
 The `import {}` blocks in `imports.tf` bring the two existing, data-filled
 buckets under management without recreating them. If `plan` says it wants to
-*create* skylab-loki or skylab-thanos rather than *import* them, stop — the
+_create_ skylab-loki or skylab-thanos rather than _import_ them, stop — the
 import id or name is wrong, and creating would clobber/duplicate live data.
 
 ## Ongoing
