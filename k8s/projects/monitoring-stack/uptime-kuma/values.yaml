@@ -40,25 +40,12 @@ resources:
     requests: {cpu: 10m, memory: 32Mi}
     limits: {memory: 128Mi}
 
-# Local admin account (Kuma has no OIDC; the dashboard is tailnet-only anyway).
-# The password lives in Vault and is used by the provisioning job to create
-# the account on first run, then by AutoKuma to log in. Rotating it later means
-# changing it inside Kuma as well — the DB copy is what login checks.
-admin:
-  username: admin
-
-# ESO pulls from Vault at kvv2/cluster/skylab/apps/uptime-kuma:
-#   admin_password   random (seeded by vault/seed-secrets.sh)
-externalSecret:
-  enabled: true
-  storeName: vault-backend
-  vaultKey: cluster/skylab/apps/uptime-kuma
-
 autokuma:
   # A monitor whose file disappears is deleted (keep = orphan it instead).
   onDelete: delete
 
-# Post-sync job: admin bootstrap + status page reconcile (files/provision.py).
+# Post-sync job: first-run initialisation + status page reconcile
+# (files/provision.py). No login anywhere: the dashboard is tailnet-only.
 provision:
   enabled: true
   socketioVersion: 5.16.4

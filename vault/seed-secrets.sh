@@ -191,12 +191,4 @@ grafana="cluster/${CLUSTER}/apps/grafana"
 echo "[grafana] ${KV_MOUNT}/${grafana}"
 seed_field "$grafana" oidc_client_secret     rand_secret
 
-# uptime-kuma — kvv2/cluster/<cluster>/apps/uptime-kuma
-# Local admin password (random, set-once). The provisioning job creates the account
-# with it on first run and AutoKuma logs in with it. Rotating it later also means
-# changing it inside Kuma (tailnet dashboard): the DB copy is what login checks.
-kuma="cluster/${CLUSTER}/apps/uptime-kuma"
-echo "[uptime-kuma] ${KV_MOUNT}/${kuma}"
-seed_field "$kuma" admin_password        rand_secret
-
 echo "Done. Fill in any PLACEHOLDER fields via the Vault UI/CLI; re-running won't overwrite them."
