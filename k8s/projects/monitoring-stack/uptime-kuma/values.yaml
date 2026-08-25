@@ -65,9 +65,9 @@ statusPage:
   slug: skylab
   title: skylab
   description: |
-    Live health of every service running on [skylab](https://github.com/skyf0l/skylab), a GitOps-managed
-    RKE2 cluster. Public endpoints are probed through their public hostnames; everything else is probed from
-    inside the cluster.
+    Live health of the services exposed by [skylab](https://github.com/skyf0l/skylab), a GitOps-managed
+    RKE2 cluster. Public endpoints are probed through their public hostnames; tailnet-only services are
+    probed from inside the cluster. Cluster internals are watched by Prometheus and do not appear here.
   footerText: |
     Monitors, groups and this page are declared in the skylab repository and reconciled by AutoKuma.
   theme: auto
@@ -106,7 +106,7 @@ groups:
 
   - id: mail
     name: Mail
-    description: Stalwart mail server — public listeners, JMAP discovery, DNS and the server itself.
+    description: Stalwart mail server — public listeners, JMAP discovery and DNS.
     monitors:
       - id: smtp
         name: SMTP (25)
@@ -141,225 +141,38 @@ groups:
         dns_resolve_server: 1.1.1.1
         dns_resolve_type: MX
         port: 53
-      - id: stalwart
-        name: Stalwart
-        type: http
-        url: http://stalwart.stalwart:8080/healthz/live
 
-  - id: cluster
-    name: Cluster
-    description: Kubernetes control plane, CNI, ingress, DNS and the Postgres operator.
+  - id: tailnet
+    name: Tailnet services
+    description: Web UIs reachable over the tailnet, probed from inside the cluster.
     monitors:
-      - id: apiserver
-        name: Kubernetes API
+      - id: grafana
+        name: Grafana
         type: http
-        url: https://kubernetes.default.svc/livez
-        ignore_tls: true
-        # Anonymous auth is off: 401 means the apiserver is up and authenticating.
-        accepted_statuscodes: ["200-299", "401"]
-      - id: coredns
-        name: CoreDNS
-        type: dns
-        hostname: kubernetes.default.svc.cluster.local
-        dns_resolve_server: 10.43.0.10
-        dns_resolve_type: A
-        port: 53
-      - id: cilium
-        name: Cilium operator
-        type: http
-        url: http://cilium-operator.kube-system:9963/metrics
-      - id: hubble
-        name: Hubble UI
-        type: http
-        url: http://hubble-ui.kube-system:80/
-      - id: traefik
-        name: Traefik
-        type: http
-        url: http://traefik-metrics.traefik:9100/metrics
-      - id: external-dns
-        name: external-dns
-        type: http
-        url: http://external-dns.external-dns:7979/healthz
-      - id: cnpg
-        name: CloudNativePG operator
-        type: port
-        hostname: cnpg-webhook-service.cnpg-system
-        port: 443
-      - id: pg-keycloak
-        name: PostgreSQL (keycloak)
-        type: port
-        hostname: keycloak-pg-rw.keycloak
-        port: 5432
-      - id: pg-defectdojo
-        name: PostgreSQL (defectdojo)
-        type: port
-        hostname: defectdojo-pg-rw.defectdojo
-        port: 5432
-      - id: pg-stalwart
-        name: PostgreSQL (stalwart)
-        type: port
-        hostname: stalwart-pg-rw.stalwart
-        port: 5432
-      - id: trivy
-        name: Trivy operator
-        type: http
-        # Headless Service: DNS yields the pod IP, so the port is the pod's.
-        url: http://trivy-trivy-operator.trivy:8080/metrics
-
-  - id: gitops
-    name: GitOps
-    description: Continuous delivery and the secrets backend.
-    monitors:
+        url: http://kube-prometheus-grafana.monitoring:80/api/health
       - id: argocd
         name: ArgoCD
         type: http
         url: http://argocd-server.argocd:80/healthz
-      - id: argocd-repo
-        name: ArgoCD repo server
-        type: port
-        hostname: argocd-repo-server.argocd
-        port: 8081
       - id: vault
         name: Vault
         type: http
         # 200 only when initialised AND unsealed; a sealed Vault is a real outage.
         url: http://vault.vault:8200/v1/sys/health?standbyok=true
-
-  - id: security
-    name: Security
-    description: Identity, certificates, secrets sync, runtime detection and vulnerability management.
-    monitors:
-      - id: authelia
-        name: Authelia
+      - id: hubble
+        name: Hubble UI
         type: http
-        url: http://authelia.authelia:80/api/health
-      - id: keycloak
-        name: Keycloak
-        type: http
-        url: http://keycloak.keycloak:9000/health/ready
-      - id: cert-manager
-        name: cert-manager
-        type: http
-        url: http://cert-manager.cert-manager:9402/metrics
-      - id: cert-manager-webhook
-        name: cert-manager webhook
-        type: port
-        hostname: cert-manager-webhook.cert-manager
-        port: 443
-      - id: external-secrets
-        name: External Secrets
-        type: http
-        url: http://external-secrets-metrics.external-secrets:8080/metrics
-      - id: external-secrets-webhook
-        name: External Secrets webhook
-        type: port
-        hostname: external-secrets-webhook.external-secrets
-        port: 443
-      - id: falco
-        name: Falco
-        type: http
-        url: http://falco-metrics.falco:8765/metrics
-      - id: falcosidekick
-        name: Falcosidekick
-        type: http
-        url: http://falco-falcosidekick.falco:2801/healthz
-      - id: falcosidekick-ui
-        name: Falcosidekick UI
-        type: http
-        url: http://falco-falcosidekick-ui.falco:2802/
+        url: http://hubble-ui.kube-system:80/
       - id: defectdojo
         name: DefectDojo
         type: http
         url: http://defectdojo-django.defectdojo:80/login?next=/
         # Django ALLOWED_HOSTS only knows the tailnet hostname.
         headers: '{"Host": "defectdojo.tail.{{ .Values.global.domain }}"}'
-
-  - id: monitoring
-    name: Monitoring
-    description: Metrics pipeline, alerting, dashboards and long-term storage.
-    monitors:
-      - id: prometheus
-        name: Prometheus
+      - id: falcosidekick-ui
+        name: Falcosidekick UI
         type: http
-        url: http://kube-prometheus-kube-prome-prometheus.monitoring:9090/-/healthy
-      - id: alertmanager
-        name: Alertmanager
-        type: http
-        url: http://kube-prometheus-kube-prome-alertmanager.monitoring:9093/-/healthy
-      - id: grafana
-        name: Grafana
-        type: http
-        url: http://kube-prometheus-grafana.monitoring:80/api/health
-      - id: kube-state-metrics
-        name: kube-state-metrics
-        type: http
-        url: http://kube-prometheus-kube-state-metrics.monitoring:8080/healthz
-      - id: node-exporter
-        name: node-exporter
-        type: http
-        url: http://kube-prometheus-prometheus-node-exporter.monitoring:9100/
-      - id: thanos-query
-        name: Thanos Query
-        type: http
-        url: http://thanos-query.monitoring:9090/-/healthy
-      - id: thanos-store
-        name: Thanos Store
-        type: http
-        url: http://thanos-store.monitoring:10902/-/healthy
-      - id: thanos-compactor
-        name: Thanos Compactor
-        type: http
-        url: http://thanos-compactor.monitoring:10902/-/healthy
-
-  - id: logging
-    name: Logging
-    description: Log aggregation and collection.
-    monitors:
-      - id: loki
-        name: Loki
-        type: http
-        url: http://loki.logging:3100/ready
-      - id: alloy
-        name: Alloy
-        type: http
-        url: http://alloy.logging:12345/-/ready
-
-  - id: serverless
-    name: Serverless
-    description: Event-driven autoscaling (KEDA) and its HTTP add-on.
-    monitors:
-      - id: keda
-        name: KEDA operator
-        type: http
-        url: http://keda-operator.keda:8080/metrics
-      - id: keda-metrics
-        name: KEDA metrics API
-        type: port
-        hostname: keda-operator-metrics-apiserver.keda
-        port: 443
-      - id: keda-http-interceptor
-        name: KEDA HTTP interceptor
-        type: port
-        hostname: keda-add-ons-http-interceptor-proxy.keda
-        port: 8080
-      - id: keda-http-scaler
-        name: KEDA HTTP scaler
-        type: port
-        hostname: keda-add-ons-http-external-scaler.keda
-        port: 9090
-
-  - id: finops
-    name: FinOps
-    description: Cost allocation and right-sizing.
-    monitors:
-      - id: opencost
-        name: OpenCost
-        type: http
-        url: http://opencost.opencost:9003/healthz
-      - id: goldilocks
-        name: Goldilocks
-        type: http
-        url: http://goldilocks-dashboard.goldilocks:80/
+        url: http://falco-falcosidekick-ui.falco:2802/
 
 # Same schema as `groups`, private by default (`public: false` -> reconciled
 # into Kuma, visible on the tailnet dashboard, never on the status page).
