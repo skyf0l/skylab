@@ -158,6 +158,19 @@ else
   echo "WARN: default domain $DEFAULT_DOMAIN not found — skipping SystemSettings" >&2
 fi
 
+# ---- Prometheus endpoint ----
+# Disabled by default; enable it with Basic auth read from the pod env, so the
+# secret stays in the Kubernetes Secret (never in Stalwart's database).
+METRICS_USER=$(jq -r .metrics.username "$CFG")
+METRICS_ENV=$(jq -r .metrics.envVar "$CFG")
+echo "Ensuring Prometheus metrics endpoint (user $METRICS_USER)"
+RESP=$(jmap "$(jq -nc --arg u "$METRICS_USER" --arg e "$METRICS_ENV" \
+  '[["x:Metrics/set",{"update":{"singleton":{"prometheus":
+     {"@type":"Enabled","authUsername":$u,
+      "authSecret":{"@type":"EnvironmentVariable","variableName":$e}}}}},"c0"]]')")
+echo "$RESP" | jq -e '.methodResponses[0][1] | (.notUpdated // {}) | length == 0' >/dev/null \
+  || echo "WARN: Metrics update rejected: $(why "$RESP")" >&2
+
 # ---- publish DKIM TXT records as DNSEndpoints ----
 # Static records (MX/SPF/DMARC/...) are chart-owned; only the DKIM TXTs come
 # from the server, because the key material is generated server-side and only

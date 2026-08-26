@@ -43,6 +43,14 @@ spec:
                 secretKeyRef:
                   name: stalwart-secrets
                   key: STALWART_RECOVERY_ADMIN
+            # Prometheus endpoint Basic-auth secret; the provisioning job points
+            # the Metrics config at this variable, so the value never enters
+            # Stalwart's database.
+            - name: STALWART_METRICS_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: stalwart-secrets
+                  key: metrics_password
             # Published OAuth/JMAP discovery URLs (TLS terminates at Traefik).
             - name: STALWART_PUBLIC_URL
               value: "https://{{ .Values.host }}"

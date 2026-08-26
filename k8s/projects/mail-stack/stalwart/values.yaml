@@ -115,11 +115,14 @@ ingress:
 # discovery): CNAMEs, cert SANs and ingress rules.
 autodiscovery: true
 
-# ESO pulls this from Vault at: kvv2/cluster/skylab/apps/stalwart
-# The ONLY field to populate:
-#   admin_password   PLAINTEXT admin password (feeds STALWART_RECOVERY_ADMIN and
-#                    the provisioning job's Basic auth — a hash cannot
-#                    authenticate a client)
+# ESO pulls these from Vault at: kvv2/cluster/skylab/apps/stalwart
+#   admin_password    PLAINTEXT admin password (feeds STALWART_RECOVERY_ADMIN and
+#                     the provisioning job's Basic auth — a hash cannot
+#                     authenticate a client). The only field to fill by hand.
+#   metrics_password  Basic auth for the Prometheus endpoint (random, seeded by
+#                     vault/seed-secrets.sh); the server reads it from the
+#                     STALWART_METRICS_SECRET env, the ServiceMonitor from the
+#                     same Secret.
 # Mailbox passwords are deliberately NOT here: accounts are provisioned without
 # credentials and their passwords are set once from the web-admin. Personal
 # passwords rotate independently and shouldn't be declarative state.
@@ -127,6 +130,11 @@ externalSecret:
   enabled: true
   storeName: vault-backend
   vaultKey: cluster/skylab/apps/stalwart
+
+# Prometheus endpoint (/metrics/prometheus), enabled by the provisioning job with
+# Basic auth so the scrape never carries the admin credential.
+metrics:
+  username: metrics
 
 # Special-use folders created (and subscribed) for new mailboxes. Stalwart ships
 # with defaultFolders UNSET, so a fresh account only gets Inbox and Drafts —

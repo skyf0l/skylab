@@ -191,6 +191,14 @@ grafana="cluster/${CLUSTER}/apps/grafana"
 echo "[grafana] ${KV_MOUNT}/${grafana}"
 seed_field "$grafana" oidc_client_secret     rand_secret
 
+# stalwart — kvv2/cluster/<cluster>/apps/stalwart
+# admin_password is human-supplied (see the chart values) and NOT seeded here.
+# metrics_password: Basic-auth secret for Stalwart's Prometheus endpoint, shared by
+# the server config and the ServiceMonitor. Random, set-once.
+stalwart="cluster/${CLUSTER}/apps/stalwart"
+echo "[stalwart] ${KV_MOUNT}/${stalwart}"
+seed_field "$stalwart" metrics_password     rand_secret
+
 # alertmanager — kvv2/cluster/<cluster>/apps/alertmanager
 # Pushover credentials (an Application's API token + your user key) — PLACEHOLDERS
 # so the ExternalSecret syncs and Alertmanager starts; overwrite with the real ones:

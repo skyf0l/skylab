@@ -19,7 +19,7 @@ data:
     {{- range $use, $name := .Values.defaultFolders -}}
     {{- $_ := set $folders $use (dict "name" $name "create" true "subscribe" true) -}}
     {{- end }}
-    {{ dict "hostname" .Values.host "defaultDomain" .Values.global.domain "certificates" $certs "defaultFolders" $folders "domains" (include "stalwart.domains" . | fromJsonArray) "accounts" (include "stalwart.accounts" . | fromJsonArray) | toJson }}
+    {{ dict "hostname" .Values.host "defaultDomain" .Values.global.domain "certificates" $certs "defaultFolders" $folders "domains" (include "stalwart.domains" . | fromJsonArray) "accounts" (include "stalwart.accounts" . | fromJsonArray) "metrics" (dict "username" .Values.metrics.username "envVar" "STALWART_METRICS_SECRET") | toJson }}
   provision.sh: |
 {{ .Files.Get "files/provision.sh" | indent 4 }}
 ---
