@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: cloudnative-pg
+  name: reloader
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -21,24 +21,27 @@ spec:
                 - path: clusters/{{.name }}/config.json
   template:
     metadata:
-      name: "{{.name}}-cloudnative-pg"
+      name: "{{.name}}-reloader"
       labels:
-        app.kubernetes.io/part-of: cluster-stack
+        app.kubernetes.io/part-of: core
         skylab.dev/tier: platform
     spec:
       project: platform
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"
-        path: k8s/projects/cluster-stack/cloudnative-pg
+        path: k8s/projects/core/reloader
         helm:
-          releaseName: cloudnative-pg
+          releaseName: reloader
           valueFiles:
             - values.yaml
-            - values/{{.name}}.yaml
+          # ServiceMonitor is gated on the Prometheus-operator CRD, which the repo-server
+          # can't discover offline — declare it so the ServiceMonitor renders.
+          apiVersions:
+            - monitoring.coreos.com/v1
       destination:
         server: https://kubernetes.default.svc
-        namespace: cnpg-system
+        namespace: reloader
       syncPolicy:
         automated:
           prune: true
@@ -49,6 +52,6 @@ spec:
           - PrunePropagationPolicy=foreground
           - PruneLast=true
           - RespectIgnoreDifferences=true
-          - ServerSideApply=true # CRDs are large -> avoid last-applied annotation limit
+          - ServerSideApply=true
         retry:
-          limit: 5
+          limit: 10

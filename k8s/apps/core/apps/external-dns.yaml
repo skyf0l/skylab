@@ -1,9 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: external-secrets-stores
-  annotations:
-    argocd.argoproj.io/sync-wave: "-5"
+  name: external-dns
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -20,28 +18,27 @@ spec:
               repoURL: https://github.com/skyf0l/skylab.git
               revision: main
               files:
-                - path: clusters/{{.name }}/config.json
+                - path: clusters/{{.name}}/config.json
   template:
     metadata:
-      name: "{{.name}}-external-secrets-stores"
+      name: "{{.name}}-external-dns"
       labels:
-        app.kubernetes.io/part-of: security-stack
+        app.kubernetes.io/part-of: core
         skylab.dev/tier: platform
-      annotations:
-        argocd.argoproj.io/sync-wave: "-5"
     spec:
       project: platform
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"
-        path: k8s/projects/security-stack/external-secrets-stores
+        path: k8s/projects/core/external-dns
         helm:
-          releaseName: external-secrets-stores
+          releaseName: external-dns
           valueFiles:
             - values.yaml
+            - values/{{.name}}.yaml
       destination:
         server: https://kubernetes.default.svc
-        namespace: external-secrets
+        namespace: external-dns
       syncPolicy:
         automated:
           prune: true
@@ -52,5 +49,6 @@ spec:
           - PrunePropagationPolicy=foreground
           - PruneLast=true
           - RespectIgnoreDifferences=true
+          - ServerSideApply=true
         retry:
-          limit: 5
+          limit: 10

@@ -2,7 +2,7 @@
 keda:
   # Expose the keda-operator's Prometheus metrics (keda_*, controller_runtime_*,
   # workqueue_*) and scrape them via a ServiceMonitor — feeds the "Keda Operator"
-  # Grafana dashboard (gnetId 22111, vendored in monitoring-stack/grafana-dashboards).
+  # Grafana dashboard (gnetId 22111, vendored in observability/grafana-dashboards).
   # kube-prometheus scrapes every ServiceMonitor (serviceMonitorSelectorNil...=false),
   # so no extra labels are needed. The metricServer/webhooks ServiceMonitors stay off
   # (the operator emits everything that dashboard needs).

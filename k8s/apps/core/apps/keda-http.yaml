@@ -1,9 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: external-secrets
-  annotations:
-    argocd.argoproj.io/sync-wave: "-6"
+  name: keda-http
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -23,25 +21,27 @@ spec:
                 - path: clusters/{{.name }}/config.json
   template:
     metadata:
-      name: "{{.name}}-external-secrets"
+      name: "{{.name}}-keda-http"
       labels:
-        app.kubernetes.io/part-of: security-stack
+        app.kubernetes.io/part-of: core
         skylab.dev/tier: platform
       annotations:
-        argocd.argoproj.io/sync-wave: "-6"
+        # After KEDA core (-5): the add-on's operator turns HTTPScaledObjects into
+        # KEDA ScaledObjects, so it needs KEDA's CRDs already present.
+        argocd.argoproj.io/sync-wave: "5"
     spec:
       project: platform
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"
-        path: k8s/projects/security-stack/external-secrets
+        path: k8s/projects/core/keda-http
         helm:
-          releaseName: external-secrets
+          releaseName: keda-http
           valueFiles:
             - values.yaml
       destination:
         server: https://kubernetes.default.svc
-        namespace: external-secrets
+        namespace: keda
       syncPolicy:
         automated:
           prune: true
@@ -52,6 +52,6 @@ spec:
           - PrunePropagationPolicy=foreground
           - PruneLast=true
           - RespectIgnoreDifferences=true
-          - ServerSideApply=true
+          - ServerSideApply=true # HTTPScaledObject CRD is large -> avoid annotation limit
         retry:
-          limit: 5
+          limit: 10

@@ -5,6 +5,3 @@ resources:
   - apps/cilium.yaml
   - apps/traefik.yaml
   - apps/trivy.yaml
-  - apps/cloudnative-pg.yaml
-  - apps/reloader.yaml
-  - apps/external-dns.yaml

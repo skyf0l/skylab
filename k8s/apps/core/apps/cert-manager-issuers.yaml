@@ -1,7 +1,9 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: keda
+  name: cert-manager-issuers
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -21,27 +23,31 @@ spec:
                 - path: clusters/{{.name }}/config.json
   template:
     metadata:
-      name: "{{.name}}-keda"
+      name: "{{.name}}-cert-manager-issuers"
       labels:
-        app.kubernetes.io/part-of: serverless-stack
+        app.kubernetes.io/part-of: core
         skylab.dev/tier: platform
       annotations:
-        # KEDA core (operator + CRDs + metrics APIService) must settle before the
-        # HTTP add-on (-4), which builds ScaledObjects on top of it.
-        argocd.argoproj.io/sync-wave: "-5"
+        argocd.argoproj.io/sync-wave: "1"
     spec:
       project: platform
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"
-        path: k8s/projects/serverless-stack/keda
+        path: k8s/projects/core/cert-manager-issuers
         helm:
-          releaseName: keda
+          releaseName: cert-manager-issuers
           valueFiles:
             - values.yaml
+            - values/{{.name}}.yaml
+          # ACME contact derived from the cluster's global.domain. Override in
+          # values/<cluster>.yaml if you want a real mailbox instead.
+          parameters:
+            - name: "email"
+              value: "admin@{{.global.domain}}"
       destination:
         server: https://kubernetes.default.svc
-        namespace: keda
+        namespace: cert-manager
       syncPolicy:
         automated:
           prune: true
@@ -52,6 +58,5 @@ spec:
           - PrunePropagationPolicy=foreground
           - PruneLast=true
           - RespectIgnoreDifferences=true
-          - ServerSideApply=true # KEDA CRDs are large -> avoid last-applied annotation limit
         retry:
-          limit: 5
+          limit: 10

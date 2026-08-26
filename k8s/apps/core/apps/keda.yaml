@@ -1,9 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: cert-manager
-  annotations:
-    argocd.argoproj.io/sync-wave: "-8"
+  name: keda
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -23,25 +21,27 @@ spec:
                 - path: clusters/{{.name }}/config.json
   template:
     metadata:
-      name: "{{.name}}-cert-manager"
+      name: "{{.name}}-keda"
       labels:
-        app.kubernetes.io/part-of: security-stack
+        app.kubernetes.io/part-of: core
         skylab.dev/tier: platform
       annotations:
-        argocd.argoproj.io/sync-wave: "-8"
+        # KEDA core (operator + CRDs + metrics APIService) must settle before the
+        # HTTP add-on (-4), which builds ScaledObjects on top of it.
+        argocd.argoproj.io/sync-wave: "4"
     spec:
       project: platform
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"
-        path: k8s/projects/security-stack/cert-manager
+        path: k8s/projects/core/keda
         helm:
-          releaseName: cert-manager
+          releaseName: keda
           valueFiles:
             - values.yaml
       destination:
         server: https://kubernetes.default.svc
-        namespace: cert-manager
+        namespace: keda
       syncPolicy:
         automated:
           prune: true
@@ -52,6 +52,6 @@ spec:
           - PrunePropagationPolicy=foreground
           - PruneLast=true
           - RespectIgnoreDifferences=true
-          - ServerSideApply=true
+          - ServerSideApply=true # KEDA CRDs are large -> avoid last-applied annotation limit
         retry:
-          limit: 5
+          limit: 10

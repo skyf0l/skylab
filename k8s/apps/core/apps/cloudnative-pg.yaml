@@ -1,9 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: cert-manager-issuers
-  annotations:
-    argocd.argoproj.io/sync-wave: "-7"
+  name: cloudnative-pg
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -23,31 +21,24 @@ spec:
                 - path: clusters/{{.name }}/config.json
   template:
     metadata:
-      name: "{{.name}}-cert-manager-issuers"
+      name: "{{.name}}-cloudnative-pg"
       labels:
-        app.kubernetes.io/part-of: security-stack
+        app.kubernetes.io/part-of: core
         skylab.dev/tier: platform
-      annotations:
-        argocd.argoproj.io/sync-wave: "-7"
     spec:
       project: platform
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"
-        path: k8s/projects/security-stack/cert-manager-issuers
+        path: k8s/projects/core/cloudnative-pg
         helm:
-          releaseName: cert-manager-issuers
+          releaseName: cloudnative-pg
           valueFiles:
             - values.yaml
             - values/{{.name}}.yaml
-          # ACME contact derived from the cluster's global.domain. Override in
-          # values/<cluster>.yaml if you want a real mailbox instead.
-          parameters:
-            - name: "email"
-              value: "admin@{{.global.domain}}"
       destination:
         server: https://kubernetes.default.svc
-        namespace: cert-manager
+        namespace: cnpg-system
       syncPolicy:
         automated:
           prune: true
@@ -58,5 +49,6 @@ spec:
           - PrunePropagationPolicy=foreground
           - PruneLast=true
           - RespectIgnoreDifferences=true
+          - ServerSideApply=true # CRDs are large -> avoid last-applied annotation limit
         retry:
-          limit: 5
+          limit: 10

@@ -1,9 +1,8 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: serverless-stack
+  name: cert-manager
   annotations:
-    # Independent platform capability (KEDA); no cross-stack ordering needed.
     argocd.argoproj.io/sync-wave: "0"
 spec:
   goTemplate: true
@@ -21,42 +20,38 @@ spec:
               repoURL: https://github.com/skyf0l/skylab.git
               revision: main
               files:
-                - path: clusters/{{.name}}/config.json
+                - path: clusters/{{.name }}/config.json
   template:
     metadata:
-      name: "{{.name}}-serverless-stack"
+      name: "{{.name}}-cert-manager"
       labels:
-        app.kubernetes.io/part-of: serverless-stack
+        app.kubernetes.io/part-of: core
         skylab.dev/tier: platform
+      annotations:
+        argocd.argoproj.io/sync-wave: "0"
     spec:
       project: platform
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"
-        path: k8s/apps/serverless-stack
-        kustomize:
-          namePrefix: "{{.name}}-"
-          patches:
-            - target:
-                kind: ApplicationSet
-              patch: |-
-                - op: replace
-                  path: /spec/generators/0/matrix/generators/0/list/elements/0/name
-                  value: {{.name}}
-                - op: replace
-                  path: /spec/generators/0/matrix/generators/1/git/repoURL
-                  value: {{.repo.url}}
-                - op: replace
-                  path: /spec/generators/0/matrix/generators/1/git/revision
-                  value: {{.repo.revision}}
+        path: k8s/projects/core/cert-manager
+        helm:
+          releaseName: cert-manager
+          valueFiles:
+            - values.yaml
       destination:
         server: https://kubernetes.default.svc
-        namespace: argocd
+        namespace: cert-manager
       syncPolicy:
         automated:
           prune: true
+          selfHeal: true
         syncOptions:
+          - CreateNamespace=true
           - Validate=true
           - PrunePropagationPolicy=foreground
           - PruneLast=true
           - RespectIgnoreDifferences=true
+          - ServerSideApply=true
+        retry:
+          limit: 10
