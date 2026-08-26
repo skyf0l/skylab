@@ -49,10 +49,11 @@ autokuma:
 # warning, Kuma not scraped -> warning. Alertmanager does the grouping/paging.
 alerts:
   enabled: true
-  scrapeInterval: 60s
-  # Kuma already retries before marking down (defaults.maxRetries).
-  for: 2m
-  kumaDownFor: 5m
+  scrapeInterval: 30s
+  # Kuma already debounces (defaults.maxRetries) before marking down, so the
+  # rule only needs to outlast one scrape: ~2 min from failure to notification.
+  for: 30s
+  kumaDownFor: 2m
 
 # Post-sync job: first-run initialisation + status page reconcile
 # (files/provision.py). No login anywhere: the dashboard is tailnet-only.
