@@ -34,7 +34,9 @@ spec:
                   value: "http://vault.vault.svc:8200"
               command: ["/bin/sh", "-ec"]
               args:
+                # The 2.x CLI has no `login -method=kubernetes` helper any more;
+                # log in through the auth backend's API path instead.
                 - |
-                  vault login -method=kubernetes role=cloudflare-rotate \
-                    jwt="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" >/dev/null
+                  export VAULT_TOKEN=$(vault write -field=token auth/kubernetes/login \
+                    role=cloudflare-rotate jwt="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)")
                   vault write -f cloudflare/config/rotate-root token_type=account
