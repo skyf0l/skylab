@@ -139,8 +139,10 @@ spec:
               mountPath: /etc/provision
               readOnly: true
           resources:
-            requests: { cpu: 10m, memory: 32Mi }
-            limits: { memory: 128Mi }
+            # 128Mi OOMKilled this: the kubectl binary's page cache counts
+            # against the cgroup, on top of jq holding whole API responses.
+            requests: { cpu: 10m, memory: 64Mi }
+            limits: { memory: 256Mi }
       volumes:
         - name: provision
           configMap:
