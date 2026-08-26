@@ -1,0 +1,19 @@
+apiVersion: instance.falcosecurity.dev/v1alpha1
+kind: Component
+metadata:
+  name: falcosidekick
+  labels:
+    app.kubernetes.io/name: falcosidekick
+spec:
+  component:
+    type: falcosidekick
+  replicas: {{ .Values.falcosidekick.replicas }}
+  podTemplateSpec:
+    spec:
+      containers:
+        - name: falcosidekick
+          env:
+            {{- range $k, $v := .Values.falcosidekick.env }}
+            - name: {{ $k }}
+              value: {{ $v | quote }}
+            {{- end }}

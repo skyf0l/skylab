@@ -6,66 +6,121 @@
 # Pipeline: Falco DaemonSet (one pod/node) -> Falcosidekick (fan-out) -> Loki
 # (forensics, browse in Grafana) + Alertmanager (Warning+ only) + the Falcosidekick
 # Web UI (tailnet-only, like DefectDojo). Falco + sidekick both expose Prometheus
-# metrics via ServiceMonitors. All values live under the `falco` subchart key.
+# metrics via ServiceMonitors.
+#
+# Everything here is a CR reconciled by falco-operator: `Falco` (the DaemonSet,
+# modern eBPF, Falco version pinned by the operator release), `Plugin` / `Rulesfile`
+# / `Config` (delivered into the pod by the artifact-operator sidecar, hot-reloaded)
+# and `Component` (falcosidekick, falcosidekick-ui). The operator mounts the
+# container runtime socket DIRECTORIES, so Falco survives a containerd restart
+# (a file hostPath pins the old inode and silently loses all container metadata).
+
 falco:
-  # ---- engine + driver ----------------------------------------------------------
-  driver:
-    # modern eBPF (CO-RE): no kernel module, no per-kernel build. The node runs
-    # kernel 6.8, well above the 5.8 floor, so this is the prod-recommended path.
-    kind: modern_ebpf
+  # Native sidecar that pulls the OCI artifacts below into the Falco pod. Released
+  # in lockstep with the operator; the operator default is the floating :latest.
+  artifactOperator:
+    image:
+      registry: docker.io
+      repository: falcosecurity/artifact-operator
+      tag: 0.4.1
+  # Falco container. Left at the operator defaults (100m/512Mi -> 1/1Gi).
+  resources: {}
 
-  # k8s metadata enrichment (the k8s-metacollector subchart) so events carry
-  # namespace/pod/labels instead of bare container IDs.
-  collectors:
-    enabled: true
+# Extractor plugin that enriches syscall events with container.* and k8s.* fields
+# (pod/namespace come from the CRI pod-sandbox labels, no k8s-metacollector needed).
+plugins:
+  container:
+    image:
+      registry: ghcr.io
+      repository: falcosecurity/plugins/plugin/container
+      tag: 0.7.1
+    # Node paths (the plugin prepends HOST_ROOT). RKE2's containerd only; every
+    # other engine is off so the plugin doesn't probe sockets that don't exist.
+    initConfig:
+      engines:
+        docker:
+          enabled: false
+        podman:
+          enabled: false
+        containerd:
+          enabled: false
+        cri:
+          enabled: true
+          sockets:
+            - /run/k3s/containerd/containerd.sock
 
-  # ---- Falco's native Prometheus metrics (Falco 0.38+) --------------------------
-  metrics:
-    enabled: true
-    interval: 1h
-    rulesCountersEnabled: true
-    # metrics go to the /metrics endpoint, not emitted as log rules
-    outputRule: false
+rules:
+  # Upstream stable ruleset (falco-rules 5.x is the Falco 0.44 line).
+  upstream:
+    image:
+      registry: ghcr.io
+      repository: falcosecurity/rules/falco-rules
+      tag: 5.1.0
+    priority: 50
+  # Site overrides, loaded after the upstream file so `override:` applies. Keep
+  # exceptions scoped to a workload + binary, never to a bare command line.
+  overrides:
+    priority: 60
+    rules:
+      # The stalwart provisioning Job apk-adds curl/jq at runtime, which trips
+      # "Drop and execute new binary in container" on every rollout. Only those two
+      # binaries, only in that Job.
+      - macro: known_drop_and_execute_activities
+        condition: >
+          (k8s.ns.name = stalwart
+           and k8s.pod.name startswith stalwart-provision-
+           and proc.exepath in (/usr/bin/jq, /usr/bin/curl))
+        override:
+          condition: replace
 
-  # ServiceMonitor for Falco's own /metrics. kube-prometheus scrapes every
-  # ServiceMonitor (serviceMonitorSelectorNilUsesHelmValues=false), so no labels.
-  serviceMonitor:
-    create: true
-
-  # ---- Falcosidekick: routing + Web UI ------------------------------------------
-  falcosidekick:
-    enabled: true
-    # ServiceMonitor for falcosidekick's own metrics (events by rule/priority/output).
-    serviceMonitor:
+# falco.yaml fragment merged over the operator's base config (modern eBPF, metrics
+# every 1h with rule counters, Prometheus /metrics on :8765). Falco ships events
+# as JSON to falcosidekick's Service (Component name below).
+config:
+  priority: 50
+  falco:
+    json_output: true
+    http_output:
       enabled: true
-    # Purpose-built event browser, reachable only on the tailnet via the
-    # headscale-proxy IngressRoute (falco.tail.<domain>:2802). Bundled Redis backs it.
-    webui:
-      enabled: true
-      redis:
-        enabled: true
-        # The UI's redis is just a recent-events cache for the browser; durable
-        # history lives in Loki. Run it ephemeral — local-path isn't a default
-        # StorageClass here, so a PVC would sit unbound.
-        storageEnabled: false
-    config:
-      # Everything Notice+ to Loki for forensics/searchable history (LogQL in Grafana).
-      loki:
-        hostport: "http://loki.logging:3100"
-        endpoint: "/loki/api/v1/push"
-        minimumpriority: "notice"
-      # Only Warning+ pages through Alertmanager — keeps the noise floor sane.
-      alertmanager:
-        hostport: "http://kube-prometheus-kube-prome-alertmanager.monitoring:9093"
-        endpoint: "/api/v2/alerts"
-        minimumpriority: "warning"
+      url: http://falcosidekick:2801
 
-  # ---- rule tuning ---------------------------------------------------------------
-  # Starts on the upstream ruleset (fetched by the falcoctl init container). Add
-  # custom rules / exceptions here as the noise floor gets characterised; managing
-  # them as code is the whole point. Example shape left for later:
-  # customRules:
-  #   overrides.yaml: |-
-  #     - rule: Terminal shell in container
-  #       append: true
-  #       condition: and not container.image.repository in (allowed_debug_images)
+falcosidekick:
+  replicas: 2
+  # Falcosidekick is configured by environment (its config keys, upper-cased).
+  env:
+    # Everything Notice+ to Loki for forensics/searchable history (LogQL in Grafana).
+    LOKI_HOSTPORT: http://loki.logging:3100
+    LOKI_ENDPOINT: /loki/api/v1/push
+    LOKI_MINIMUMPRIORITY: notice
+    # Only Warning+ pages through Alertmanager — keeps the noise floor sane.
+    ALERTMANAGER_HOSTPORT: http://kube-prometheus-kube-prome-alertmanager.monitoring:9093
+    ALERTMANAGER_ENDPOINT: /api/v2/alerts
+    ALERTMANAGER_MINIMUMPRIORITY: warning
+    # Push events to the Web UI (Component below, port 2802).
+    WEBUI_URL: http://falcosidekick-ui:2802
+
+# Purpose-built event browser, reachable only on the tailnet via the
+# headscale-proxy IngressRoute (falco.tail.<domain> -> falcosidekick-ui:2802).
+falcosidekickUi:
+  # Stateless browser for a tailnet-only page; a rollout blip costs nothing.
+  replicas: 1
+  # The UI's redis is just a recent-events cache for the browser; durable history
+  # lives in Loki. Ephemeral (no PVC). The operator's default UI args expect it at
+  # falcosidekick-ui-redis:6379.
+  redis:
+    image:
+      registry: docker.io
+      repository: redis/redis-stack
+      tag: 7.2.0-v11
+
+# ServiceMonitors for Falco's own /metrics and falcosidekick's (events by
+# rule/priority/output). kube-prometheus scrapes every ServiceMonitor
+# (serviceMonitorSelectorNilUsesHelmValues=false), so no labels needed.
+serviceMonitor:
+  enabled: true
+
+# Alert when container events stop carrying Kubernetes metadata: the container
+# plugin lost its runtime socket (e.g. after a containerd restart). Falco stays
+# Healthy and keeps emitting, so nothing else notices.
+alerts:
+  enabled: true

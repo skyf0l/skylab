@@ -1,0 +1,8 @@
+apiVersion: artifact.falcosecurity.dev/v1alpha1
+kind: Config
+metadata:
+  name: falco
+spec:
+  priority: {{ .Values.config.priority }}
+  config:
+    {{- toYaml .Values.config.falco | nindent 4 }}

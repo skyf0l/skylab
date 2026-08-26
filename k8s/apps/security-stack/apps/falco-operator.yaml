@@ -1,11 +1,10 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: falco
+  name: falco-operator
   annotations:
-    # After falco-operator (CRDs) and the monitoring stack (ServiceMonitor /
-    # PrometheusRule CRDs).
-    argocd.argoproj.io/sync-wave: "2"
+    # CRDs + controller first; the falco app (wave 2) only holds CRs.
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -23,25 +22,25 @@ spec:
                 - path: clusters/{{.name }}/config.json
   template:
     metadata:
-      name: "{{.name}}-falco"
+      name: "{{.name}}-falco-operator"
       labels:
         app.kubernetes.io/part-of: security-stack
         skylab.dev/tier: platform
       annotations:
-        argocd.argoproj.io/sync-wave: "2"
+        argocd.argoproj.io/sync-wave: "1"
     spec:
       project: platform
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"
-        path: k8s/projects/security-stack/falco
+        path: k8s/projects/security-stack/falco-operator
         helm:
-          releaseName: falco
+          releaseName: falco-operator
           valueFiles:
             - values.yaml
       destination:
         server: https://kubernetes.default.svc
-        namespace: falco
+        namespace: falco-operator
       syncPolicy:
         automated:
           prune: true
