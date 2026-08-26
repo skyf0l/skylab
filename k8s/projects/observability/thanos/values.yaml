@@ -65,18 +65,22 @@ storeGateway:
     limits: {memory: 1Gi}
 
 compactor:
-  # Retention per downsample resolution, sized to fit the R2 free tier (10GB).
-  # Downsampling (raw -> 5m -> 1h rollups) is what makes multi-month range queries
-  # fast and cheap; --query.auto-downsampling picks the right resolution per range.
-  #   raw 14d  : full-resolution recent history. Raw is BY FAR the largest tier
-  #              (~1GB per 2-day block at this cardinality) and Prometheus already
-  #              keeps 15d locally, so raw in R2 past ~2 weeks is mostly redundant.
-  #              This is the single biggest lever on R2 size — keep it short.
-  #   5m  365d : medium-res for week/month-scale dashboards going back a year
+  # Retention per downsample resolution. Downsampling (raw -> 5m -> 1h rollups)
+  # is what makes multi-month range queries fast and cheap;
+  # --query.auto-downsampling picks the right resolution per range.
+  #   raw 14d  : full-resolution recent history (~1GB per 2-day block). Raw is
+  #              compacted into 14-day blocks and a block is only deleted once its
+  #              whole range is past the retention, so raw effectively lives
+  #              14-28d. Prometheus already keeps 15d locally, so this is the
+  #              biggest lever on R2 size — keep it short.
+  #   5m  90d  : medium-res for week/month-scale dashboards. Downsampled block
+  #              size scales with the number of distinct series in the window
+  #              (every ephemeral pod leaves a dead series behind), not with
+  #              samples, so a year of 5m at this churn is tens of GB.
   #   1h  365d : low-res for the full 12-month range (cheapest to store + query)
   # Set any to 0d to keep forever. Raw is by far the largest; keep it shortest.
   retentionRaw: 14d
-  retention5m: 365d
+  retention5m: 90d
   retention1h: 365d
   persistence:
     storageClass: local-path
