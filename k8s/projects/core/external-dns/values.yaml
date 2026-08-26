@@ -1,7 +1,7 @@
 # DNS-as-code (Cloudflare). external-dns only acts on DNSEndpoint CRs shipped
 # by app charts (CRD source) — it never scans Services/Ingresses and never
 # touches records it didn't create (txt registry ownership). Current consumer:
-# mail-stack/stalwart (mail zones). Blast radius is bounded by the Cloudflare
+# workloads/stalwart (mail zones). Blast radius is bounded by the Cloudflare
 # token scope (Vault), NOT by a --domain-filter: a filter listing the private
 # zones here would leak their names in a public repo.
 external-dns:
