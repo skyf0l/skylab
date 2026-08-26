@@ -167,10 +167,15 @@ kube-prometheus-stack:
           - receiver: "null"
             matchers:
               - alertname = "Watchdog"
-          # Never page on info.
+          # Never page on info. InfoInhibitor is upstream's helper alert
+          # (severity none) that exists only to inhibit info alerts; it flaps
+          # with them and is not caught by any inhibit rule itself.
           - receiver: "null"
             matchers:
               - severity = "info"
+          - receiver: "null"
+            matchers:
+              - alertname = "InfoInhibitor"
       receivers:
         # Empty receiver = black hole.
         - name: "null"
