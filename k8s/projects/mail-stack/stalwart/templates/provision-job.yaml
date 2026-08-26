@@ -62,9 +62,9 @@ subjects:
   - kind: ServiceAccount
     name: stalwart-provision
 ---
-# Reconciles domains/DKIM/accounts/cert/hostname on every sync (idempotent,
-# ensure-only — see files/provision.sh). before-hook-creation keeps a failed
-# run from wedging the next sync.
+# Reconciles the server to the rendered plan on every sync (stalwart-cli apply,
+# idempotent upserts) and then publishes the DKIM records. before-hook-creation
+# keeps a failed run from wedging the next sync.
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -80,10 +80,51 @@ spec:
     spec:
       serviceAccountName: stalwart-provision
       restartPolicy: Never
-      containers:
-        - name: provision
+      initContainers:
+        # The CLI image is distroless (no shell), so the readiness wait lives
+        # in its own container.
+        - name: wait
           image: {{ .Values.provision.jobImage | quote }}
-          command: ["/bin/sh", "/etc/provision/provision.sh"]
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              i=0
+              until curl -sf "$STALWART_URL/healthz/ready" >/dev/null; do
+                i=$((i+1)); [ "$i" -ge 60 ] && { echo "stalwart not ready" >&2; exit 1; }
+                sleep 5
+              done
+          env:
+            - name: STALWART_URL
+              value: "http://stalwart:8080"
+          resources:
+            requests: { cpu: 10m, memory: 16Mi }
+            limits: { memory: 64Mi }
+        - name: apply
+          image: {{ .Values.provision.cliImage | quote }}
+          args: ["apply", "--file", "/etc/provision/plan.ndjson", "--json"]
+          env:
+            - name: STALWART_URL
+              value: "http://stalwart:8080"
+            - name: STALWART_USER
+              value: {{ .Values.provision.adminUser | quote }}
+            - name: STALWART_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: stalwart-secrets
+                  key: admin_password
+            - name: NO_COLOR
+              value: "1"
+          volumeMounts:
+            - name: provision
+              mountPath: /etc/provision
+              readOnly: true
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { memory: 128Mi }
+      containers:
+        - name: dkim
+          image: {{ .Values.provision.jobImage | quote }}
+          command: ["/bin/sh", "/etc/provision/dkim.sh"]
           env:
             - name: STALWART_URL
               value: "http://stalwart:8080"
@@ -103,11 +144,8 @@ spec:
               mountPath: /etc/provision
               readOnly: true
           resources:
-            # 128Mi OOMKilled this: `apk add curl jq` writes into the container
-            # filesystem and that page cache counts against the cgroup limit,
-            # on top of jq holding whole API responses in memory.
-            requests: { cpu: 10m, memory: 64Mi }
-            limits: { memory: 256Mi }
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { memory: 128Mi }
       volumes:
         - name: provision
           configMap:
