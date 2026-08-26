@@ -1,0 +1,19 @@
+{{- if .Values.alerts.enabled }}
+# Prometheus scrape of Kuma's /metrics (monitor_status, monitor_response_time,
+# monitor_cert_days_remaining per monitor). No auth: Kuma's login is off.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: uptime-kuma
+  labels:
+    app: uptime-kuma
+    release: kube-prometheus
+spec:
+  selector:
+    matchLabels:
+      app: uptime-kuma
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: {{ .Values.alerts.scrapeInterval }}
+{{- end }}

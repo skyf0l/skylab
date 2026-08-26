@@ -1,0 +1,51 @@
+{{- if .Values.alerts.enabled }}
+{{- $d := .Values.global.domain | replace "." "\\\\." }}
+{{- /* Internet-facing probes: https://<x>.<domain>/... URLs and <x>.<domain> port checks. */}}
+{{- $public := printf `monitor_url=~"https://[^/]+\\.%s(/.*)?", monitor_type!="group"` $d }}
+{{- $publicPort := printf `monitor_hostname=~"[^.]+\\.%s", monitor_type="port"` $d }}
+# Alerts derived from Kuma's probes. monitor_status: 1 up, 0 down, 2 pending,
+# 3 maintenance; groups are left out (their children carry the detail).
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: uptime-kuma
+  labels:
+    app: uptime-kuma
+    release: kube-prometheus
+spec:
+  groups:
+    - name: uptime-kuma
+      rules:
+        # Internet-facing endpoint down: the public status page is red for it.
+        - alert: KumaPublicEndpointDown
+          expr: >
+            (monitor_status{job="uptime-kuma", {{ $public }}} == 0)
+            or (monitor_status{job="uptime-kuma", {{ $publicPort }}} == 0)
+          for: {{ .Values.alerts.for }}
+          labels:
+            severity: critical
+          annotations:
+            summary: {{ `Public endpoint {{ $labels.monitor_name }} is down` | quote }}
+            description: {{ `Kuma reports {{ $labels.monitor_name }} ({{ $labels.monitor_type }}) down for more than ` }}{{ .Values.alerts.for }}.
+        # Any other monitored service (in-cluster probes).
+        - alert: KumaMonitorDown
+          expr: >
+            monitor_status{job="uptime-kuma", monitor_type!="group"} == 0
+            unless monitor_status{job="uptime-kuma", {{ $public }}}
+            unless monitor_status{job="uptime-kuma", {{ $publicPort }}}
+          for: {{ .Values.alerts.for }}
+          labels:
+            severity: warning
+          annotations:
+            summary: {{ `{{ $labels.monitor_name }} is down` | quote }}
+            description: {{ `Kuma reports {{ $labels.monitor_name }} ({{ $labels.monitor_type }}) down for more than ` }}{{ .Values.alerts.for }}.
+        # Kuma itself gone: its series go stale, so nothing above can fire.
+        - alert: KumaDown
+          expr: absent(up{job="uptime-kuma"} == 1)
+          for: {{ .Values.alerts.kumaDownFor }}
+          labels:
+            severity: warning
+          annotations:
+            summary: Uptime Kuma is not being scraped
+            description: No healthy uptime-kuma target for {{ .Values.alerts.kumaDownFor }}. The status page and every Kuma-based alert are blind.
+{{- end }}

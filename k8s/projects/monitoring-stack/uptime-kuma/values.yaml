@@ -44,6 +44,16 @@ autokuma:
   # A monitor whose file disappears is deleted (keep = orphan it instead).
   onDelete: delete
 
+# Prometheus scrape + alert rules (templates/servicemonitor.yaml,
+# prometheusrule.yaml): public endpoint down -> critical, other monitor down ->
+# warning, Kuma not scraped -> warning. Alertmanager does the grouping/paging.
+alerts:
+  enabled: true
+  scrapeInterval: 60s
+  # Kuma already retries before marking down (defaults.maxRetries).
+  for: 2m
+  kumaDownFor: 5m
+
 # Post-sync job: first-run initialisation + status page reconcile
 # (files/provision.py). No login anywhere: the dashboard is tailnet-only.
 provision:
