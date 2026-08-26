@@ -16,7 +16,7 @@ the External Secrets Operator (ESO) and the Vault Injector.
 ## How Vault is deployed
 
 The Vault server itself is **not** managed here. It is deployed in-cluster via
-the Helm chart at `k8s/projects/gitops-stack/vault` and initialized/unsealed by
+the Helm chart at `k8s/projects/bootstrap/vault` and initialized/unsealed by
 the Ansible role `ansible/roles/gitops/install` (init/unseal is imperative and
 can't be done by ArgoCD; ArgoCD adopts the release afterwards). The unseal keys
 and root token are written only to the gitignored Ansible workdir.
@@ -52,7 +52,7 @@ and root token are written only to the gitignored Ansible workdir.
 The `cloudflare` secrets engine (dynamic Cloudflare API tokens + opt-in R2 S3
 creds) is structure-as-code in `terraform/cloudflare.tf` (plugin registration,
 mount, roles, rotation policy/role); the plugin binary is delivered to the Vault
-pods by an initContainer in `k8s/projects/gitops-stack/vault`. Adding or bumping
+pods by an initContainer in `k8s/projects/bootstrap/vault`. Adding or bumping
 the plugin needs a Vault restart + unseal (the `plugin_directory` lives in server
 config), so:
 

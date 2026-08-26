@@ -1,9 +1,11 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: argocd
+  name: cluster-bootstrap
   annotations:
-    argocd.argoproj.io/sync-wave: "-1"
+    # Foundational (storage class + kube-dns alias) — adopt early, before apps that
+    # rely on PVCs / the kube-dns name.
+    argocd.argoproj.io/sync-wave: "2"
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -23,31 +25,23 @@ spec:
                 - path: clusters/{{.name }}/config.json
   template:
     metadata:
-      name: "{{.name}}-argocd"
+      name: "{{.name}}-cluster-bootstrap"
       labels:
-        app.kubernetes.io/part-of: gitops-stack
+        app.kubernetes.io/part-of: bootstrap
         skylab.dev/tier: platform
       annotations:
-        argocd.argoproj.io/sync-wave: "-1"
+        argocd.argoproj.io/sync-wave: "2"
     spec:
       project: platform
+      # Plain manifests (kustomize) — local-path-provisioner + kube-dns alias.
+      # ansible applies these same files at cluster-init; ArgoCD adopts them here.
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"
-        path: k8s/projects/gitops-stack/argocd
-        helm:
-          releaseName: argocd
-          valueFiles:
-            - values.yaml
-            - values/{{.name}}.yaml
-          parameters:
-            - name: "argo-cd.global.domain"
-              value: "argocd.{{.global.domain}}"
-            - name: "argo-cd.server.ingress.extraTls[0].hosts[0]"
-              value: "argocd.{{.global.domain}}"
+        path: k8s/projects/bootstrap/cluster-bootstrap
       destination:
         server: https://kubernetes.default.svc
-        namespace: argocd
+        namespace: kube-system
       syncPolicy:
         automated:
           prune: true
@@ -58,6 +52,6 @@ spec:
           - PrunePropagationPolicy=foreground
           - PruneLast=true
           - RespectIgnoreDifferences=true
-          - ServerSideApply=true # Avoids annotation size limits
+          - ServerSideApply=true # adopts the ansible-applied resources cleanly
         retry:
-          limit: 5
+          limit: 10

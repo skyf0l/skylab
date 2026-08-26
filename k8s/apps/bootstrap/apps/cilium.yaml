@@ -1,11 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: cluster-bootstrap
-  annotations:
-    # Foundational (storage class + kube-dns alias) — adopt early, before apps that
-    # rely on PVCs / the kube-dns name.
-    argocd.argoproj.io/sync-wave: "-1"
+  name: cilium
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -25,20 +21,21 @@ spec:
                 - path: clusters/{{.name }}/config.json
   template:
     metadata:
-      name: "{{.name}}-cluster-bootstrap"
+      name: "{{.name}}-cilium"
       labels:
-        app.kubernetes.io/part-of: cluster-stack
+        app.kubernetes.io/part-of: bootstrap
         skylab.dev/tier: platform
-      annotations:
-        argocd.argoproj.io/sync-wave: "-1"
     spec:
       project: platform
-      # Plain manifests (kustomize) — local-path-provisioner + kube-dns alias.
-      # ansible applies these same files at cluster-init; ArgoCD adopts them here.
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"
-        path: k8s/projects/cluster-stack/cluster-bootstrap
+        path: k8s/projects/bootstrap/cilium
+        helm:
+          releaseName: cilium
+          valueFiles:
+            - values.yaml
+            - values/{{.name}}.yaml
       destination:
         server: https://kubernetes.default.svc
         namespace: kube-system
@@ -52,6 +49,6 @@ spec:
           - PrunePropagationPolicy=foreground
           - PruneLast=true
           - RespectIgnoreDifferences=true
-          - ServerSideApply=true # adopts the ansible-applied resources cleanly
+          - ServerSideApply=true
         retry:
-          limit: 5
+          limit: 10

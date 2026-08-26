@@ -28,7 +28,7 @@ resource "vault_kubernetes_auth_backend_role" "workload_scoped_dropzone" {
 # this role and reads app secrets for ExternalSecrets across all namespaces.
 # Scoped to ESO's own service account; read-only on this cluster's secret tree.
 # role_name MUST stay "external-secrets" — it's referenced by
-# k8s/projects/security-stack/external-secrets-stores (vault.role).
+# k8s/projects/core/external-secrets-stores (vault.role).
 resource "vault_kubernetes_auth_backend_role" "external_secrets" {
   backend   = vault_auth_backend.kubernetes.path
   role_name = "external-secrets"

@@ -3,7 +3,7 @@ kind: ApplicationSet
 metadata:
   name: vault
   annotations:
-    argocd.argoproj.io/sync-wave: "-2"
+    argocd.argoproj.io/sync-wave: "3"
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -25,16 +25,16 @@ spec:
     metadata:
       name: "{{.name}}-vault"
       labels:
-        app.kubernetes.io/part-of: gitops-stack
+        app.kubernetes.io/part-of: bootstrap
         skylab.dev/tier: platform
       annotations:
-        argocd.argoproj.io/sync-wave: "-2"
+        argocd.argoproj.io/sync-wave: "3"
     spec:
       project: platform
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"
-        path: k8s/projects/gitops-stack/vault
+        path: k8s/projects/bootstrap/vault
         helm:
           releaseName: vault
           valueFiles:
@@ -78,4 +78,4 @@ spec:
           - RespectIgnoreDifferences=true
           - ServerSideApply=true # Avoids annotation size limits
         retry:
-          limit: 5
+          limit: 10
