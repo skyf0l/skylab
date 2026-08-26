@@ -4,7 +4,7 @@ metadata:
   name: headscale
   annotations:
     # After cert-manager (TLS for the public ingress).
-    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-wave: "0"
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -26,16 +26,16 @@ spec:
     metadata:
       name: "{{.name}}-headscale"
       labels:
-        app.kubernetes.io/part-of: security-stack
+        app.kubernetes.io/part-of: network
         skylab.dev/tier: platform
       annotations:
-        argocd.argoproj.io/sync-wave: "1"
+        argocd.argoproj.io/sync-wave: "0"
     spec:
       project: platform
       sources:
         - repoURL: "{{.repo.url}}"
           targetRevision: "{{.repo.revision}}"
-          path: k8s/projects/security-stack/headscale
+          path: k8s/projects/network/headscale
           helm:
             releaseName: headscale
             valueFiles:
@@ -67,4 +67,4 @@ spec:
           - PruneLast=true
           - RespectIgnoreDifferences=true
         retry:
-          limit: 5
+          limit: 10

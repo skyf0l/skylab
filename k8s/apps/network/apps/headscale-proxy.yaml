@@ -1,11 +1,10 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: keycloak
+  name: headscale-proxy
   annotations:
-    # After ESO + its ClusterSecretStore and the cloudnative-pg operator: the Cluster CR
-    # needs the CNPG CRDs and the ExternalSecret. Same wave as defectdojo.
-    argocd.argoproj.io/sync-wave: "3"
+    # After Headscale is up (the proxies register against the in-cluster control server).
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -25,31 +24,37 @@ spec:
                 - path: clusters/{{.name }}/config.json
   template:
     metadata:
-      name: "{{.name}}-keycloak"
+      name: "{{.name}}-headscale-proxy"
       labels:
-        app.kubernetes.io/part-of: security-stack
+        app.kubernetes.io/part-of: network
         skylab.dev/tier: platform
       annotations:
-        argocd.argoproj.io/sync-wave: "3"
+        argocd.argoproj.io/sync-wave: "1"
     spec:
       project: platform
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"
-        path: k8s/projects/security-stack/keycloak
+        path: k8s/projects/network/headscale-proxy
         helm:
-          releaseName: keycloak
+          releaseName: headscale-proxy
           valueFiles:
             - values.yaml
-          # Public OIDC host + tailnet-only admin host, derived from global.domain.
+          # Tailnet base domain + key-minting user derived from global.domain.
           parameters:
-            - name: "host"
-              value: "keycloak.{{.global.domain}}"
-            - name: "adminHost"
-              value: "keycloak.tail.{{.global.domain}}"
+            - name: "baseDomain"
+              value: "tail.{{.global.domain}}"
+            - name: "authkeyMint.user"
+              value: "infra@{{.global.domain}}"
+            # Tailscale requires the control connection over TLS:443; the public
+            # headscale URL (what server_url advertises) is the only endpoint that
+            # satisfies that. The in-cluster http svc has no 443 and breaks the
+            # persistent noise/map dial ("forcing port 443 dial").
+            - name: "loginServer"
+              value: "https://headscale.{{.global.domain}}"
       destination:
         server: https://kubernetes.default.svc
-        namespace: keycloak
+        namespace: tailscale
       syncPolicy:
         automated:
           prune: true
@@ -60,6 +65,5 @@ spec:
           - PrunePropagationPolicy=foreground
           - PruneLast=true
           - RespectIgnoreDifferences=true
-          - ServerSideApply=true
         retry:
-          limit: 5
+          limit: 10

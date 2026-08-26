@@ -5,7 +5,7 @@ yarn.lock
 # YAML/JSON — prettier can't parse them.
 **/templates/
 **/files/
-k8s/projects/security-stack/keycloak/realms/
+k8s/projects/identity/keycloak/realms/
 
 # Vendored upstream Grafana dashboards — don't reformat third-party JSON.
 k8s/projects/observability/grafana-dashboards/json/

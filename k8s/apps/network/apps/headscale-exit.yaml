@@ -1,10 +1,10 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: headscale-proxy
+  name: headscale-exit
   annotations:
-    # After Headscale is up (the proxies register against the in-cluster control server).
-    argocd.argoproj.io/sync-wave: "2"
+    # After Headscale is up (the exit node registers against the in-cluster control server).
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -24,32 +24,30 @@ spec:
                 - path: clusters/{{.name }}/config.json
   template:
     metadata:
-      name: "{{.name}}-headscale-proxy"
+      name: "{{.name}}-headscale-exit"
       labels:
-        app.kubernetes.io/part-of: security-stack
+        app.kubernetes.io/part-of: network
         skylab.dev/tier: platform
       annotations:
-        argocd.argoproj.io/sync-wave: "2"
+        argocd.argoproj.io/sync-wave: "1"
     spec:
       project: platform
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"
-        path: k8s/projects/security-stack/headscale-proxy
+        path: k8s/projects/network/headscale-exit
         helm:
-          releaseName: headscale-proxy
+          releaseName: headscale-exit
           valueFiles:
             - values.yaml
-          # Tailnet base domain + key-minting user derived from global.domain.
+          # Key-minting user derived from global.domain.
           parameters:
-            - name: "baseDomain"
-              value: "tail.{{.global.domain}}"
             - name: "authkeyMint.user"
               value: "infra@{{.global.domain}}"
-            # Tailscale requires the control connection over TLS:443; the public
-            # headscale URL (what server_url advertises) is the only endpoint that
-            # satisfies that. The in-cluster http svc has no 443 and breaks the
-            # persistent noise/map dial ("forcing port 443 dial").
+            # Tailscale forces a TLS :443 dial for the persistent noise/map session,
+            # so the in-cluster http svc (80/50443, no 443) lets the node register
+            # but then fails to hold the session and crash-loops on restart. The
+            # public HTTPS URL is the only endpoint that satisfies it.
             - name: "loginServer"
               value: "https://headscale.{{.global.domain}}"
       destination:
@@ -66,4 +64,4 @@ spec:
           - PruneLast=true
           - RespectIgnoreDifferences=true
         retry:
-          limit: 5
+          limit: 10

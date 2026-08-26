@@ -1,7 +1,11 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: trivy
+  name: keycloak
+  annotations:
+    # After ESO + its ClusterSecretStore and the cloudnative-pg operator: the Cluster CR
+    # needs the CNPG CRDs and the ExternalSecret. Same wave as defectdojo.
+    argocd.argoproj.io/sync-wave: "0"
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -21,24 +25,31 @@ spec:
                 - path: clusters/{{.name }}/config.json
   template:
     metadata:
-      name: "{{.name}}-trivy"
+      name: "{{.name}}-keycloak"
       labels:
-        app.kubernetes.io/part-of: cluster-stack
+        app.kubernetes.io/part-of: identity
         skylab.dev/tier: platform
+      annotations:
+        argocd.argoproj.io/sync-wave: "0"
     spec:
       project: platform
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"
-        path: k8s/projects/cluster-stack/trivy
+        path: k8s/projects/identity/keycloak
         helm:
-          releaseName: trivy
+          releaseName: keycloak
           valueFiles:
             - values.yaml
-            - values/{{.name}}.yaml
+          # Public OIDC host + tailnet-only admin host, derived from global.domain.
+          parameters:
+            - name: "host"
+              value: "keycloak.{{.global.domain}}"
+            - name: "adminHost"
+              value: "keycloak.tail.{{.global.domain}}"
       destination:
         server: https://kubernetes.default.svc
-        namespace: trivy
+        namespace: keycloak
       syncPolicy:
         automated:
           prune: true
@@ -51,4 +62,4 @@ spec:
           - RespectIgnoreDifferences=true
           - ServerSideApply=true
         retry:
-          limit: 5
+          limit: 10

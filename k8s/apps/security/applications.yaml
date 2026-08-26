@@ -1,11 +1,9 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: falco
+  name: security
   annotations:
-    # After falco-operator (CRDs) and the monitoring stack (ServiceMonitor /
-    # PrometheusRule CRDs).
-    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-wave: "0"
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -22,38 +20,44 @@ spec:
               repoURL: https://github.com/skyf0l/skylab.git
               revision: main
               files:
-                - path: clusters/{{.name }}/config.json
+                - path: clusters/{{.name}}/config.json
   template:
     metadata:
-      name: "{{.name}}-falco"
+      name: "{{.name}}-security"
       labels:
-        app.kubernetes.io/part-of: security-stack
+        app.kubernetes.io/part-of: security
         skylab.dev/tier: platform
-      annotations:
-        argocd.argoproj.io/sync-wave: "2"
     spec:
       project: platform
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"
-        path: k8s/projects/security-stack/falco
-        helm:
-          releaseName: falco
-          valueFiles:
-            - values.yaml
+        path: k8s/apps/security
+        kustomize:
+          namePrefix: "{{.name}}-"
+          patches:
+            - target:
+                kind: ApplicationSet
+              patch: |-
+                - op: replace
+                  path: /spec/generators/0/matrix/generators/0/list/elements/0/name
+                  value: {{.name}}
+                - op: replace
+                  path: /spec/generators/0/matrix/generators/1/git/repoURL
+                  value: {{.repo.url}}
+                - op: replace
+                  path: /spec/generators/0/matrix/generators/1/git/revision
+                  value: {{.repo.revision}}
       destination:
         server: https://kubernetes.default.svc
-        namespace: falco
+        namespace: argocd
       syncPolicy:
         automated:
           prune: true
-          selfHeal: true
         syncOptions:
-          - CreateNamespace=true
           - Validate=true
           - PrunePropagationPolicy=foreground
           - PruneLast=true
           - RespectIgnoreDifferences=true
-          - ServerSideApply=true
         retry:
           limit: 5
