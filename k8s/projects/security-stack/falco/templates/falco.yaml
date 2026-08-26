@@ -1,0 +1,19 @@
+apiVersion: instance.falcosecurity.dev/v1alpha1
+kind: Falco
+metadata:
+  name: falco
+  labels:
+    app.kubernetes.io/name: falco
+spec:
+  type: DaemonSet
+  podTemplateSpec:
+    spec:
+      initContainers:
+        - name: artifact-operator
+          image: {{ .Values.falco.artifactOperator.image.registry }}/{{ .Values.falco.artifactOperator.image.repository }}:{{ .Values.falco.artifactOperator.image.tag }}
+      containers:
+        - name: falco
+          {{- with .Values.falco.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}

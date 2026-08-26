@@ -1,0 +1,57 @@
+apiVersion: instance.falcosecurity.dev/v1alpha1
+kind: Component
+metadata:
+  name: falcosidekick-ui
+  labels:
+    app.kubernetes.io/name: falcosidekick-ui
+spec:
+  component:
+    type: falcosidekick-ui
+  replicas: {{ .Values.falcosidekickUi.replicas }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: falcosidekick-ui-redis
+  labels:
+    app.kubernetes.io/name: falcosidekick-ui-redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: falcosidekick-ui-redis
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: falcosidekick-ui-redis
+    spec:
+      containers:
+        - name: redis
+          image: {{ .Values.falcosidekickUi.redis.image.registry }}/{{ .Values.falcosidekickUi.redis.image.repository }}:{{ .Values.falcosidekickUi.redis.image.tag }}
+          ports:
+            - name: redis
+              containerPort: 6379
+          livenessProbe:
+            tcpSocket:
+              port: redis
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          readinessProbe:
+            tcpSocket:
+              port: redis
+            initialDelaySeconds: 5
+            periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: falcosidekick-ui-redis
+  labels:
+    app.kubernetes.io/name: falcosidekick-ui-redis
+spec:
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: redis
+  selector:
+    app.kubernetes.io/name: falcosidekick-ui-redis

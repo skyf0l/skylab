@@ -1,0 +1,15 @@
+apiVersion: artifact.falcosecurity.dev/v1alpha1
+kind: Plugin
+metadata:
+  name: container
+spec:
+  ociArtifact:
+    registry:
+      name: {{ .Values.plugins.container.image.registry }}
+    image:
+      repository: {{ .Values.plugins.container.image.repository }}
+      tag: {{ .Values.plugins.container.image.tag | quote }}
+  config:
+    name: container
+    initConfig:
+      {{- toYaml .Values.plugins.container.initConfig | nindent 6 }}

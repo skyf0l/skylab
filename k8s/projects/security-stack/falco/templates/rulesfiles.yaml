@@ -1,0 +1,23 @@
+apiVersion: artifact.falcosecurity.dev/v1alpha1
+kind: Rulesfile
+metadata:
+  name: falco-rules
+spec:
+  priority: {{ .Values.rules.upstream.priority }}
+  ociArtifact:
+    registry:
+      name: {{ .Values.rules.upstream.image.registry }}
+    image:
+      repository: {{ .Values.rules.upstream.image.repository }}
+      tag: {{ .Values.rules.upstream.image.tag | quote }}
+{{- with .Values.rules.overrides.rules }}
+---
+apiVersion: artifact.falcosecurity.dev/v1alpha1
+kind: Rulesfile
+metadata:
+  name: falco-rules-overrides
+spec:
+  priority: {{ $.Values.rules.overrides.priority }}
+  inlineRules:
+    {{- toYaml . | nindent 4 }}
+{{- end }}

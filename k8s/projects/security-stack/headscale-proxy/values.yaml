@@ -78,7 +78,7 @@ services:
     port: 80
   - name: falco
     # Falcosidekick Web UI — runtime threat-detection event browser.
-    service: falco-falcosidekick-ui
+    service: falcosidekick-ui
     namespace: falco
     port: 2802
   - name: keycloak

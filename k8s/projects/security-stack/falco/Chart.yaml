@@ -2,8 +2,6 @@ apiVersion: v2
 name: falco
 type: application
 version: 0.1.0
-
-dependencies:
-  - name: falco
-    repository: https://falcosecurity.github.io/charts
-    version: 9.1.0
+# Falco runtime threat detection, declared through the falco-operator CRDs
+# (instance.falcosecurity.dev + artifact.falcosecurity.dev). The operator itself
+# lives in the sibling falco-operator chart.

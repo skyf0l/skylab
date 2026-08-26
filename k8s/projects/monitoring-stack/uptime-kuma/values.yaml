@@ -172,7 +172,7 @@ groups:
       - id: falcosidekick-ui
         name: Falcosidekick UI
         type: http
-        url: http://falco-falcosidekick-ui.falco:2802/
+        url: http://falcosidekick-ui.falco:2802/
 
 # Same schema as `groups`, private by default (`public: false` -> reconciled
 # into Kuma, visible on the tailnet dashboard, never on the status page).

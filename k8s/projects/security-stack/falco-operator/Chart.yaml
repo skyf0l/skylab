@@ -1,0 +1,9 @@
+apiVersion: v2
+name: falco-operator
+type: application
+version: 0.1.0
+
+dependencies:
+  - name: falco-operator
+    repository: https://falcosecurity.github.io/charts
+    version: 0.3.1

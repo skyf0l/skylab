@@ -1,0 +1,27 @@
+{{- if .Values.alerts.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: falco
+  labels:
+    # kube-prometheus only picks up rules carrying its release label
+    # (ruleSelectorNilUsesHelmValues is the chart default).
+    release: kube-prometheus
+spec:
+  groups:
+    - name: falco
+      rules:
+        - alert: FalcoContainerEnrichmentBroken
+          # Container-only rules can never legitimately have an empty namespace.
+          expr: >
+            sum(increase(falcosecurity_falcosidekick_falco_events_total{rule=~".*[Cc]ontainer.*", k8s_ns_name=""}[1h])) > 0
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: Falco events are missing container/k8s metadata
+            description: >
+              Falco emitted {{ "{{ $value }}" }} container events in the last hour without
+              k8s.ns.name. The container plugin lost its runtime socket (containerd
+              restarted?). Check the falco pod logs and the CRI socket mount.
+{{- end }}

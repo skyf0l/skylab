@@ -1,0 +1,15 @@
+# falco-operator — the controller behind the Falco stack. It reconciles the
+# instance.falcosecurity.dev (Falco, Component) and artifact.falcosecurity.dev
+# (Rulesfile, Plugin, Config) CRDs cluster-wide; the actual instance, rules,
+# plugins and companions are declared as CRs in the `falco` chart.
+#
+# Rules/plugins/config fragments are delivered into every Falco pod by the
+# artifact-operator native sidecar (Kubernetes 1.29+), which pulls OCI artifacts
+# and hot-reloads Falco (watch_config_files), so a rule change is a CR edit, not
+# a DaemonSet rollout. That sidecar image is pinned per Falco CR (see the falco
+# chart) rather than via ARTIFACT_OPERATOR_IMAGE here, so Renovate tracks it.
+#
+# All values live under the `falco-operator` subchart key.
+falco-operator:
+  # Single replica, no leader election (a second replica needs --leader-elect).
+  replicaCount: 1

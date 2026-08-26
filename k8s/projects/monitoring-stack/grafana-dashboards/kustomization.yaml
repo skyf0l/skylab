@@ -72,3 +72,9 @@ configMapGenerator:
   - name: grafana-dashboard-keda-operator
     files:
       - json/22111-keda-operator.json
+  # https://github.com/falcosecurity/charts/blob/master/charts/falcosidekick/dashboards/falcosidekick-loki-dashboard.json
+  # Falco events browser over Loki (the falcosidekick chart used to ship it; the
+  # falco stack is now operator-managed and ships no dashboards).
+  - name: grafana-dashboard-falcosidekick-loki
+    files:
+      - json/falcosidekick-loki-dashboard.json
