@@ -11,7 +11,7 @@ locals {
   # vault_mgr is created with this password at cluster bootstrap (CNPG postInitSQL)
   # and Vault replaces it via rotate-root on the first apply below — after which
   # the real password exists only inside Vault. Must match the chart value
-  # (security-stack/defectdojo postgres.vaultMgrBootstrapPassword).
+  # (security/defectdojo postgres.vaultMgrBootstrapPassword).
   vault_mgr_bootstrap_password = "bootstrap-rotated-by-vault"
 }
 

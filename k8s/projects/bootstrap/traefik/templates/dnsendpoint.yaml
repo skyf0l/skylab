@@ -3,7 +3,7 @@
 # cloud LB): wildcard for every *.<domain> app + the apex. Both values are
 # injected by the ApplicationSet from clusters/<name>/config.json
 # (global.domain / global.publicIp), so an IP change is one config.json edit.
-# Owned by external-dns (cluster-stack) via its TXT registry.
+# Owned by external-dns (core) via its TXT registry.
 apiVersion: externaldns.k8s.io/v1alpha1
 kind: DNSEndpoint
 metadata:

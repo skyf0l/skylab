@@ -23,10 +23,10 @@
   kubernetes.core.helm:
     kubeconfig: "{{ gitops_install_kubeconfig_local_path }}"
     name: vault
-    chart_ref: "{{ gitops_install_repo_root }}/k8s/projects/gitops-stack/vault"
+    chart_ref: "{{ gitops_install_repo_root }}/k8s/projects/bootstrap/vault"
     values_files:
-      - "{{ gitops_install_repo_root }}/k8s/projects/gitops-stack/vault/values.yaml"
-      - "{{ gitops_install_repo_root }}/k8s/projects/gitops-stack/vault/values/{{ gitops_install_cluster_name }}.yaml"
+      - "{{ gitops_install_repo_root }}/k8s/projects/bootstrap/vault/values.yaml"
+      - "{{ gitops_install_repo_root }}/k8s/projects/bootstrap/vault/values/{{ gitops_install_cluster_name }}.yaml"
     release_namespace: vault
     create_namespace: true
     dependency_update: true

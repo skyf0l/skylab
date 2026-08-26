@@ -6,7 +6,7 @@
 # Three tiers, by blast radius:
 #   platform      privileged foundation (cluster/gitops/security stacks) + the
 #                 GitOps management plane (the app-of-apps roots and every
-#                 *-stack ApplicationSet, which create Applications — a
+#                 per-stack ApplicationSet, which create Applications — a
 #                 privileged op kept out of the lower tiers to block
 #                 project escalation).
 #   observability metrics/logs/cost — namespaced, plus the few cluster-scoped

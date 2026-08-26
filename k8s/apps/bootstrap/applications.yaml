@@ -1,9 +1,8 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: gitops-stack
+  name: bootstrap
   annotations:
-    # Before security-stack (-9): ESO's vault-backend store reads from Vault.
     argocd.argoproj.io/sync-wave: "-10"
 spec:
   goTemplate: true
@@ -24,16 +23,16 @@ spec:
                 - path: clusters/{{.name}}/config.json
   template:
     metadata:
-      name: "{{.name}}-gitops-stack"
+      name: "{{.name}}-bootstrap"
       labels:
-        app.kubernetes.io/part-of: gitops-stack
+        app.kubernetes.io/part-of: bootstrap
         skylab.dev/tier: platform
     spec:
       project: platform
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"
-        path: k8s/apps/gitops-stack
+        path: k8s/apps/bootstrap
         kustomize:
           namePrefix: "{{.name}}-"
           patches:

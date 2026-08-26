@@ -1,5 +1,5 @@
 # Layer 2 — Vault's cross-namespace ingress exception. The network-policies chart
-# (security-stack) makes the vault namespace ingress default-deny + allow-all intra-NS +
+# (network) makes the vault namespace ingress default-deny + allow-all intra-NS +
 # universal allows (Prometheus metrics scrape, Traefik = the tailnet UI + Vault CI path,
 # host/apiserver). This adds the one remaining real client: External-Secrets reaching the
 # Vault API on 8200. Additive — Cilium unions this with the Layer-1 policy.

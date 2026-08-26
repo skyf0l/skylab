@@ -2,10 +2,10 @@
   kubernetes.core.helm:
     kubeconfig: "{{ kubeconfig_local_path }}"
     name: traefik
-    chart_ref: "{{ repo_root }}/k8s/projects/cluster-stack/traefik"
+    chart_ref: "{{ repo_root }}/k8s/projects/bootstrap/traefik"
     values_files:
-      - "{{ repo_root }}/k8s/projects/cluster-stack/traefik/values.yaml"
-      - "{{ repo_root }}/k8s/projects/cluster-stack/traefik/values/{{ cluster_name }}.yaml"
+      - "{{ repo_root }}/k8s/projects/bootstrap/traefik/values.yaml"
+      - "{{ repo_root }}/k8s/projects/bootstrap/traefik/values/{{ cluster_name }}.yaml"
     release_namespace: traefik
     create_namespace: true
     dependency_update: true

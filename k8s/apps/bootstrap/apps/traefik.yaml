@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: cilium
+  name: traefik
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -21,24 +21,38 @@ spec:
                 - path: clusters/{{.name }}/config.json
   template:
     metadata:
-      name: "{{.name}}-cilium"
+      name: "{{.name}}-traefik"
       labels:
-        app.kubernetes.io/part-of: cluster-stack
+        app.kubernetes.io/part-of: bootstrap
         skylab.dev/tier: platform
     spec:
       project: platform
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"
-        path: k8s/projects/cluster-stack/cilium
+        path: k8s/projects/bootstrap/traefik
         helm:
-          releaseName: cilium
+          releaseName: traefik
           valueFiles:
             - values.yaml
             - values/{{.name}}.yaml
+          parameters:
+            # Traefik runs as a hostPort DaemonSet behind a ClusterIP Service, so the
+            # chart's default publishedService has no LoadBalancer status to copy and
+            # every Ingress stays addressless -> Argo reports it Progressing forever,
+            # which also blocks PruneLast cleanups. Stamp a static hostname onto every
+            # Ingress .status instead (see additionalArguments in values/skylab.yaml).
+            - name: "traefik.additionalArguments[0]"
+              value: "--providers.kubernetesingress.ingressendpoint.hostname={{.global.domain}}"
+            # Cluster entrypoint records (wildcard + apex), managed as code via
+            # external-dns from the cluster's config.json.
+            - name: "ingressDns.domain"
+              value: "{{.global.domain}}"
+            - name: "ingressDns.publicIp"
+              value: "{{.global.publicIp}}"
       destination:
         server: https://kubernetes.default.svc
-        namespace: kube-system
+        namespace: traefik
       syncPolicy:
         automated:
           prune: true
@@ -51,4 +65,4 @@ spec:
           - RespectIgnoreDifferences=true
           - ServerSideApply=true
         retry:
-          limit: 5
+          limit: 10

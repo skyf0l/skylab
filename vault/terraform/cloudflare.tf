@@ -1,6 +1,6 @@
 # Cloudflare secrets engine: mints short-lived Cloudflare API tokens (and,
 # opt-in, derived R2 S3 credentials) on demand. The plugin binary is delivered
-# into the Vault pods by an initContainer (k8s/projects/gitops-stack/vault);
+# into the Vault pods by an initContainer (k8s/projects/bootstrap/vault);
 # here we register the versioned plugin and mount it.
 #
 # The parent API token is a real, powerful credential and is deliberately NOT
@@ -69,7 +69,7 @@ resource "vault_generic_endpoint" "cloudflare_role_r2" {
 
 # DNS-as-code (external-dns): Zone-read + DNS-write tokens, minted on demand and
 # consumed via the ESO VaultDynamicSecret generator in the external-dns
-# namespace (see k8s/projects/cluster-stack/external-dns). Scope is all zones in
+# namespace (see k8s/projects/core/external-dns). Scope is all zones in
 # the account ON PURPOSE — naming the private mail zones (even by opaque id)
 # would tie them to this public repo. Compensating controls: 24h lease (token
 # dies with it) and the token only works from the VPS egress IP.
@@ -127,7 +127,7 @@ resource "vault_generic_endpoint" "cloudflare_role_r2_stalwart_backup" {
 
 # --- Ongoing parent-token rotation ---------------------------------------------
 # The initial roll happens once at seed time (CLI, see README). This grants the
-# rotation CronJob (k8s/projects/gitops-stack/vault templates) permission to roll
+# rotation CronJob (k8s/projects/bootstrap/vault templates) permission to roll
 # the parent token on a schedule, authenticating via the existing k8s auth.
 
 resource "vault_policy" "cloudflare_rotate_root" {
