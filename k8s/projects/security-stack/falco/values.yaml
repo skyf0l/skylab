@@ -36,6 +36,7 @@ plugins:
       tag: 0.7.1
     # Node paths (the plugin prepends HOST_ROOT). RKE2's containerd only; every
     # other engine is off so the plugin doesn't probe sockets that don't exist.
+    # The plugin's schema requires every engine key to be present.
     initConfig:
       engines:
         docker:
@@ -48,6 +49,12 @@ plugins:
           enabled: true
           sockets:
             - /run/k3s/containerd/containerd.sock
+        lxc:
+          enabled: false
+        libvirt_lxc:
+          enabled: false
+        bpm:
+          enabled: false
 
 rules:
   # Upstream stable ruleset (falco-rules 5.x is the Falco 0.44 line).
