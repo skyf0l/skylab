@@ -40,11 +40,13 @@ traefik:
   ports:
     web:
       hostPort: 80
-      redirections:
-        entryPoint:
-          to: websecure
-          scheme: https
-          permanent: true
+      # chart v41 nests redirections under http (was ports.web.redirections)
+      http:
+        redirections:
+          entryPoint:
+            to: websecure
+            scheme: https
+            permanent: true
     websecure:
       hostPort: 443
 
