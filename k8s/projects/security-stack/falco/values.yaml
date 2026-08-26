@@ -79,6 +79,42 @@ rules:
            and proc.exepath in (/usr/bin/jq, /usr/bin/curl))
         override:
           condition: replace
+      # systemd's executor opens /etc/shadow and /etc/pam.d/* through PAM every
+      # time it starts a unit on the node (rke2-server restarts, ssh logins,
+      # timers). Only that binary, only when spawned by systemd.
+      - macro: user_known_read_sensitive_files_activities
+        condition: >
+          (proc.exepath = /usr/lib/systemd/systemd-executor
+           and proc.pname = systemd)
+        override:
+          condition: replace
+      # Upstream whitelists containerd truncating files inside image layers under
+      # /var/lib/containerd and the k3s path only; RKE2 keeps its containerd state
+      # under /var/lib/rancher/rke2. Appended, upstream's paths stay.
+      - macro: containerd_activities
+        condition: >
+          or (proc.name = containerd
+              and fd.name startswith /var/lib/rancher/rke2/agent/containerd/)
+        override:
+          condition: append
+      # CloudNativePG's archive_command: postgres spawns
+      # `sh -c -- /controller/manager wal-archive` on every WAL switch.
+      - macro: user_shell_container_exclusions
+        condition: >
+          (container.image.repository = ghcr.io/cloudnative-pg/postgresql
+           and proc.pname = postgres
+           and proc.cmdline startswith "sh -c -- /controller/manager")
+        override:
+          condition: replace
+      # DefectDojo's initializer Job probes Postgres with bash /dev/tcp
+      # (wait-for-it.sh) before running migrations.
+      - macro: user_known_stand_streams_redirect_activities
+        condition: >
+          (k8s.ns.name = defectdojo
+           and k8s.pod.name startswith defectdojo-initializer-
+           and proc.exepath = /usr/bin/bash)
+        override:
+          condition: replace
 
 # falco.yaml fragment merged over the operator's base config (modern eBPF, metrics
 # every 1h with rule counters, Prometheus /metrics on :8765). Falco ships events
