@@ -171,6 +171,13 @@ RESP=$(jmap "$(jq -nc --arg u "$METRICS_USER" --arg e "$METRICS_ENV" \
 echo "$RESP" | jq -e '.methodResponses[0][1] | (.notUpdated // {}) | length == 0' >/dev/null \
   || echo "WARN: Metrics update rejected: $(why "$RESP")" >&2
 
+# Settings written above are persisted but only take effect on reload (the
+# metrics endpoint stays 404 until then). Reload is an Action object.
+echo "Reloading settings"
+RESP=$(jmap '[["x:Action/set",{"create":{"a1":{"@type":"ReloadSettings"}}},"c0"]]')
+echo "$RESP" | jq -e '.methodResponses[0][1].created.a1' >/dev/null \
+  || echo "WARN: settings reload rejected: $(why "$RESP")" >&2
+
 # ---- publish DKIM TXT records as DNSEndpoints ----
 # Static records (MX/SPF/DMARC/...) are chart-owned; only the DKIM TXTs come
 # from the server, because the key material is generated server-side and only
