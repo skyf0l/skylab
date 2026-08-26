@@ -8,7 +8,7 @@ yarn.lock
 k8s/projects/security-stack/keycloak/realms/
 
 # Vendored upstream Grafana dashboards — don't reformat third-party JSON.
-k8s/projects/monitoring-stack/grafana-dashboards/json/
+k8s/projects/observability/grafana-dashboards/json/
 
 # Rendered build artifacts (also gitignored).
 build/

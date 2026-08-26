@@ -115,7 +115,7 @@ kube-prometheus-stack:
                 property: oidc_client_secret
 
     # Community dashboards are vendored as JSON ConfigMaps under
-    # k8s/projects/monitoring-stack/grafana-dashboards and hot-loaded by the
+    # k8s/projects/observability/grafana-dashboards and hot-loaded by the
     # dashboard sidecar (no init container, no grafana.com egress at boot).
 
   # The kube-apiserver exposes huge histogram families — the apiserver_*_bucket

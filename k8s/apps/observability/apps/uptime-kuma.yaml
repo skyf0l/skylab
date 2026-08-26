@@ -4,7 +4,7 @@ metadata:
   name: uptime-kuma
   annotations:
     # After cert-manager (public TLS).
-    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-wave: "2"
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -26,16 +26,16 @@ spec:
     metadata:
       name: "{{.name}}-uptime-kuma"
       labels:
-        app.kubernetes.io/part-of: monitoring-stack
+        app.kubernetes.io/part-of: observability
         skylab.dev/tier: observability
       annotations:
-        argocd.argoproj.io/sync-wave: "1"
+        argocd.argoproj.io/sync-wave: "2"
     spec:
       project: observability
       sources:
         - repoURL: "{{.repo.url}}"
           targetRevision: "{{.repo.revision}}"
-          path: k8s/projects/monitoring-stack/uptime-kuma
+          path: k8s/projects/observability/uptime-kuma
           helm:
             releaseName: uptime-kuma
             valueFiles:
@@ -75,4 +75,4 @@ spec:
           - RespectIgnoreDifferences=true
           - ServerSideApply=true
         retry:
-          limit: 5
+          limit: 10

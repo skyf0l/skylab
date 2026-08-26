@@ -27,7 +27,7 @@ spec:
     metadata:
       name: "{{.name}}-thanos"
       labels:
-        app.kubernetes.io/part-of: monitoring-stack
+        app.kubernetes.io/part-of: observability
         skylab.dev/tier: observability
       annotations:
         argocd.argoproj.io/sync-wave: "1"
@@ -36,7 +36,7 @@ spec:
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"
-        path: k8s/projects/monitoring-stack/thanos
+        path: k8s/projects/observability/thanos
         helm:
           releaseName: thanos
           valueFiles:
@@ -57,4 +57,4 @@ spec:
           - RespectIgnoreDifferences=true
           - ServerSideApply=true # Avoids annotation size limits
         retry:
-          limit: 5
+          limit: 10

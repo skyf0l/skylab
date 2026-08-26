@@ -23,14 +23,14 @@ spec:
     metadata:
       name: "{{.name}}-kube-prometheus"
       labels:
-        app.kubernetes.io/part-of: monitoring-stack
+        app.kubernetes.io/part-of: observability
         skylab.dev/tier: observability
     spec:
       project: observability
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"
-        path: k8s/projects/monitoring-stack/kube-prometheus
+        path: k8s/projects/observability/kube-prometheus
         helm:
           releaseName: kube-prometheus
           valueFiles:
@@ -56,4 +56,4 @@ spec:
           - RespectIgnoreDifferences=true
           - ServerSideApply=true # Avoids annotation size limits
         retry:
-          limit: 5
+          limit: 10

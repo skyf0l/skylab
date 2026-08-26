@@ -4,9 +4,8 @@ resources:
   - cluster-stack/applications.yaml
   - security-stack/applications.yaml
   - gitops-stack/applications.yaml
-  - monitoring-stack/applications.yaml
-  - logging-stack/applications.yaml
   - mcp-stack/applications.yaml
   - mail-stack/applications.yaml
   - finops/applications.yaml
   - core/applications.yaml
+  - observability/applications.yaml
