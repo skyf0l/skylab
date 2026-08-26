@@ -126,6 +126,16 @@ defectdojo:
   # Every component that touches the DB gets the same dynamic DD_DATABASE_URL.
   initializer:
     staticName: true # stable Job name — friendlier to ArgoCD
+    # Run once per sync as an ArgoCD hook (upstream's post-install/upgrade
+    # semantics). As a tracked resource, the chart's 60s ttlSecondsAfterFinished
+    # deleted the finished Job, ArgoCD saw it missing and selfHeal re-created it
+    # every few minutes, forever (~400 runs/day of pod + series churn). No TTL +
+    # BeforeHookCreation keeps the last run around for inspection until the next
+    # sync replaces it.
+    keepSeconds: 0
+    jobAnnotations:
+      argocd.argoproj.io/hook: PostSync
+      argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
     extraEnv: *ddDatabaseUrl
   dbMigrationChecker:
     extraEnv: *ddDatabaseUrl
