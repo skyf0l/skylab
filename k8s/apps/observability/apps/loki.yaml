@@ -1,7 +1,10 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: grafana-dashboards
+  name: loki
+  annotations:
+    # Before Alloy (which pushes to Loki's gateway).
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -21,19 +24,26 @@ spec:
                 - path: clusters/{{.name }}/config.json
   template:
     metadata:
-      name: "{{.name}}-grafana-dashboards"
+      name: "{{.name}}-loki"
       labels:
-        app.kubernetes.io/part-of: monitoring-stack
+        app.kubernetes.io/part-of: observability
         skylab.dev/tier: observability
+      annotations:
+        argocd.argoproj.io/sync-wave: "1"
     spec:
       project: observability
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"
-        path: k8s/projects/monitoring-stack/grafana-dashboards
+        path: k8s/projects/observability/loki
+        helm:
+          releaseName: loki
+          valueFiles:
+            - values.yaml
+            - values/{{.name}}.yaml
       destination:
         server: https://kubernetes.default.svc
-        namespace: monitoring
+        namespace: logging
       syncPolicy:
         automated:
           prune: true
@@ -44,6 +54,6 @@ spec:
           - PrunePropagationPolicy=foreground
           - PruneLast=true
           - RespectIgnoreDifferences=true
-          - ServerSideApply=true
+          - ServerSideApply=true # Avoids annotation size limits
         retry:
-          limit: 5
+          limit: 10

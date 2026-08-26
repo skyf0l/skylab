@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: logging-stack
+  name: observability
   annotations:
     argocd.argoproj.io/sync-wave: "-2"
 spec:
@@ -23,16 +23,16 @@ spec:
                 - path: clusters/{{.name}}/config.json
   template:
     metadata:
-      name: "{{.name}}-logging-stack"
+      name: "{{.name}}-observability"
       labels:
-        app.kubernetes.io/part-of: logging-stack
+        app.kubernetes.io/part-of: observability
         skylab.dev/tier: platform
     spec:
       project: platform
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"
-        path: k8s/apps/logging-stack
+        path: k8s/apps/observability
         kustomize:
           namePrefix: "{{.name}}-"
           patches:

@@ -26,7 +26,7 @@ spec:
     metadata:
       name: "{{.name}}-alloy"
       labels:
-        app.kubernetes.io/part-of: logging-stack
+        app.kubernetes.io/part-of: observability
         skylab.dev/tier: observability
       annotations:
         argocd.argoproj.io/sync-wave: "2"
@@ -35,7 +35,7 @@ spec:
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"
-        path: k8s/projects/logging-stack/alloy
+        path: k8s/projects/observability/alloy
         helm:
           releaseName: alloy
           valueFiles:
@@ -56,4 +56,4 @@ spec:
           - RespectIgnoreDifferences=true
           - ServerSideApply=true # Avoids annotation size limits
         retry:
-          limit: 5
+          limit: 10
