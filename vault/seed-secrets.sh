@@ -191,4 +191,14 @@ grafana="cluster/${CLUSTER}/apps/grafana"
 echo "[grafana] ${KV_MOUNT}/${grafana}"
 seed_field "$grafana" oidc_client_secret     rand_secret
 
+# alertmanager — kvv2/cluster/<cluster>/apps/alertmanager
+# Pushover credentials (an Application's API token + your user key) — PLACEHOLDERS
+# so the ExternalSecret syncs and Alertmanager starts; overwrite with the real ones:
+#   vault kv patch -mount=kvv2 cluster/<cluster>/apps/alertmanager \
+#     pushover_user_key=<user key> pushover_token=<app token>
+alertmanager="cluster/${CLUSTER}/apps/alertmanager"
+echo "[alertmanager] ${KV_MOUNT}/${alertmanager}"
+seed_field "$alertmanager" pushover_user_key   replace_me
+seed_field "$alertmanager" pushover_token      replace_me
+
 echo "Done. Fill in any PLACEHOLDER fields via the Vault UI/CLI; re-running won't overwrite them."

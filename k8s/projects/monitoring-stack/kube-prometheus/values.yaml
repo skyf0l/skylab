@@ -135,6 +135,66 @@ kube-prometheus-stack:
           sourceLabels: [__name__]
           regex: apiserver_request_body_size_bytes_bucket|apiserver_response_sizes_bucket|apiserver_watch_list_duration_seconds_bucket|apiserver_watch_cache_read_wait_seconds_bucket
 
+  # RKE2 binds kube-controller-manager and kube-scheduler to 127.0.0.1 and
+  # Cilium replaces kube-proxy, so these scrape targets can never be reached:
+  # without this they sit in TargetDown/…InstanceUnreachable/KubeProxyDown forever.
+  kubeControllerManager:
+    enabled: false
+  kubeScheduler:
+    enabled: false
+  kubeProxy:
+    enabled: false
+
+  alertmanager:
+    alertmanagerSpec:
+      # Mounted by the operator at /etc/alertmanager/secrets/<name>/ — the
+      # Pushover credentials, synced from Vault (templates/externalsecret.yaml).
+      secrets:
+        - alertmanager-pushover
+    # Replaces the chart's whole default config (which routes everything to the
+    # empty "null" receiver), so the inhibit rules are restated below.
+    config:
+      global:
+        resolve_timeout: 5m
+      route:
+        receiver: pushover
+        group_by: ["namespace", "alertname"]
+        group_wait: 30s
+        group_interval: 5m
+        repeat_interval: 12h
+        routes:
+          # Always-firing heartbeat, meant for an external dead-man's switch.
+          - receiver: "null"
+            matchers:
+              - alertname = "Watchdog"
+          # Never page on info.
+          - receiver: "null"
+            matchers:
+              - severity = "info"
+      receivers:
+        # Empty receiver = black hole.
+        - name: "null"
+        - name: pushover
+          pushover_configs:
+            - user_key_file: /etc/alertmanager/secrets/alertmanager-pushover/user_key
+              token_file: /etc/alertmanager/secrets/alertmanager-pushover/token
+              # critical bypasses the device's quiet hours; everything else is normal.
+              priority: '{{ if eq .CommonLabels.severity "critical" }}1{{ else }}0{{ end }}'
+              send_resolved: true
+      inhibit_rules:
+        - source_matchers: ['severity = "critical"']
+          target_matchers: ['severity =~ "warning|info"']
+          equal: ["namespace", "alertname"]
+        - source_matchers: ['severity = "warning"']
+          target_matchers: ['severity = "info"']
+          equal: ["namespace", "alertname"]
+        - source_matchers: ['alertname = "InfoInhibitor"']
+          target_matchers: ['severity = "info"']
+          equal: ["namespace"]
+        - target_matchers: ['alertname = "InfoInhibitor"']
+      templates:
+        - /etc/alertmanager/config/*.tmpl
+
   prometheus:
     # Headless service exposing the Thanos sidecar's gRPC (10901) so Thanos Query
     # can discover this Prometheus as a store. The thanos chart's query --endpoint
@@ -171,3 +231,10 @@ kube-prometheus-stack:
             resources:
               requests:
                 storage: 15Gi
+
+# ESO pulls the Pushover credentials from Vault at
+# kvv2/cluster/skylab/apps/alertmanager (pushover_user_key, pushover_token).
+externalSecret:
+  enabled: true
+  storeName: vault-backend
+  vaultKey: cluster/skylab/apps/alertmanager
