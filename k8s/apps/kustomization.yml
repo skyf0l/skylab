@@ -9,3 +9,4 @@ resources:
   - mcp-stack/applications.yaml
   - mail-stack/applications.yaml
   - serverless-stack/applications.yaml
+  - finops/applications.yaml
