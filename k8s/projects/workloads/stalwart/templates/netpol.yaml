@@ -3,7 +3,7 @@
 # KPR; `cluster` covers future in-cluster senders (svc :587/:25). The :8080
 # HTTP surface stays on the Layer-1 universal allows (traefik + monitoring)
 # plus intra-namespace (provisioning job). Additive to the ns-isolation policy
-# from security-stack/network-policies (currently audit mode — validate with
+# from network/network-policies (currently audit mode — validate with
 # `hubble observe --verdict AUDIT` before enforcing).
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy

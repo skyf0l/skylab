@@ -3,8 +3,8 @@ kind: ApplicationSet
 metadata:
   name: defectdojo
   annotations:
-    # After ESO + its ClusterSecretStore (-6/-5) and the cloudnative-pg operator
-    # (core): the Cluster CR needs the CNPG CRDs and the ESO secret.
+    # After ESO + its ClusterSecretStore and the cloudnative-pg operator (core):
+    # the Cluster CR needs the CNPG CRDs and the ESO secret.
     argocd.argoproj.io/sync-wave: "2"
 spec:
   goTemplate: true

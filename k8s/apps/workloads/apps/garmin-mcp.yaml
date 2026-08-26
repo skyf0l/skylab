@@ -3,8 +3,8 @@ kind: ApplicationSet
 metadata:
   name: garmin-mcp
   annotations:
-    # After the security-stack (Authelia/ESO) is up.
-    argocd.argoproj.io/sync-wave: "2"
+    # Needs Authelia (identity) and the ESO store (core).
+    argocd.argoproj.io/sync-wave: "0"
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -26,10 +26,10 @@ spec:
     metadata:
       name: "{{.name}}-garmin-mcp"
       labels:
-        app.kubernetes.io/part-of: mcp-stack
+        app.kubernetes.io/part-of: workloads
         skylab.dev/tier: workloads
       annotations:
-        argocd.argoproj.io/sync-wave: "2"
+        argocd.argoproj.io/sync-wave: "0"
     spec:
       project: workloads
       # One app, two sources:
@@ -45,11 +45,11 @@ spec:
           helm:
             releaseName: garmin-mcp
             valueFiles:
-              - $values/k8s/projects/mcp-stack/garmin-mcp/values.yaml
+              - $values/k8s/projects/workloads/garmin-mcp/values.yaml
         - repoURL: "{{.repo.url}}"
           targetRevision: "{{.repo.revision}}"
           ref: values
-          path: k8s/projects/mcp-stack/garmin-mcp-gateway
+          path: k8s/projects/workloads/garmin-mcp-gateway
           helm:
             releaseName: garmin-mcp-gateway
             valueFiles:
@@ -83,4 +83,4 @@ spec:
           - PruneLast=true
           - RespectIgnoreDifferences=true
         retry:
-          limit: 5
+          limit: 10

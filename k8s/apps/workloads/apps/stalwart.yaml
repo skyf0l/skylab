@@ -3,9 +3,8 @@ kind: ApplicationSet
 metadata:
   name: stalwart
   annotations:
-    # After cert-manager/ESO (security-stack) and the DNSEndpoint CRD
-    # (cluster-stack external-dns).
-    argocd.argoproj.io/sync-wave: "2"
+    # Needs cert-manager, the ESO store and the DNSEndpoint CRD (core).
+    argocd.argoproj.io/sync-wave: "0"
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -27,16 +26,16 @@ spec:
     metadata:
       name: "{{.name}}-stalwart"
       labels:
-        app.kubernetes.io/part-of: mail-stack
+        app.kubernetes.io/part-of: workloads
         skylab.dev/tier: workloads
       annotations:
-        argocd.argoproj.io/sync-wave: "2"
+        argocd.argoproj.io/sync-wave: "0"
     spec:
       project: workloads
       sources:
         - repoURL: "{{.repo.url}}"
           targetRevision: "{{.repo.revision}}"
-          path: k8s/projects/mail-stack/stalwart
+          path: k8s/projects/workloads/stalwart
           helm:
             releaseName: stalwart
             valueFiles:
@@ -78,4 +77,4 @@ spec:
           - PruneLast=true
           - RespectIgnoreDifferences=true
         retry:
-          limit: 5
+          limit: 10
