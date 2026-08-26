@@ -50,9 +50,10 @@ path "database/roles/*" {
   capabilities = ["read", "list"]
 }
 
-# Audit devices
+# Audit devices. Listing them is a root-protected operation, so even a read
+# needs sudo (same as the plugin catalog below).
 path "sys/audit" {
-  capabilities = ["read"]
+  capabilities = ["read", "sudo"]
 }
 
 # Client-count / activity tracking config (refresh vault_generic_endpoint.client_count).
