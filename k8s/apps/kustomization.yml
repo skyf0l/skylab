@@ -3,11 +3,10 @@ kind: Kustomization
 resources:
   - cluster-stack/applications.yaml
   - gitops-stack/applications.yaml
-  - mcp-stack/applications.yaml
-  - mail-stack/applications.yaml
   - finops/applications.yaml
   - core/applications.yaml
   - observability/applications.yaml
   - network/applications.yaml
   - identity/applications.yaml
   - security/applications.yaml
+  - workloads/applications.yaml

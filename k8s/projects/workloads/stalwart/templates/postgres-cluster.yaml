@@ -1,6 +1,6 @@
 # CloudNativePG Cluster backing Stalwart's data store (and, via the blob
 # store's Default variant, the message bodies). The cloudnative-pg operator
-# (cluster-stack) reconciles this into a Postgres instance, the
+# (core) reconciles this into a Postgres instance, the
 # stalwart-pg-rw/-ro/-r services, a PodMonitor, the generated stalwart-pg-app
 # credential secret, and — when backup is enabled — WAL archiving to R2.
 #

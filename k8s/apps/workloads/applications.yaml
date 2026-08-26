@@ -1,9 +1,8 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: mail-stack
+  name: workloads
   annotations:
-    # After the security-stack (cert-manager/ESO/netpols) is up.
     argocd.argoproj.io/sync-wave: "1"
 spec:
   goTemplate: true
@@ -24,16 +23,16 @@ spec:
                 - path: clusters/{{.name}}/config.json
   template:
     metadata:
-      name: "{{.name}}-mail-stack"
+      name: "{{.name}}-workloads"
       labels:
-        app.kubernetes.io/part-of: mail-stack
+        app.kubernetes.io/part-of: workloads
         skylab.dev/tier: platform
     spec:
       project: platform
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"
-        path: k8s/apps/mail-stack
+        path: k8s/apps/workloads
         kustomize:
           namePrefix: "{{.name}}-"
           patches:
