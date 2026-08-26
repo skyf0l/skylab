@@ -152,28 +152,6 @@ echo "[thanos] ${KV_MOUNT}/${thanos}"
 seed_field "$thanos" r2_access_key_id     replace_me
 seed_field "$thanos" r2_secret_access_key replace_me
 
-# defectdojo — kvv2/cluster/<cluster>/apps/defectdojo
-# No DB password here: the privileged Postgres role (vault_mgr) is bootstrapped by
-# CNPG and its password is owned + rotated by Vault's database engine (rotate-root),
-# so it never lives in KV. r2_*: PLACEHOLDER R2 token (Object R/W on the dedicated
-# skylab-defectdojo-pg bucket) used by Barman for Postgres backups — only needed
-# once you flip backup.enabled: true:
-#   vault kv patch -mount=kvv2 cluster/<cluster>/apps/defectdojo \
-#     r2_access_key_id=<id> r2_secret_access_key=<secret>
-# Stable app secrets (random, set-once) — replace the chart's createSecret/* which
-# churn under ArgoCD. All random; nothing to fill in by hand (the trivy importer
-# logs in with dd_admin_password and mints its own API token).
-defectdojo="cluster/${CLUSTER}/apps/defectdojo"
-echo "[defectdojo] ${KV_MOUNT}/${defectdojo}"
-seed_field "$defectdojo" dd_secret_key         rand_secret
-seed_field "$defectdojo" dd_aes_key            rand_secret
-seed_field "$defectdojo" dd_admin_password     rand_secret
-seed_field "$defectdojo" dd_metrics_password   rand_secret
-seed_field "$defectdojo" valkey_password       rand_secret
-seed_field "$defectdojo" pg_password           rand_secret
-seed_field "$defectdojo" r2_access_key_id      replace_me
-seed_field "$defectdojo" r2_secret_access_key  replace_me
-
 # keycloak — kvv2/cluster/<cluster>/apps/keycloak
 # Bootstrap-admin password (random, set-once). The DB credential is NOT here — CNPG
 # owns it via the keycloak-pg-app secret. r2_*: PLACEHOLDER, only needed if you flip

@@ -35,13 +35,6 @@ resource "vault_policy" "external_secrets" {
   })
 }
 
-# Read-only on DefectDojo's dynamic DB-creds path. Bound to the defectdojo-db
-# role below so ESO's generator (in the defectdojo namespace) can lease logins.
-resource "vault_policy" "defectdojo_db_creds" {
-  name   = "defectdojo-db-creds"
-  policy = file("policies/defectdojo_db_creds.hcl")
-}
-
 resource "vault_policy" "external_dns_cf_creds" {
   name   = "external-dns-cf-creds"
   policy = file("policies/external_dns_cf_creds.hcl")

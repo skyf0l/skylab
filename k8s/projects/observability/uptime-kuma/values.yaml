@@ -174,12 +174,6 @@ groups:
         name: Hubble UI
         type: http
         url: http://hubble-ui.kube-system:80/
-      - id: defectdojo
-        name: DefectDojo
-        type: http
-        url: http://defectdojo-django.defectdojo:80/login?next=/
-        # Django ALLOWED_HOSTS only knows the tailnet hostname.
-        headers: '{"Host": "defectdojo.tail.{{ .Values.global.domain }}"}'
       - id: falcosidekick-ui
         name: Falcosidekick UI
         type: http

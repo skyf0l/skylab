@@ -5,7 +5,7 @@
 #
 # Pipeline: Falco DaemonSet (one pod/node) -> Falcosidekick (fan-out) -> Loki
 # (forensics, browse in Grafana) + Alertmanager (Warning+ only) + the Falcosidekick
-# Web UI (tailnet-only, like DefectDojo). Falco + sidekick both expose Prometheus
+# Web UI (tailnet-only). Falco + sidekick both expose Prometheus
 # metrics via ServiceMonitors.
 #
 # Everything here is a CR reconciled by falco-operator: `Falco` (the DaemonSet,
@@ -104,15 +104,6 @@ rules:
           (container.image.repository = ghcr.io/cloudnative-pg/postgresql
            and proc.pname = postgres
            and proc.cmdline startswith "sh -c -- /controller/manager")
-        override:
-          condition: replace
-      # DefectDojo's initializer Job probes Postgres with bash /dev/tcp
-      # (wait-for-it.sh) before running migrations.
-      - macro: user_known_stand_streams_redirect_activities
-        condition: >
-          (k8s.ns.name = defectdojo
-           and k8s.pod.name startswith defectdojo-initializer-
-           and proc.exepath = /usr/bin/bash)
         override:
           condition: replace
 

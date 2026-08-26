@@ -4,7 +4,7 @@ metadata:
   name: keycloak
   annotations:
     # After ESO + its ClusterSecretStore and the cloudnative-pg operator: the Cluster CR
-    # needs the CNPG CRDs and the ExternalSecret. Same wave as defectdojo.
+    # needs the CNPG CRDs and the ExternalSecret.
     argocd.argoproj.io/sync-wave: "0"
 spec:
   goTemplate: true

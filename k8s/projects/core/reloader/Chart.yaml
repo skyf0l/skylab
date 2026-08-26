@@ -5,7 +5,7 @@ version: 0.1.0
 
 # Stakater Reloader — watches Secrets/ConfigMaps and rolling-restarts the workloads
 # that reference them (annotation reloader.stakater.com/auto: "true"). Required by apps
-# whose creds rotate at runtime: DefectDojo (Vault dynamic DB creds) + Keycloak.
+# whose creds rotate at runtime (Keycloak, external-dns).
 dependencies:
   - name: reloader
     repository: https://stakater.github.io/stakater-charts

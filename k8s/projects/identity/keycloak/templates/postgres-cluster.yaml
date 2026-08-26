@@ -3,9 +3,9 @@
 # PodMonitor (native metrics), and — when backup is on — WAL archiving to R2. CNPG
 # creates the `keycloak` owner LOGIN role and stores its credentials in the
 # auto-generated `keycloak-pg-app` secret, which the Deployment consumes directly —
-# no DB password in Vault. (Dynamic Vault DB creds could be layered later, like
-# DefectDojo, but Keycloak holds a pooled connection so it would need the same
-# token_ttl/Reloader handling.)
+# no DB password in Vault. (Dynamic Vault DB creds could be layered later, but
+# Keycloak holds a pooled connection so every lease rotation would mean a
+# Reloader restart.)
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
 metadata:
