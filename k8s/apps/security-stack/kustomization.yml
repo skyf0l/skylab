@@ -10,6 +10,7 @@ resources:
   - apps/headscale-proxy.yaml
   - apps/headscale-exit.yaml
   - apps/defectdojo.yaml
+  - apps/falco-operator.yaml
   - apps/falco.yaml
   - apps/keycloak.yaml
   - apps/network-policies.yaml
