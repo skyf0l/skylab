@@ -4,7 +4,7 @@
 # stalwart-pg-rw/-ro/-r services, a PodMonitor, the generated stalwart-pg-app
 # credential secret, and — when backup is enabled — WAL archiving to R2.
 #
-# Plain CNPG credential model (no Vault dynamic logins, unlike defectdojo):
+# Plain CNPG credential model (no Vault dynamic logins):
 # Stalwart reads its password once at startup, so a leased credential would
 # force a scheduled mail-server restart. CNPG owns the password instead.
 apiVersion: postgresql.cnpg.io/v1

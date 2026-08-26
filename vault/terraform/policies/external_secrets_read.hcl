@@ -12,6 +12,6 @@ path "kvv2/metadata/cluster/${cluster_name}/apps/*" {
   capabilities = ["read", "list"]
 }
 
-# NB: dynamic database credentials (database/creds/*) are NOT granted here. ESO's
+# NB: dynamic engine credentials (cloudflare/creds/*) are NOT granted here. ESO's
 # VaultDynamicSecret generator authenticates per-app with its own namespace SA +
-# Vault role (e.g. defectdojo-db), not via this central ClusterSecretStore login.
+# Vault role (e.g. external-dns-cf), not via this central ClusterSecretStore login.

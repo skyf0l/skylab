@@ -78,7 +78,7 @@ postgres:
 # Barman continuous WAL archiving + scheduled base backups to Cloudflare R2 —
 # this is the whole reason for CNPG, so turn it on as soon as the bucket exists.
 # DISABLED by default because a Cluster pointed at a non-existent bucket fails
-# WAL archiving, which eventually wedges the primary (defectdojo learned this).
+# WAL archiving, which eventually wedges the primary.
 # To enable: create the R2 bucket, set destinationPath/endpointURL in
 # values/<cluster>.yaml, then flip enabled: true.
 backup:
