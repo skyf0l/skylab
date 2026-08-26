@@ -1,6 +1,7 @@
 {{- if .Values.provision.enabled }}
-# Desired mail state (rendered from values, public + private overlay) + the
-# reconcile script. Not a hook: the Job mounts it, and hooks re-render anyway.
+# Desired mail state as a stalwart-cli plan (rendered from the chart values,
+# public + private overlay) plus the DKIM publish script. Not a hook: the Job
+# mounts it, and hooks re-render anyway.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -8,20 +9,14 @@ metadata:
   labels:
     app: stalwart
 data:
-  provision.json: |
-    {{- $certs := list (dict "host" .Values.host "path" "/etc/stalwart/tls") -}}
-    {{- range include "stalwart.domains" . | fromJsonArray -}}
-    {{- if ne .mailHost $.Values.host -}}
-    {{- $certs = append $certs (dict "host" .mailHost "path" (printf "/etc/stalwart/tls-%s" .slug)) -}}
-    {{- end -}}
+  plan.ndjson: |
+    {{- include "stalwart.plan" . | nindent 4 }}
+  domains.txt: |
+    {{- range include "stalwart.domains" . | fromJsonArray }}
+    {{ .name }}
     {{- end }}
-    {{- $folders := dict -}}
-    {{- range $use, $name := .Values.defaultFolders -}}
-    {{- $_ := set $folders $use (dict "name" $name "create" true "subscribe" true) -}}
-    {{- end }}
-    {{ dict "hostname" .Values.host "defaultDomain" .Values.global.domain "certificates" $certs "defaultFolders" $folders "domains" (include "stalwart.domains" . | fromJsonArray) "accounts" (include "stalwart.accounts" . | fromJsonArray) "metrics" (dict "username" .Values.metrics.username "envVar" "STALWART_METRICS_SECRET") | toJson }}
-  provision.sh: |
-{{ .Files.Get "files/provision.sh" | indent 4 }}
+  dkim.sh: |
+{{ .Files.Get "files/dkim.sh" | indent 4 }}
 ---
 apiVersion: v1
 kind: ServiceAccount
