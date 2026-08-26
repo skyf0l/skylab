@@ -2,11 +2,12 @@
 # mail.<global.domain>; MX for every served domain points at it, so private
 # domains never need their own A record or certificate (no CT-log leaks).
 #
-# v0.16 model: the local config file only holds the RocksDB datastore location.
+# v0.16 model: the local config file only holds the datastore location.
 # Domains, DKIM keys, accounts and TLS certificate objects live in the server's
 # database and are reconciled from THIS values file by the provisioning hook
-# job (files/provision.sh) — that is the GitOps-as-code surface. Anything else
-# changed in the web-admin is runtime state, not git.
+# job: a stalwart-cli plan rendered by _helpers.tpl (stalwart.plan) and applied
+# on every sync — that is the GitOps-as-code surface. Anything else changed in
+# the web-admin is runtime state, not git.
 image:
   repository: stalwartlabs/stalwart
   tag: v0.16.19
@@ -182,9 +183,10 @@ domains:
     mx: true
 extraDomains: []
 
-# ---- accounts (ensure-only: never pruned, credentials never touched). ----
+# ---- accounts (never pruned, credentials never touched). ----
 # Declares WHICH mailboxes and aliases exist, not their passwords: each account
 # is created without credentials, then given a password from the web-admin.
+# Aliases and roles are reconciled from here on every sync.
 # name = local part, domain defaults to global.domain, aliases are local parts
 # on the same domain.
 # Every mx:true domain should have a postmaster alias (DMARC rua target).
@@ -195,9 +197,10 @@ extraAccounts: []
 
 provision:
   enabled: true
-  # Needs sh + kubectl (curl/jq are apk-added at runtime, same pragmatism as
-  # the headscale-proxy authkey-mint job).
-  jobImage: alpine/kubectl:1.36.4
+  # Applies the rendered plan; distroless, versioned separately from the server.
+  cliImage: ghcr.io/stalwartlabs/cli:1.0.12
+  # Readiness wait + DKIM publishing: needs sh, curl, jq and kubectl.
+  jobImage: alpine/k8s:1.36.2
   adminUser: admin
 
 resources:

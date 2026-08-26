@@ -47,3 +47,81 @@ resolved domain, tpl'd aliases.
 {{- end -}}
 {{- $out | toJson -}}
 {{- end -}}
+
+{{/*
+File-backed TLS certificate object for a cert-manager mount directory.
+*/}}
+{{- define "stalwart.fileCert" -}}
+{{ dict "certificate" (dict "@type" "File" "filePath" (printf "%s/tls.crt" .)) "privateKey" (dict "@type" "File" "filePath" (printf "%s/tls.key" .)) | toJson }}
+{{- end -}}
+
+{{/*
+stalwart-cli apply plan: NDJSON, one operation per line, dependency order
+(parents before children, `#<key>` references resolve to the real id whether
+the object was matched or created). Everything is an `upsert` (match-or-create,
+never destroy): the fields declared here are reconciled on every sync, fields
+left out (account credentials) are never touched, and objects the plan does not
+mention are never pruned. `stalwart-cli apply --dry-run` validates the render
+offline.
+*/}}
+{{- define "stalwart.plan" -}}
+{{- $root := . -}}
+{{- $domains := include "stalwart.domains" . | fromJsonArray -}}
+{{- $defaultSlug := replace "." "-" .Values.global.domain -}}
+{{/* Stalwart's bootstrap set creates a pop3s listener (995) that nothing exposes.
+     The filter MUST stay name-scoped: an empty filter destroys every listener. */}}
+{{ dict "@type" "destroy" "object" "NetworkListener" "value" (dict "name" "pop3s") | toJson }}
+{{/* One certificate per configured hostname (cert-manager mounts the PEMs);
+     Stalwart selects between them by SNI. Matched on the file paths, which are
+     the only client-set fields (SANs are server-set). */}}
+{{- $certs := dict "cert-shared" (include "stalwart.fileCert" "/etc/stalwart/tls" | fromJson) -}}
+{{- range $domains -}}
+{{- if ne .mailHost $root.Values.host -}}
+{{- $_ := set $certs (printf "cert-%s" .slug) (include "stalwart.fileCert" (printf "/etc/stalwart/tls-%s" .slug) | fromJson) -}}
+{{- end -}}
+{{- end }}
+{{ dict "@type" "upsert" "object" "Certificate" "matchOn" (list "certificate") "value" $certs | toJson }}
+{{/* The bootstrap set has no STARTTLS submission listener (587) although the
+     chart exposes it. Listeners are read at startup: a new one only opens after
+     a pod restart. */}}
+{{ dict "@type" "upsert" "object" "NetworkListener" "matchOn" (list "name") "value" (dict "listener-submission" (dict "name" "submission" "bind" (dict "[::]:587" true) "protocol" "smtp" "useTls" true "tlsImplicit" false)) | toJson }}
+{{/* Special-use folders for NEW mailboxes (existing accounts keep theirs). */}}
+{{- if .Values.defaultFolders -}}
+{{- $folders := dict -}}
+{{- range $use, $name := .Values.defaultFolders -}}
+{{- $_ := set $folders $use (dict "name" $name "create" true "subscribe" true) -}}
+{{- end }}
+{{ dict "@type" "update" "object" "Email" "value" (dict "defaultFolders" $folders) | toJson }}
+{{- end }}
+{{/* dkimManagement Automatic generates the keypairs (ed25519 + RSA). Rotation is
+     pushed out to ~10y BECAUSE dnsManagement is Manual: external-dns owns the
+     zone, so a silent server-side rotation would publish nothing and break
+     signing. Rotation is a deliberate operation. Duration is MILLISECONDS. */}}
+{{- $doms := dict -}}
+{{- range $domains -}}
+{{- $d := dict "name" .name "certificateManagement" (dict "@type" "Manual") "dkimManagement" (dict "@type" "Automatic" "rotateAfter" 315360000000) "dnsManagement" (dict "@type" "Manual") "subAddressing" (dict "@type" "Enabled") -}}
+{{- if .catchAll -}}{{- $_ := set $d "catchAllAddress" .catchAll -}}{{- end -}}
+{{- $_ := set $doms (printf "dom-%s" .slug) $d -}}
+{{- end }}
+{{ dict "@type" "upsert" "object" "Domain" "matchOn" (list "name") "value" $doms | toJson }}
+{{/* Server identity (SMTP EHLO/banner, reports); needs the default domain to exist. */}}
+{{ dict "@type" "update" "object" "SystemSettings" "value" (dict "defaultHostname" .Values.host "defaultDomainId" (printf "#dom-%s" $defaultSlug)) | toJson }}
+{{/* Prometheus endpoint with Basic auth read from the pod env, so the secret
+     stays in the Kubernetes Secret (never in Stalwart's database). */}}
+{{ dict "@type" "update" "object" "Metrics" "value" (dict "prometheus" (dict "@type" "Enabled" "authUsername" .Values.metrics.username "authSecret" (dict "@type" "EnvironmentVariable" "variableName" "STALWART_METRICS_SECRET"))) | toJson }}
+{{/* Accounts carry NO credentials on purpose: created without a password (set it
+     once from the tailnet-only web-admin), and since the field is absent from
+     the plan an existing password is never overwritten. */}}
+{{- $accs := dict -}}
+{{- range include "stalwart.accounts" . | fromJsonArray -}}
+{{- $slug := replace "." "-" .domain -}}
+{{- $aliases := dict -}}
+{{- range $i, $alias := .aliases -}}
+{{- $_ := set $aliases (toString $i) (dict "enabled" true "name" $alias "domainId" (printf "#dom-%s" $slug)) -}}
+{{- end -}}
+{{- $_ := set $accs (printf "acc-%s-%s" (replace "." "-" .name) $slug) (dict "@type" "User" "name" .name "domainId" (printf "#dom-%s" $slug) "roles" (dict "@type" "User") "permissions" (dict "@type" "Inherit") "encryptionAtRest" (dict "@type" "Disabled") "aliases" $aliases) -}}
+{{- end }}
+{{ dict "@type" "upsert" "object" "Account" "matchOn" (list "name" "domainId") "value" $accs | toJson }}
+{{/* Settings written through the API only take effect after a reload. */}}
+{{ dict "@type" "create" "object" "Action" "value" (dict "reload" (dict "@type" "ReloadSettings")) | toJson }}
+{{- end -}}
