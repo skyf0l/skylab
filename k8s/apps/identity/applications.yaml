@@ -1,10 +1,9 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: network-policies
+  name: identity
   annotations:
-    # After Cilium (the CNI that enforces these). Late wave so target namespaces exist.
-    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-wave: "-3"
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -21,37 +20,44 @@ spec:
               repoURL: https://github.com/skyf0l/skylab.git
               revision: main
               files:
-                - path: clusters/{{.name }}/config.json
+                - path: clusters/{{.name}}/config.json
   template:
     metadata:
-      name: "{{.name}}-network-policies"
-      annotations:
-        argocd.argoproj.io/sync-wave: "5"
+      name: "{{.name}}-identity"
+      labels:
+        app.kubernetes.io/part-of: identity
+        skylab.dev/tier: platform
     spec:
-      # platform project: destinations "*" + namespaceResourceWhitelist "*", so this app
-      # may create CiliumNetworkPolicies across every isolated namespace.
       project: platform
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"
-        path: k8s/projects/security-stack/network-policies
-        helm:
-          releaseName: network-policies
-          valueFiles:
-            - values.yaml
+        path: k8s/apps/identity
+        kustomize:
+          namePrefix: "{{.name}}-"
+          patches:
+            - target:
+                kind: ApplicationSet
+              patch: |-
+                - op: replace
+                  path: /spec/generators/0/matrix/generators/0/list/elements/0/name
+                  value: {{.name}}
+                - op: replace
+                  path: /spec/generators/0/matrix/generators/1/git/repoURL
+                  value: {{.repo.url}}
+                - op: replace
+                  path: /spec/generators/0/matrix/generators/1/git/revision
+                  value: {{.repo.revision}}
       destination:
         server: https://kubernetes.default.svc
-        # Nominal only — each CiliumNetworkPolicy sets its own metadata.namespace.
-        namespace: kube-system
+        namespace: argocd
       syncPolicy:
         automated:
           prune: true
-          selfHeal: true
         syncOptions:
           - Validate=true
           - PrunePropagationPolicy=foreground
           - PruneLast=true
           - RespectIgnoreDifferences=true
-          - ServerSideApply=true
         retry:
           limit: 5

@@ -1,10 +1,10 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: falco-operator
+  name: network-policies
   annotations:
-    # CRDs + controller first; the falco app (wave 2) only holds CRs.
-    argocd.argoproj.io/sync-wave: "1"
+    # After Cilium (the CNI that enforces these). Late wave so target namespaces exist.
+    argocd.argoproj.io/sync-wave: "5"
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -24,35 +24,34 @@ spec:
                 - path: clusters/{{.name }}/config.json
   template:
     metadata:
-      name: "{{.name}}-falco-operator"
-      labels:
-        app.kubernetes.io/part-of: security-stack
-        skylab.dev/tier: platform
+      name: "{{.name}}-network-policies"
       annotations:
-        argocd.argoproj.io/sync-wave: "1"
+        argocd.argoproj.io/sync-wave: "5"
     spec:
+      # platform project: destinations "*" + namespaceResourceWhitelist "*", so this app
+      # may create CiliumNetworkPolicies across every isolated namespace.
       project: platform
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"
-        path: k8s/projects/security-stack/falco-operator
+        path: k8s/projects/network/network-policies
         helm:
-          releaseName: falco-operator
+          releaseName: network-policies
           valueFiles:
             - values.yaml
       destination:
         server: https://kubernetes.default.svc
-        namespace: falco-operator
+        # Nominal only — each CiliumNetworkPolicy sets its own metadata.namespace.
+        namespace: kube-system
       syncPolicy:
         automated:
           prune: true
           selfHeal: true
         syncOptions:
-          - CreateNamespace=true
           - Validate=true
           - PrunePropagationPolicy=foreground
           - PruneLast=true
           - RespectIgnoreDifferences=true
           - ServerSideApply=true
         retry:
-          limit: 5
+          limit: 10

@@ -1,0 +1,65 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: defectdojo
+  annotations:
+    # After ESO + its ClusterSecretStore (-6/-5) and the cloudnative-pg operator
+    # (core): the Cluster CR needs the CNPG CRDs and the ESO secret.
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  syncPolicy:
+    preserveResourcesOnDeletion: true
+  generators:
+    - matrix:
+        generators:
+          # Auto updated by parent ApplicationSet
+          - list:
+              elements:
+                - name: skylab
+          - git:
+              repoURL: https://github.com/skyf0l/skylab.git
+              revision: main
+              files:
+                - path: clusters/{{.name }}/config.json
+  template:
+    metadata:
+      name: "{{.name}}-defectdojo"
+      labels:
+        app.kubernetes.io/part-of: security
+        skylab.dev/tier: platform
+      annotations:
+        argocd.argoproj.io/sync-wave: "2"
+        # The chart renders uwsgi processes/threads into the container's resources
+        # (not valid k8s fields). The API server drops them on apply, but ArgoCD's
+        # client-side diff can't and errors out, wedging every sync. ServerSideDiff
+        # runs the diff through the API server too, so it drops them the same way.
+        argocd.argoproj.io/compare-options: ServerSideDiff=true
+    spec:
+      project: platform
+      source:
+        repoURL: "{{.repo.url}}"
+        targetRevision: "{{.repo.revision}}"
+        path: k8s/projects/security/defectdojo
+        helm:
+          releaseName: defectdojo
+          valueFiles:
+            - values.yaml
+            - values/{{.name}}.yaml
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: defectdojo
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - Validate=true
+          - PrunePropagationPolicy=foreground
+          - PruneLast=true
+          - RespectIgnoreDifferences=true
+          - ServerSideApply=true
+        retry:
+          limit: 10

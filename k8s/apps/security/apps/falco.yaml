@@ -1,10 +1,11 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: headscale-exit
+  name: falco
   annotations:
-    # After Headscale is up (the exit node registers against the in-cluster control server).
-    argocd.argoproj.io/sync-wave: "2"
+    # After falco-operator (CRDs) and the monitoring stack (ServiceMonitor /
+    # PrometheusRule CRDs).
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -24,35 +25,25 @@ spec:
                 - path: clusters/{{.name }}/config.json
   template:
     metadata:
-      name: "{{.name}}-headscale-exit"
+      name: "{{.name}}-falco"
       labels:
-        app.kubernetes.io/part-of: security-stack
+        app.kubernetes.io/part-of: security
         skylab.dev/tier: platform
       annotations:
-        argocd.argoproj.io/sync-wave: "2"
+        argocd.argoproj.io/sync-wave: "1"
     spec:
       project: platform
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"
-        path: k8s/projects/security-stack/headscale-exit
+        path: k8s/projects/security/falco
         helm:
-          releaseName: headscale-exit
+          releaseName: falco
           valueFiles:
             - values.yaml
-          # Key-minting user derived from global.domain.
-          parameters:
-            - name: "authkeyMint.user"
-              value: "infra@{{.global.domain}}"
-            # Tailscale forces a TLS :443 dial for the persistent noise/map session,
-            # so the in-cluster http svc (80/50443, no 443) lets the node register
-            # but then fails to hold the session and crash-loops on restart. The
-            # public HTTPS URL is the only endpoint that satisfies it.
-            - name: "loginServer"
-              value: "https://headscale.{{.global.domain}}"
       destination:
         server: https://kubernetes.default.svc
-        namespace: tailscale
+        namespace: falco
       syncPolicy:
         automated:
           prune: true
@@ -63,5 +54,6 @@ spec:
           - PrunePropagationPolicy=foreground
           - PruneLast=true
           - RespectIgnoreDifferences=true
+          - ServerSideApply=true
         retry:
-          limit: 5
+          limit: 10

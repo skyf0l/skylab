@@ -154,7 +154,7 @@ render:
 	  echo "---" >> $(RENDER_DIR)/manifests.yaml; \
 	done
 	@kubectl kustomize k8s/apps > $(RENDER_DIR)/apps.yaml || exit 1
-	@helm template kyverno k8s/projects/security-stack/kyverno > $(RENDER_DIR)/policies.yaml || exit 1
+	@helm template kyverno k8s/projects/security/kyverno > $(RENDER_DIR)/policies.yaml || exit 1
 	@echo "rendered → $(RENDER_DIR)/"
 
 # Schema gate: rendered manifests valid against the k8s + CRD OpenAPI schemas.

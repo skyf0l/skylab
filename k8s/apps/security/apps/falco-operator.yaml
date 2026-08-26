@@ -1,9 +1,10 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: security-stack
+  name: falco-operator
   annotations:
-    argocd.argoproj.io/sync-wave: "-9"
+    # CRDs + controller first; the falco app (wave 2) only holds CRs.
+    argocd.argoproj.io/sync-wave: "0"
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -20,44 +21,38 @@ spec:
               repoURL: https://github.com/skyf0l/skylab.git
               revision: main
               files:
-                - path: clusters/{{.name}}/config.json
+                - path: clusters/{{.name }}/config.json
   template:
     metadata:
-      name: "{{.name}}-security-stack"
+      name: "{{.name}}-falco-operator"
       labels:
-        app.kubernetes.io/part-of: security-stack
+        app.kubernetes.io/part-of: security
         skylab.dev/tier: platform
+      annotations:
+        argocd.argoproj.io/sync-wave: "0"
     spec:
       project: platform
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"
-        path: k8s/apps/security-stack
-        kustomize:
-          namePrefix: "{{.name}}-"
-          patches:
-            - target:
-                kind: ApplicationSet
-              patch: |-
-                - op: replace
-                  path: /spec/generators/0/matrix/generators/0/list/elements/0/name
-                  value: {{.name}}
-                - op: replace
-                  path: /spec/generators/0/matrix/generators/1/git/repoURL
-                  value: {{.repo.url}}
-                - op: replace
-                  path: /spec/generators/0/matrix/generators/1/git/revision
-                  value: {{.repo.revision}}
+        path: k8s/projects/security/falco-operator
+        helm:
+          releaseName: falco-operator
+          valueFiles:
+            - values.yaml
       destination:
         server: https://kubernetes.default.svc
-        namespace: argocd
+        namespace: falco-operator
       syncPolicy:
         automated:
           prune: true
+          selfHeal: true
         syncOptions:
+          - CreateNamespace=true
           - Validate=true
           - PrunePropagationPolicy=foreground
           - PruneLast=true
           - RespectIgnoreDifferences=true
+          - ServerSideApply=true
         retry:
-          limit: 5
+          limit: 10

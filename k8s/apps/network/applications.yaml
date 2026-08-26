@@ -1,10 +1,9 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: authelia
+  name: network
   annotations:
-    # After cert-manager (TLS), ESO store, and Vault (gitops-stack -2).
-    argocd.argoproj.io/sync-wave: "0"
+    argocd.argoproj.io/sync-wave: "-5"
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -21,43 +20,41 @@ spec:
               repoURL: https://github.com/skyf0l/skylab.git
               revision: main
               files:
-                - path: clusters/{{.name }}/config.json
+                - path: clusters/{{.name}}/config.json
   template:
     metadata:
-      name: "{{.name}}-authelia"
+      name: "{{.name}}-network"
       labels:
-        app.kubernetes.io/part-of: security-stack
+        app.kubernetes.io/part-of: network
         skylab.dev/tier: platform
-      annotations:
-        argocd.argoproj.io/sync-wave: "0"
     spec:
       project: platform
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"
-        path: k8s/projects/security-stack/authelia
-        helm:
-          releaseName: authelia
-          valueFiles:
-            - values.yaml
-            - values/{{.name}}.yaml
-          # Domain-derived values from the cluster's global.domain. `global.domain`
-          # is fed to the pod as the DOMAIN env var; configuration.yml resolves it
-          # via Authelia's {{ env "DOMAIN" }} filter. `host` drives the ingress.
-          parameters:
-            - name: "global.domain"
-              value: "{{.global.domain}}"
-            - name: "host"
-              value: "auth.{{.global.domain}}"
+        path: k8s/apps/network
+        kustomize:
+          namePrefix: "{{.name}}-"
+          patches:
+            - target:
+                kind: ApplicationSet
+              patch: |-
+                - op: replace
+                  path: /spec/generators/0/matrix/generators/0/list/elements/0/name
+                  value: {{.name}}
+                - op: replace
+                  path: /spec/generators/0/matrix/generators/1/git/repoURL
+                  value: {{.repo.url}}
+                - op: replace
+                  path: /spec/generators/0/matrix/generators/1/git/revision
+                  value: {{.repo.revision}}
       destination:
         server: https://kubernetes.default.svc
-        namespace: authelia
+        namespace: argocd
       syncPolicy:
         automated:
           prune: true
-          selfHeal: true
         syncOptions:
-          - CreateNamespace=true
           - Validate=true
           - PrunePropagationPolicy=foreground
           - PruneLast=true

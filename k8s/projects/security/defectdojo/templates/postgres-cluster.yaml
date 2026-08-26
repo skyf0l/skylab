@@ -1,4 +1,4 @@
-# CloudNativePG Cluster for DefectDojo. The cloudnative-pg operator (cluster-stack)
+# CloudNativePG Cluster for DefectDojo. The cloudnative-pg operator (core)
 # reconciles this into a Postgres instance + the defectdojo-pg-rw/-ro/-r services,
 # a PodMonitor (native metrics), and — when backup is enabled — WAL archiving to R2.
 #
