@@ -4,7 +4,7 @@ metadata:
   name: goldilocks
   annotations:
     # After VPA (needs the VerticalPodAutoscaler CRD to create recommend-mode VPAs).
-    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-wave: "2"
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -26,13 +26,13 @@ spec:
     metadata:
       name: "{{.name}}-goldilocks"
       annotations:
-        argocd.argoproj.io/sync-wave: "3"
+        argocd.argoproj.io/sync-wave: "2"
     spec:
       project: observability
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"
-        path: k8s/projects/finops-stack/goldilocks
+        path: k8s/projects/finops/goldilocks
         helm:
           releaseName: goldilocks
           valueFiles:
@@ -52,4 +52,4 @@ spec:
           - RespectIgnoreDifferences=true
           - ServerSideApply=true
         retry:
-          limit: 5
+          limit: 10

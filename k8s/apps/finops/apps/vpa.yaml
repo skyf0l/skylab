@@ -1,11 +1,10 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: opencost
+  name: vpa
   annotations:
-    # After the monitoring stack: OpenCost reads from kube-prometheus and needs the
-    # ServiceMonitor CRD.
-    argocd.argoproj.io/sync-wave: "2"
+    # Before Goldilocks (which creates VPA CRs) so the VPA CRDs exist first.
+    argocd.argoproj.io/sync-wave: "0"
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -25,25 +24,22 @@ spec:
                 - path: clusters/{{.name }}/config.json
   template:
     metadata:
-      name: "{{.name}}-opencost"
-      labels:
-        app.kubernetes.io/part-of: finops-stack
-        skylab.dev/tier: observability
+      name: "{{.name}}-vpa"
       annotations:
-        argocd.argoproj.io/sync-wave: "2"
+        argocd.argoproj.io/sync-wave: "0"
     spec:
       project: observability
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"
-        path: k8s/projects/finops-stack/opencost
+        path: k8s/projects/finops/vpa
         helm:
-          releaseName: opencost
+          releaseName: vpa
           valueFiles:
             - values.yaml
       destination:
         server: https://kubernetes.default.svc
-        namespace: opencost
+        namespace: vpa
       syncPolicy:
         automated:
           prune: true
@@ -54,6 +50,6 @@ spec:
           - PrunePropagationPolicy=foreground
           - PruneLast=true
           - RespectIgnoreDifferences=true
-          - ServerSideApply=true
+          - ServerSideApply=true # VPA CRDs are large -> avoid last-applied annotation limit
         retry:
-          limit: 5
+          limit: 10

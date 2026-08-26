@@ -1,10 +1,9 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: vpa
+  name: finops
   annotations:
-    # Before Goldilocks (which creates VPA CRs) so the VPA CRDs exist first.
-    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-wave: "0"
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -21,35 +20,44 @@ spec:
               repoURL: https://github.com/skyf0l/skylab.git
               revision: main
               files:
-                - path: clusters/{{.name }}/config.json
+                - path: clusters/{{.name}}/config.json
   template:
     metadata:
-      name: "{{.name}}-vpa"
-      annotations:
-        argocd.argoproj.io/sync-wave: "1"
+      name: "{{.name}}-finops"
+      labels:
+        app.kubernetes.io/part-of: finops
+        skylab.dev/tier: platform
     spec:
-      project: observability
+      project: platform
       source:
         repoURL: "{{.repo.url}}"
         targetRevision: "{{.repo.revision}}"
-        path: k8s/projects/finops-stack/vpa
-        helm:
-          releaseName: vpa
-          valueFiles:
-            - values.yaml
+        path: k8s/apps/finops
+        kustomize:
+          namePrefix: "{{.name}}-"
+          patches:
+            - target:
+                kind: ApplicationSet
+              patch: |-
+                - op: replace
+                  path: /spec/generators/0/matrix/generators/0/list/elements/0/name
+                  value: {{.name}}
+                - op: replace
+                  path: /spec/generators/0/matrix/generators/1/git/repoURL
+                  value: {{.repo.url}}
+                - op: replace
+                  path: /spec/generators/0/matrix/generators/1/git/revision
+                  value: {{.repo.revision}}
       destination:
         server: https://kubernetes.default.svc
-        namespace: vpa
+        namespace: argocd
       syncPolicy:
         automated:
           prune: true
-          selfHeal: true
         syncOptions:
-          - CreateNamespace=true
           - Validate=true
           - PrunePropagationPolicy=foreground
           - PruneLast=true
           - RespectIgnoreDifferences=true
-          - ServerSideApply=true # VPA CRDs are large -> avoid last-applied annotation limit
         retry:
           limit: 5
