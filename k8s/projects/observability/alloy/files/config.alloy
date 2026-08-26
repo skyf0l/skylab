@@ -35,6 +35,16 @@ discovery.relabel "pod_logs" {
 		target_label  = "controller_kind"
 	}
 
+	// Trivy scan jobs print the whole vulnerability report to stdout as a base64
+	// blob (that is how the operator collects it): ~60% of all ingested bytes and
+	// useless in Loki. The operator's own logs are still shipped.
+	rule {
+		source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_controller_kind"]
+		separator     = ";"
+		regex         = "trivy;Job"
+		action        = "drop"
+	}
+
 	// /var/log/pods/<namespace>_<pod>_<uid>/<container>/*.log
 	rule {
 		source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
