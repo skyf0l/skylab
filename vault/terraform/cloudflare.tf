@@ -125,6 +125,60 @@ resource "vault_generic_endpoint" "cloudflare_role_r2_stalwart_backup" {
   })
 }
 
+# Thanos long-term metric blocks (store, compactor and the Prometheus sidecar). Scoped to the one bucket. Long lease on purpose: each Thanos component
+# reads the keypair at start, so every rotation is a Reloader-driven restart —
+# one per refresh (240h), and the previous token stays valid for the rest of its
+# 720h lease (the mount's max is 768h).
+resource "vault_generic_endpoint" "cloudflare_role_r2_thanos" {
+  depends_on           = [vault_mount.cloudflare]
+  path                 = "cloudflare/role/r2-thanos"
+  disable_read         = true # plugin canonicalises policies JSON; avoid perpetual diffs
+  disable_delete       = false
+  ignore_absent_fields = true
+
+  data_json = jsonencode({
+    token_type        = "account"
+    r2_s3_credentials = true
+    ttl               = "720h"
+    max_ttl           = "768h"
+    request_ip_in     = var.cloudflare_dns_token_request_ips
+    policies = jsonencode([{
+      effect            = "allow"
+      permission_groups = [{ name = "Workers R2 Storage Bucket Item Write" }]
+      resources = {
+        "com.cloudflare.edge.r2.bucket.${var.cloudflare_account_id}_default_skylab-thanos" = "*"
+      }
+    }])
+  })
+}
+
+# Loki chunks + TSDB index. Scoped to the one bucket. Long lease on purpose: Loki
+# reads the keypair at start, so every rotation is a Reloader-driven restart —
+# one per refresh (240h), and the previous token stays valid for the rest of its
+# 720h lease (the mount's max is 768h).
+resource "vault_generic_endpoint" "cloudflare_role_r2_loki" {
+  depends_on           = [vault_mount.cloudflare]
+  path                 = "cloudflare/role/r2-loki"
+  disable_read         = true # plugin canonicalises policies JSON; avoid perpetual diffs
+  disable_delete       = false
+  ignore_absent_fields = true
+
+  data_json = jsonencode({
+    token_type        = "account"
+    r2_s3_credentials = true
+    ttl               = "720h"
+    max_ttl           = "768h"
+    request_ip_in     = var.cloudflare_dns_token_request_ips
+    policies = jsonencode([{
+      effect            = "allow"
+      permission_groups = [{ name = "Workers R2 Storage Bucket Item Write" }]
+      resources = {
+        "com.cloudflare.edge.r2.bucket.${var.cloudflare_account_id}_default_skylab-loki" = "*"
+      }
+    }])
+  })
+}
+
 # Harbor registry blobs (distribution S3 driver -> R2). Scoped to the one bucket
 # (per-bucket resource id, unlike the account-wide roles above). Long lease on
 # purpose: the registry reads the keypair from its environment at start, so every

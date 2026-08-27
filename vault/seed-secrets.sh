@@ -130,30 +130,6 @@ garmin="cluster/${CLUSTER}/apps/garmin-mcp"
 echo "[garmin-mcp] ${KV_MOUNT}/${garmin}"
 seed_field "$garmin" garmin_tokens garmin_tokens_placeholder
 
-# loki — kvv2/cluster/<cluster>/apps/loki
-# Dedicated R2 token (Object Read & Write on the skylab-loki bucket) for Loki's S3
-# backend. PLACEHOLDER so the ExternalSecret syncs; overwrite with the REAL token:
-#   vault kv patch -mount=kvv2 cluster/<cluster>/apps/loki \
-#     r2_access_key_id=<id> r2_secret_access_key=<secret>
-loki="cluster/${CLUSTER}/apps/loki"
-echo "[loki] ${KV_MOUNT}/${loki}"
-seed_field "$loki" r2_access_key_id     replace_me
-seed_field "$loki" r2_secret_access_key replace_me
-
-# thanos — kvv2/cluster/<cluster>/apps/thanos
-# Dedicated R2 token (Object Read & Write on the skylab-thanos bucket) for Thanos'
-# long-term Prometheus storage. PLACEHOLDER so the ExternalSecret syncs; overwrite
-# with the REAL token after creating the bucket + token:
-#   vault kv patch -mount=kvv2 cluster/<cluster>/apps/thanos \
-#     r2_access_key_id=<id> r2_secret_access_key=<secret>
-# Then restart Prometheus once so its sidecar reloads objstore.yml:
-#   kubectl -n monitoring rollout restart statefulset \
-#     -l app.kubernetes.io/name=prometheus
-thanos="cluster/${CLUSTER}/apps/thanos"
-echo "[thanos] ${KV_MOUNT}/${thanos}"
-seed_field "$thanos" r2_access_key_id     replace_me
-seed_field "$thanos" r2_secret_access_key replace_me
-
 # keycloak — kvv2/cluster/<cluster>/apps/keycloak
 # Bootstrap-admin password (random, set-once). The DB credential is NOT here — CNPG
 # owns it via the keycloak-pg-app secret. r2_*: PLACEHOLDER, only needed if you flip

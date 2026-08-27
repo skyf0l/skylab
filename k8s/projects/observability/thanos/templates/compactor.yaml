@@ -22,6 +22,9 @@ metadata:
   name: thanos-compactor
   labels:
     app.kubernetes.io/name: thanos-compactor
+  annotations:
+    # objstore.yml is read at start: roll onto a rotated R2 keypair.
+    secret.reloader.stakater.com/reload: thanos-objstore
     app.kubernetes.io/part-of: thanos
 spec:
   replicas: 1 # singleton — do not scale

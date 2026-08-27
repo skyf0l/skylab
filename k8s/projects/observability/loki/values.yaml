@@ -46,6 +46,10 @@ loki:
 
   singleBinary:
     replicas: 1
+    # The R2 keypair is expanded into the config at start: roll onto a rotated
+    # one (Alloy buffers during the restart).
+    annotations:
+      secret.reloader.stakater.com/reload: loki-r2
     persistence:
       enabled: true
       storageClass: local-path
@@ -92,9 +96,17 @@ loki:
     serviceMonitor:
       enabled: true
 
-# ESO: project the R2 token from Vault into the loki-r2 Secret as env-var-named
-# keys (R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY) consumed above.
+# R2 credentials are an S3 keypair minted by Vault's cloudflare engine (r2-loki
+# role, bucket-scoped) and leased by the ESO generator — same model as
+# external-dns and harbor, no static key in KV. ESO writes it into the loki-r2
+# Secret as env-var-named keys (R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY)
+# consumed above. Lease 720h, refreshed at 240h; Reloader (singleBinary
+# annotations) restarts Loki onto the new keypair while the old one is valid.
 externalSecret:
   enabled: true
-  storeName: vault-backend
-  vaultKey: cluster/skylab/apps/loki
+  serviceAccount: loki-r2
+  vaultServer: "http://vault.vault.svc:8200"
+  vaultAuthMount: kubernetes
+  vaultRole: loki-r2
+  credsPath: "cloudflare/creds/r2-loki"
+  refreshInterval: 240h

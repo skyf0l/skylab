@@ -54,3 +54,13 @@ resource "vault_policy" "harbor_r2_creds" {
   name   = "harbor-r2-creds"
   policy = file("policies/harbor_r2_creds.hcl")
 }
+
+resource "vault_policy" "thanos_r2_creds" {
+  name   = "thanos-r2-creds"
+  policy = file("policies/thanos_r2_creds.hcl")
+}
+
+resource "vault_policy" "loki_r2_creds" {
+  name   = "loki-r2-creds"
+  policy = file("policies/loki_r2_creds.hcl")
+}
