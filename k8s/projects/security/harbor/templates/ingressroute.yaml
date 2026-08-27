@@ -1,0 +1,25 @@
+{{- if .Values.ingress.enabled }}
+# PUBLIC route, path-scoped ON PURPOSE: only the OCI surface (/v2/) and the
+# token endpoint it redirects to are routed. The portal, /api/ and /c/ (login,
+# OIDC) are NOT — the UI cannot even be reached from the internet. Admin
+# access is tailnet-only through headscale-proxy (harbor.tail.<domain>).
+# Uploads stream through Traefik unbuffered; the chart's nginx sets
+# client_max_body_size 0, so layer size is not capped anywhere on the path.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: harbor-public
+  labels:
+    app.kubernetes.io/part-of: harbor
+spec:
+  entryPoints:
+    - {{ .Values.ingress.entryPoint }}
+  routes:
+    - kind: Rule
+      match: Host(`{{ .Values.host }}`) && (PathPrefix(`/v2/`) || Path(`/service/token`))
+      services:
+        - name: harbor
+          port: 80
+  tls:
+    secretName: {{ .Values.ingress.tlsSecretName }}
+{{- end }}

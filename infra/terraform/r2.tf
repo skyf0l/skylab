@@ -36,3 +36,14 @@ resource "cloudflare_r2_bucket" "stalwart_pg" {
     prevent_destroy = true
   }
 }
+
+# Harbor registry blobs (image layers, scan artifacts). NEW — create this one,
+# then mint an R2 token scoped to it for kvv2/cluster/skylab/apps/harbor.
+resource "cloudflare_r2_bucket" "harbor" {
+  account_id = var.cloudflare_account_id
+  name       = "skylab-harbor"
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
