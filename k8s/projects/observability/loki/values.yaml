@@ -34,9 +34,15 @@ loki:
       ingestion_burst_size_mb: 16
       # Generous label/stream limits for a whole-cluster scrape.
       max_label_names_per_series: 30
+      # Accept delete requests (POST /loki/api/v1/delete) so streams that are no
+      # longer collected can be purged from R2 instead of aging out over 30d.
+      deletion_mode: filter-and-delete
     compactor:
       retention_enabled: true
       delete_request_store: s3
+      # Grace period during which a delete request can still be cancelled
+      # before the compactor processes it (default 24h).
+      delete_request_cancel_period: 1h
 
   singleBinary:
     replicas: 1
