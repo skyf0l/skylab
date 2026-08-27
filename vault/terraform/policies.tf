@@ -45,6 +45,11 @@ resource "vault_policy" "stalwart_backup_creds" {
   policy = file("policies/stalwart_backup_creds.hcl")
 }
 
+resource "vault_policy" "keycloak_backup_creds" {
+  name   = "keycloak-backup-creds"
+  policy = file("policies/keycloak_backup_creds.hcl")
+}
+
 resource "vault_policy" "cert_manager_cf_creds" {
   name   = "cert-manager-cf-creds"
   policy = file("policies/cert_manager_cf_creds.hcl")

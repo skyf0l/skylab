@@ -208,6 +208,32 @@ resource "vault_generic_endpoint" "cloudflare_role_r2_harbor" {
   })
 }
 
+# Keycloak Postgres backups (CNPG barman -> R2). Scoped to the one bucket. Short
+# lease like the stalwart role: barman re-reads the mounted secret per invocation,
+# so ESO can refresh (8h) well inside the 24h lease with no restart.
+resource "vault_generic_endpoint" "cloudflare_role_r2_keycloak_backup" {
+  depends_on           = [vault_mount.cloudflare]
+  path                 = "cloudflare/role/r2-keycloak-backup"
+  disable_read         = true # plugin canonicalises policies JSON; avoid perpetual diffs
+  disable_delete       = false
+  ignore_absent_fields = true
+
+  data_json = jsonencode({
+    token_type        = "account"
+    r2_s3_credentials = true
+    ttl               = "24h"
+    max_ttl           = "48h"
+    request_ip_in     = var.cloudflare_dns_token_request_ips
+    policies = jsonencode([{
+      effect            = "allow"
+      permission_groups = [{ name = "Workers R2 Storage Bucket Item Write" }]
+      resources = {
+        "com.cloudflare.edge.r2.bucket.${var.cloudflare_account_id}_default_skylab-keycloak-pg" = "*"
+      }
+    }])
+  })
+}
+
 # --- Ongoing parent-token rotation ---------------------------------------------
 # The initial roll happens once at seed time (CLI, see README). This grants the
 # rotation CronJob (k8s/projects/bootstrap/vault templates) permission to roll

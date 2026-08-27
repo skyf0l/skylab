@@ -82,6 +82,26 @@ resource "vault_kubernetes_auth_backend_role" "stalwart_backup" {
   token_max_ttl = 90000
 }
 
+# Keycloak CNPG backups: the ESO VaultDynamicSecret generator leases R2 S3
+# credentials as a dedicated SA in the keycloak namespace (namespaced generator,
+# so it cannot use the external-secrets SA cross-namespace).
+resource "vault_kubernetes_auth_backend_role" "keycloak_backup" {
+  backend   = vault_auth_backend.kubernetes.path
+  role_name = "keycloak-backup"
+
+  bound_service_account_names      = ["keycloak-backup"]
+  bound_service_account_namespaces = ["keycloak"]
+
+  token_policies = [
+    vault_policy.keycloak_backup_creds.name
+  ]
+
+  # Keep the auth token alive longer than the R2 role's ttl (24h) so the lease
+  # lives its full life; ESO refreshes (8h) well inside that, with overlap.
+  token_ttl     = 90000 # 25h
+  token_max_ttl = 90000
+}
+
 # Thanos R2 credentials: the ESO VaultDynamicSecret generator leases an R2 S3
 # keypair as a dedicated SA in the monitoring namespace (namespaced generator, so
 # it cannot use the external-secrets SA cross-namespace).
