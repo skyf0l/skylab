@@ -76,10 +76,19 @@ externalSecret:
   storeName: vault-backend
   vaultKey: cluster/skylab/apps/keycloak
 
-# Postgres backup to R2 (Barman), gated — flip on once the bucket + R2 token exist.
+# Postgres backup to R2 (Barman), gated — flip on once the bucket exists.
 backup:
   enabled: false
   retentionPolicy: "14d"
   scheduleCron: "0 3 * * *"
-  destinationPath: ""
-  endpointURL: ""
+  destinationPath: "" # s3://<bucket>/<path>, per-cluster
+  endpointURL: "" # https://<account>.r2.cloudflarestorage.com, per-cluster
+  # R2 S3 credentials minted by Vault's cloudflare engine (r2-keycloak-backup
+  # role) and leased by the ESO generator — same model as the stalwart backups,
+  # no static key in KV.
+  serviceAccount: keycloak-backup
+  vaultServer: "http://vault.vault.svc:8200"
+  vaultAuthMount: kubernetes
+  vaultRole: keycloak-backup
+  credsPath: "cloudflare/creds/r2-keycloak-backup"
+  refreshInterval: 8h

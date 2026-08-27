@@ -47,3 +47,14 @@ resource "cloudflare_r2_bucket" "harbor" {
     prevent_destroy = true
   }
 }
+
+# Keycloak Postgres backups (barman WAL + base backups). Created ahead of use —
+# flip backup.enabled in the keycloak chart and point it at this bucket.
+resource "cloudflare_r2_bucket" "keycloak_pg" {
+  account_id = var.cloudflare_account_id
+  name       = "skylab-keycloak-pg"
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}

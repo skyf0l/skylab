@@ -131,14 +131,12 @@ echo "[garmin-mcp] ${KV_MOUNT}/${garmin}"
 seed_field "$garmin" garmin_tokens garmin_tokens_placeholder
 
 # keycloak — kvv2/cluster/<cluster>/apps/keycloak
-# Bootstrap-admin password (random, set-once). The DB credential is NOT here — CNPG
-# owns it via the keycloak-pg-app secret. r2_*: PLACEHOLDER, only needed if you flip
-# backup.enabled: true for the keycloak-pg Postgres backups.
+# Bootstrap-admin password (random, set-once). NOT here: the DB credential (CNPG
+# owns it via the keycloak-pg-app secret) and the backup R2 keypair (minted by the
+# cloudflare engine's r2-keycloak-backup role, leased via ESO).
 keycloak="cluster/${CLUSTER}/apps/keycloak"
 echo "[keycloak] ${KV_MOUNT}/${keycloak}"
 seed_field "$keycloak" admin_password        rand_secret
-seed_field "$keycloak" r2_access_key_id      replace_me
-seed_field "$keycloak" r2_secret_access_key  replace_me
 
 # harbor — kvv2/cluster/<cluster>/apps/harbor
 # Every secret the upstream chart would otherwise randomise per render. secretKey
