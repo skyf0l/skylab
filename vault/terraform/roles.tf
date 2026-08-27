@@ -82,6 +82,46 @@ resource "vault_kubernetes_auth_backend_role" "stalwart_backup" {
   token_max_ttl = 90000
 }
 
+# Thanos R2 credentials: the ESO VaultDynamicSecret generator leases an R2 S3
+# keypair as a dedicated SA in the monitoring namespace (namespaced generator, so
+# it cannot use the external-secrets SA cross-namespace).
+resource "vault_kubernetes_auth_backend_role" "thanos_r2" {
+  backend   = vault_auth_backend.kubernetes.path
+  role_name = "thanos-r2"
+
+  bound_service_account_names      = ["thanos-r2"]
+  bound_service_account_namespaces = ["monitoring"]
+
+  token_policies = [
+    vault_policy.thanos_r2_creds.name
+  ]
+
+  # Outlive the engine role's 720h ttl so the lease runs its full life (child
+  # leases die with the auth token); ESO refreshes (240h) well inside it.
+  token_ttl     = 2678400 # 31d
+  token_max_ttl = 2678400
+}
+
+# Loki R2 credentials: the ESO VaultDynamicSecret generator leases an R2 S3
+# keypair as a dedicated SA in the logging namespace (namespaced generator, so
+# it cannot use the external-secrets SA cross-namespace).
+resource "vault_kubernetes_auth_backend_role" "loki_r2" {
+  backend   = vault_auth_backend.kubernetes.path
+  role_name = "loki-r2"
+
+  bound_service_account_names      = ["loki-r2"]
+  bound_service_account_namespaces = ["logging"]
+
+  token_policies = [
+    vault_policy.loki_r2_creds.name
+  ]
+
+  # Outlive the engine role's 720h ttl so the lease runs its full life (child
+  # leases die with the auth token); ESO refreshes (240h) well inside it.
+  token_ttl     = 2678400 # 31d
+  token_max_ttl = 2678400
+}
+
 # Harbor registry R2 credentials: the ESO VaultDynamicSecret generator leases an
 # R2 S3 keypair as a dedicated SA in the harbor namespace (namespaced generator,
 # so it cannot use the external-secrets SA cross-namespace).

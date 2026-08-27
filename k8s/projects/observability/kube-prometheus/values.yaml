@@ -248,6 +248,12 @@ kube-prometheus-stack:
         - /etc/alertmanager/config/*.tmpl
 
   prometheus:
+    # Annotations on the Prometheus CR are inherited by the StatefulSet the
+    # operator builds from it: this lets Reloader roll Prometheus when the
+    # thanos-objstore Secret rotates (the sidecar reads its R2 keypair at start;
+    # the ESO generator refreshes it every 240h, see the thanos chart).
+    annotations:
+      secret.reloader.stakater.com/reload: thanos-objstore
     # Headless service exposing the Thanos sidecar's gRPC (10901) so Thanos Query
     # can discover this Prometheus as a store. The thanos chart's query --endpoint
     # uses dnssrv+ against this service; verify its name with:

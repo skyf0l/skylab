@@ -27,14 +27,21 @@ objstore:
   endpoint: "" # per-cluster, <accountid>.r2.cloudflarestorage.com (NO https:// scheme)
   region: auto
 
-# ESO projects the R2 token from Vault into the thanos-objstore Secret, templated
-# into a full Thanos objstore.yml. The apps/* read policy already covers this path
-# (no Vault Terraform change needed).
+# R2 credentials are an S3 keypair minted by Vault's cloudflare engine (r2-thanos
+# role, bucket-scoped) and leased by the ESO generator — same model as
+# external-dns and harbor, no static key in KV. ESO templates it into a full
+# objstore.yml in the thanos-objstore Secret. Every consumer (store, compactor,
+# the Prometheus sidecar) reads it at start, so each carries a Reloader
+# annotation on thanos-objstore: lease 720h, refreshed at 240h, i.e. one rolling
+# restart per ten days while the previous token is still valid.
 externalSecret:
   enabled: true
-  storeName: vault-backend
-  # kvv2/cluster/<cluster>/apps/thanos -> { r2_access_key_id, r2_secret_access_key }
-  vaultKey: cluster/skylab/apps/thanos
+  serviceAccount: thanos-r2
+  vaultServer: "http://vault.vault.svc:8200"
+  vaultAuthMount: kubernetes
+  vaultRole: thanos-r2
+  credsPath: "cloudflare/creds/r2-thanos"
+  refreshInterval: 240h
 
 query:
   replicas: 1
