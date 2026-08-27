@@ -1,0 +1,64 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: harbor
+  annotations:
+    # After ESO + its ClusterSecretStore, cert-manager and the cloudnative-pg operator
+    # (all core): the Cluster CR needs the CNPG CRDs, the Secrets need ESO.
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          # Auto updated by parent ApplicationSet
+          - list:
+              elements:
+                - name: skylab
+          - git:
+              repoURL: https://github.com/skyf0l/skylab.git
+              revision: main
+              files:
+                - path: clusters/{{.name }}/config.json
+  template:
+    metadata:
+      name: "{{.name}}-harbor"
+      labels:
+        app.kubernetes.io/part-of: security
+        skylab.dev/tier: platform
+      annotations:
+        argocd.argoproj.io/sync-wave: "2"
+    spec:
+      project: platform
+      source:
+        repoURL: "{{.repo.url}}"
+        targetRevision: "{{.repo.revision}}"
+        path: k8s/projects/security/harbor
+        helm:
+          releaseName: harbor
+          valueFiles:
+            - values.yaml
+            - values/{{.name}}.yaml
+          # Public OCI host derived from global.domain; the portal is tailnet-only.
+          parameters:
+            - name: "host"
+              value: "harbor.{{.global.domain}}"
+            - name: "harbor.externalURL"
+              value: "https://harbor.{{.global.domain}}"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: harbor
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - Validate=true
+          - PrunePropagationPolicy=foreground
+          - PruneLast=true
+          - RespectIgnoreDifferences=true
+          - ServerSideApply=true
+        retry:
+          limit: 10

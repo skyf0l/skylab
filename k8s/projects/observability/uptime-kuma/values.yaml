@@ -114,6 +114,12 @@ groups:
         name: Headscale (tailnet control plane)
         type: http
         url: "https://headscale.{{ .Values.global.domain }}/health"
+      - id: harbor
+        name: Harbor (OCI registry)
+        type: http
+        url: "https://harbor.{{ .Values.global.domain }}/v2/"
+        # Anonymous /v2/ answers 401 with the token realm; it's the route that counts.
+        accepted_statuscodes: ["200-299", "401"]
 
   - id: mail
     name: Mail
@@ -178,6 +184,15 @@ groups:
         name: Falcosidekick UI
         type: http
         url: http://falcosidekick-ui.falco:2802/
+      - id: harbor
+        name: Harbor
+        # /health is always 200; the overall status flips to "unhealthy" when any of
+        # core, database, redis, registry, jobservice or trivy fails its check.
+        type: json-query
+        url: http://harbor.harbor:80/api/v2.0/health
+        json_path: "$.status"
+        json_path_operator: "=="
+        expected_value: healthy
 
 # Same schema as `groups`, private by default (`public: false` -> reconciled
 # into Kuma, visible on the tailnet dashboard, never on the status page).

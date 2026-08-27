@@ -1,0 +1,184 @@
+# Harbor — registry for the cluster's own images (signed, scanned), ONE instance:
+#   harbor.<domain>       public, path-scoped IngressRoute: /v2/ + /service/token
+#                         only (push, pull, cosign, containerd) — no UI, no API
+#   harbor.tail.<domain>  portal + API + admin via headscale-proxy (tailnet-only)
+# State: Postgres on CloudNativePG (harbor-pg, CNPG owns the credential), Redis
+# from the chart (cache/job queue, ephemeral), blobs on R2 (values/<cluster>.yaml).
+# Every secret the upstream chart would otherwise randomise on each render is
+# pinned through ESO, or ArgoCD rotates it on every sync.
+
+# Injected by the ApplicationSet from the cluster's global.domain:
+#   host                -> harbor.<domain>, the public hostname
+#   harbor.externalURL  -> https://harbor.<domain> (token realm, OIDC callbacks)
+host: ""
+
+ingress:
+  enabled: true
+  entryPoint: websecure
+  clusterIssuer: letsencrypt-prod
+  tlsSecretName: harbor-tls
+
+# ESO: kvv2/cluster/skylab/apps/harbor (seed with vault/seed-secrets.sh).
+externalSecret:
+  storeName: vault-backend
+  vaultKey: cluster/skylab/apps/harbor
+
+# Registry blob storage on R2 via the S3 driver; coordinates per cluster in
+# values/<cluster>.yaml. Credentials are an R2 keypair minted by Vault's
+# cloudflare engine (r2-harbor role) and leased by the ESO generator — same
+# model as external-dns and the stalwart backups, no static key in KV. Lease
+# 168h, refreshed at 72h: the old token outlives the rolling restart by ~96h.
+objstore:
+  enabled: true
+  serviceAccount: harbor-r2
+  vaultServer: "http://vault.vault.svc:8200"
+  vaultAuthMount: kubernetes
+  vaultRole: harbor-r2
+  credsPath: "cloudflare/creds/r2-harbor"
+  refreshInterval: 72h
+
+postgres:
+  instances: 1
+  database: harbor
+  owner: harbor # CNPG creates this LOGIN role + the harbor-pg-app secret
+  storage:
+    size: 2Gi
+    storageClass: local-path
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+
+# Postgres backup to R2 (Barman), gated — flip on once the bucket + R2 token exist.
+backup:
+  enabled: false
+  retentionPolicy: "14d"
+  scheduleCron: "0 3 * * *"
+  destinationPath: ""
+  endpointURL: ""
+
+harbor:
+  externalURL: "" # set by app def -> https://harbor.<domain>
+
+  # TLS terminates at Traefik; the chart's nginx is the single in-cluster entry
+  # (portal on /, core on /api /c /v2 /service) behind the `harbor` Service.
+  expose:
+    type: clusterIP
+    tls:
+      enabled: false
+    clusterIP:
+      name: harbor
+      ports:
+        httpPort: 80
+  internalTLS:
+    enabled: false
+  ipFamily:
+    ipv6:
+      enabled: false
+
+  # ---- secrets: all from the ESO-managed `harbor` Secret (see externalsecret.yaml)
+  existingSecretAdminPassword: harbor
+  existingSecretAdminPasswordKey: HARBOR_ADMIN_PASSWORD
+  existingSecretSecretKey: harbor # key `secretKey`, exactly 16 chars
+  core:
+    existingSecret: harbor # key `secret`
+    existingXsrfSecret: harbor
+    existingXsrfSecretKey: CSRF_KEY
+    # Token-signing keypair (tls.crt/tls.key). Chart-generated ones are re-issued
+    # on every render; cert-manager keeps this one stable (certificate.yaml).
+    secretName: harbor-token
+    resources:
+      requests: {cpu: 100m, memory: 256Mi}
+      limits: {memory: 512Mi}
+  jobservice:
+    existingSecret: harbor
+    existingSecretKey: JOBSERVICE_SECRET
+    resources:
+      requests: {cpu: 50m, memory: 128Mi}
+      limits: {memory: 512Mi}
+  registry:
+    existingSecret: harbor
+    existingSecretKey: REGISTRY_HTTP_SECRET
+    credentials:
+      existingSecret: harbor # keys REGISTRY_PASSWD + REGISTRY_HTPASSWD
+    # Roll onto a rotated R2 keypair (rolling: the new pod is ready before the
+    # old one, still holding a valid lease, is stopped).
+    podAnnotations:
+      secret.reloader.stakater.com/reload: harbor-s3
+    registry:
+      resources:
+        requests: {cpu: 50m, memory: 128Mi}
+        limits: {memory: 512Mi}
+    controller:
+      resources:
+        requests: {cpu: 10m, memory: 64Mi}
+        limits: {memory: 256Mi}
+  portal:
+    resources:
+      requests: {cpu: 10m, memory: 32Mi}
+      limits: {memory: 128Mi}
+  nginx:
+    resources:
+      requests: {cpu: 10m, memory: 32Mi}
+      limits: {memory: 128Mi}
+
+  database:
+    type: external
+    external:
+      host: harbor-pg-rw
+      port: "5432"
+      username: harbor
+      coreDatabase: harbor
+      existingSecret: harbor-pg-app # CNPG-generated, key `password`
+      sslmode: disable
+
+  redis:
+    type: internal
+    internal:
+      resources:
+        requests: {cpu: 20m, memory: 64Mi}
+        limits: {memory: 256Mi}
+
+  # Scan on push (Trivy). DB updates pull from GHCR at start; keep skipUpdate off.
+  trivy:
+    enabled: true
+    resources:
+      requests: {cpu: 100m, memory: 256Mi}
+      limits: {memory: 1Gi}
+
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+  exporter:
+    resources:
+      requests: {cpu: 10m, memory: 32Mi}
+      limits: {memory: 128Mi}
+
+  persistence:
+    enabled: true
+    resourcePolicy: keep
+    persistentVolumeClaim:
+      jobservice:
+        jobLog:
+          size: 1Gi
+          storageClass: local-path
+      redis:
+        size: 1Gi
+        storageClass: local-path
+      trivy:
+        size: 5Gi
+        storageClass: local-path
+    imageChartStorage:
+      type: s3
+      # Serve blobs through the registry rather than redirecting clients to
+      # presigned R2 URLs: one code path for the public route and containerd.
+      disableredirect: true
+      s3:
+        existingSecret: harbor-s3 # REGISTRY_STORAGE_S3_ACCESSKEY / _SECRETKEY
+        region: auto
+        secure: true
+        v4auth: true
+        # bucket + regionendpoint: values/<cluster>.yaml

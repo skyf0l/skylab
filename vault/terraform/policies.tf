@@ -49,3 +49,8 @@ resource "vault_policy" "cert_manager_cf_creds" {
   name   = "cert-manager-cf-creds"
   policy = file("policies/cert_manager_cf_creds.hcl")
 }
+
+resource "vault_policy" "harbor_r2_creds" {
+  name   = "harbor-r2-creds"
+  policy = file("policies/harbor_r2_creds.hcl")
+}

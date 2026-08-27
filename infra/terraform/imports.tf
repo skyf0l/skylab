@@ -9,13 +9,14 @@
 # After the first successful apply these blocks are inert no-ops; leave them
 # (harmless, self-documenting) or delete them.
 #
-# R2 bucket import id is "<account_id>/<bucket_name>".
+# R2 bucket import id is "<account_id>/<bucket_name>/<jurisdiction>" (provider v5);
+# both buckets were created without a jurisdiction, i.e. "default".
 import {
   to = cloudflare_r2_bucket.loki
-  id = "2620dc6ee3d578b27347d8e5efd95f32/skylab-loki"
+  id = "2620dc6ee3d578b27347d8e5efd95f32/skylab-loki/default"
 }
 
 import {
   to = cloudflare_r2_bucket.thanos
-  id = "2620dc6ee3d578b27347d8e5efd95f32/skylab-thanos"
+  id = "2620dc6ee3d578b27347d8e5efd95f32/skylab-thanos/default"
 }

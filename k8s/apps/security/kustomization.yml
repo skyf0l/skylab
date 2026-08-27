@@ -4,3 +4,4 @@ resources:
   - apps/trivy.yaml
   - apps/falco-operator.yaml
   - apps/falco.yaml
+  - apps/harbor.yaml

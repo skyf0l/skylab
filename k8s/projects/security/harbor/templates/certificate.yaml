@@ -1,0 +1,46 @@
+{{- if .Values.ingress.enabled }}
+# Explicit CR: the public route is an IngressRoute (path-scoped), which the
+# cert-manager ingress-shim does not handle.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: harbor
+  labels:
+    app.kubernetes.io/part-of: harbor
+spec:
+  secretName: {{ .Values.ingress.tlsSecretName }}
+  issuerRef:
+    name: {{ .Values.ingress.clusterIssuer }}
+    kind: ClusterIssuer
+  dnsNames:
+    - {{ .Values.host | quote }}
+{{- end }}
+---
+# Keypair core uses to sign registry bearer tokens (never served to clients).
+# The chart would generate a fresh self-signed one on every render; a
+# namespaced self-signed Issuer keeps it stable across syncs.
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: harbor-selfsigned
+  labels:
+    app.kubernetes.io/part-of: harbor
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: harbor-token
+  labels:
+    app.kubernetes.io/part-of: harbor
+spec:
+  secretName: harbor-token
+  issuerRef:
+    name: harbor-selfsigned
+    kind: Issuer
+  commonName: harbor-token
+  duration: 87600h
+  privateKey:
+    algorithm: RSA
+    size: 4096

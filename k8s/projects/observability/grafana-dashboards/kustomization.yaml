@@ -72,6 +72,13 @@ configMapGenerator:
   - name: grafana-dashboard-keda-operator
     files:
       - json/22111-keda-operator.json
+  # https://grafana.com/grafana/dashboards/19716-harbor-overview — revision 1 (classic
+  # schema; revision 2 is the same board re-exported as dashboard.grafana.app/v2, which
+  # the file sidecar does not load). Datasource pinned to uid "prometheus", job matcher
+  # set to "harbor" (the ServiceMonitor's jobLabel is app.kubernetes.io/name).
+  - name: grafana-dashboard-harbor
+    files:
+      - json/19716-harbor-overview.json
   # https://github.com/falcosecurity/charts/blob/master/charts/falcosidekick/dashboards/falcosidekick-loki-dashboard.json
   # Falco events browser over Loki (the falcosidekick chart used to ship it; the
   # falco stack is now operator-managed and ships no dashboards).

@@ -82,6 +82,26 @@ resource "vault_kubernetes_auth_backend_role" "stalwart_backup" {
   token_max_ttl = 90000
 }
 
+# Harbor registry R2 credentials: the ESO VaultDynamicSecret generator leases an
+# R2 S3 keypair as a dedicated SA in the harbor namespace (namespaced generator,
+# so it cannot use the external-secrets SA cross-namespace).
+resource "vault_kubernetes_auth_backend_role" "harbor_r2" {
+  backend   = vault_auth_backend.kubernetes.path
+  role_name = "harbor-r2"
+
+  bound_service_account_names      = ["harbor-r2"]
+  bound_service_account_namespaces = ["harbor"]
+
+  token_policies = [
+    vault_policy.harbor_r2_creds.name
+  ]
+
+  # Outlive the engine role's 168h ttl so the lease runs its full life (child
+  # leases die with the auth token); ESO refreshes (72h) well inside it.
+  token_ttl     = 691200 # 8d
+  token_max_ttl = 691200
+}
+
 # cert-manager DNS-01 solver credentials. The ESO VaultDynamicSecret generator
 # is namespaced, so it authenticates as a dedicated SA in the cert-manager
 # namespace. Replaces the hand-created, single-zone Cloudflare token.

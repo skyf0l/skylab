@@ -40,7 +40,9 @@ done
 vault token lookup >/dev/null 2>&1 || { echo "error: VAULT_TOKEN is invalid or Vault is unreachable" >&2; exit 1; }
 
 # ----- generators ------------------------------------------------------------
-rand_secret() { openssl rand -hex 32; }            # 64 hex chars (>= Authelia's 64-char minimums)
+rand_secret() { openssl rand -hex 32; }
+rand_hex16()  { openssl rand -hex 8; }             # 16 chars (Harbor secretKey)
+rand_hex32()  { openssl rand -hex 16; }            # 32 chars (Harbor CSRF key)            # 64 hex chars (>= Authelia's 64-char minimums)
 rsa_key()     { openssl genrsa 4096 2>/dev/null; } # OIDC JWKS signing key (PEM)
 
 authelia_users_placeholder() {
@@ -161,6 +163,21 @@ echo "[keycloak] ${KV_MOUNT}/${keycloak}"
 seed_field "$keycloak" admin_password        rand_secret
 seed_field "$keycloak" r2_access_key_id      replace_me
 seed_field "$keycloak" r2_secret_access_key  replace_me
+
+# harbor — kvv2/cluster/<cluster>/apps/harbor
+# Every secret the upstream chart would otherwise randomise per render. secretKey
+# MUST be 16 chars and csrf_key 32 (Harbor validates both). NOT here: the DB
+# credential (CNPG owns it via the harbor-pg-app secret) and the R2 keypair (minted
+# by the cloudflare engine's r2-harbor role, leased via ESO).
+harbor="cluster/${CLUSTER}/apps/harbor"
+echo "[harbor] ${KV_MOUNT}/${harbor}"
+seed_field "$harbor" admin_password        rand_secret
+seed_field "$harbor" secret_key            rand_hex16
+seed_field "$harbor" core_secret           rand_secret
+seed_field "$harbor" csrf_key              rand_hex32
+seed_field "$harbor" jobservice_secret     rand_secret
+seed_field "$harbor" registry_http_secret  rand_secret
+seed_field "$harbor" registry_password     rand_secret
 
 # grafana — kvv2/cluster/<cluster>/apps/grafana
 # OIDC client secret shared by the Keycloak `grafana` client (substituted into the realm

@@ -1,0 +1,57 @@
+# CloudNativePG Cluster for Harbor (see [[cloudnativepg-postgres-pattern]]). CNPG
+# reconciles this into a Postgres instance + harbor-pg-rw/-ro/-r services, a
+# PodMonitor (native metrics), and — when backup is on — WAL archiving to R2. CNPG
+# creates the `harbor` owner LOGIN role and stores its credentials in the
+# auto-generated `harbor-pg-app` secret, which the upstream chart consumes directly
+# (database.external.existingSecret, key `password`) — no DB password in Vault.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: harbor-pg
+  labels:
+    app.kubernetes.io/part-of: harbor
+spec:
+  instances: {{ .Values.postgres.instances }}
+  storage:
+    size: {{ .Values.postgres.storage.size }}
+    storageClass: {{ .Values.postgres.storage.storageClass }}
+  monitoring:
+    enablePodMonitor: true
+  bootstrap:
+    initdb:
+      database: {{ .Values.postgres.database }}
+      owner: {{ .Values.postgres.owner }}
+      postInitApplicationSQL:
+        - GRANT ALL ON SCHEMA public TO {{ .Values.postgres.owner }};
+        - ALTER SCHEMA public OWNER TO {{ .Values.postgres.owner }};
+  resources: {{- toYaml .Values.postgres.resources | nindent 4 }}
+  {{- if .Values.backup.enabled }}
+  backup:
+    retentionPolicy: {{ .Values.backup.retentionPolicy | quote }}
+    barmanObjectStore:
+      destinationPath: {{ .Values.backup.destinationPath | quote }}
+      endpointURL: {{ .Values.backup.endpointURL | quote }}
+      s3Credentials:
+        accessKeyId:
+          name: harbor-pg-backup
+          key: ACCESS_KEY_ID
+        secretAccessKey:
+          name: harbor-pg-backup
+          key: ACCESS_SECRET_KEY
+      wal:
+        compression: gzip
+  {{- end }}
+{{- if .Values.backup.enabled }}
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: harbor-pg-daily
+  labels:
+    app.kubernetes.io/part-of: harbor
+spec:
+  schedule: {{ .Values.backup.scheduleCron | quote }}
+  backupOwnerReference: self
+  cluster:
+    name: harbor-pg
+{{- end }}

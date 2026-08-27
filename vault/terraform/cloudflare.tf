@@ -125,6 +125,35 @@ resource "vault_generic_endpoint" "cloudflare_role_r2_stalwart_backup" {
   })
 }
 
+# Harbor registry blobs (distribution S3 driver -> R2). Scoped to the one bucket
+# (per-bucket resource id, unlike the account-wide roles above). Long lease on
+# purpose: the registry reads the keypair from its environment at start, so every
+# rotation is a Reloader-driven rolling restart — one every few days, not three a
+# day. ESO refreshes at 72h, well inside the 168h lease, so the old token stays
+# valid for ~96h after the new one is in the Secret.
+resource "vault_generic_endpoint" "cloudflare_role_r2_harbor" {
+  depends_on           = [vault_mount.cloudflare]
+  path                 = "cloudflare/role/r2-harbor"
+  disable_read         = true # plugin canonicalises policies JSON; avoid perpetual diffs
+  disable_delete       = false
+  ignore_absent_fields = true
+
+  data_json = jsonencode({
+    token_type        = "account"
+    r2_s3_credentials = true
+    ttl               = "168h"
+    max_ttl           = "336h"
+    request_ip_in     = var.cloudflare_dns_token_request_ips
+    policies = jsonencode([{
+      effect            = "allow"
+      permission_groups = [{ name = "Workers R2 Storage Bucket Item Write" }]
+      resources = {
+        "com.cloudflare.edge.r2.bucket.${var.cloudflare_account_id}_default_skylab-harbor" = "*"
+      }
+    }])
+  })
+}
+
 # --- Ongoing parent-token rotation ---------------------------------------------
 # The initial roll happens once at seed time (CLI, see README). This grants the
 # rotation CronJob (k8s/projects/bootstrap/vault templates) permission to roll
