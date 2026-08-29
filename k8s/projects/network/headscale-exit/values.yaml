@@ -40,5 +40,5 @@ authkeyMint:
   user: ""
   headscaleNamespace: headscale
   headscalePod: headscale-0
-  jobImage: alpine/kubectl:1.36.4
+  jobImage: alpine/kubectl:1.37.0
   expiration: 999d
