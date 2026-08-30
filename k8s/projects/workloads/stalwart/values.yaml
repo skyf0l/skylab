@@ -10,7 +10,7 @@
 # the web-admin is runtime state, not git.
 image:
   repository: stalwartlabs/stalwart
-  tag: v0.16.19
+  tag: v0.16.20
   pullPolicy: IfNotPresent
 
 # Injected by the ApplicationSet from the cluster's global.domain:
