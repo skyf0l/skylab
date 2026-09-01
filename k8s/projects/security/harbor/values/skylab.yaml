@@ -1,6 +1,6 @@
 # Per-cluster R2 coordinates for skylab. The access key/secret are NOT here —
 # they come from Vault via ESO (kvv2/cluster/skylab/apps/harbor). Same R2
-# account as thanos/loki, own bucket (infra/terraform/r2.tf).
+# account as thanos/loki, own bucket (terraform/cloudflare/r2.tf).
 harbor:
   persistence:
     imageChartStorage:

@@ -2,7 +2,7 @@
 # =============================================================================
 # Seed bootstrap secrets into Vault.
 #
-# Terraform (vault/terraform, applied by the Vault GitHub Action) creates the
+# Terraform (terraform/vault, applied by the Vault GitHub Action) creates the
 # *structure*: mounts, auth backends, policies, roles. It does NOT hold secret
 # values. This script seeds the *values* that apps expect to exist before their
 # ExternalSecret can sync — so a fresh cluster comes up clean instead of ESO
@@ -22,7 +22,7 @@
 #
 #   export VAULT_ADDR=https://vault.skyf0l.dev:8200
 #   export VAULT_TOKEN=<root-or-admin-token>
-#   ./vault/seed-secrets.sh
+#   ./scripts/seed-secrets.sh
 #
 # Optional: CLUSTER=skylab (default) selects the kvv2/cluster/<CLUSTER>/* prefix.
 # =============================================================================

@@ -121,7 +121,7 @@ autodiscovery: true
 #                     the provisioning job's Basic auth — a hash cannot
 #                     authenticate a client). The only field to fill by hand.
 #   metrics_password  Basic auth for the Prometheus endpoint (random, seeded by
-#                     vault/seed-secrets.sh); the server reads it from the
+#                     scripts/seed-secrets.sh); the server reads it from the
 #                     STALWART_METRICS_SECRET env, the ServiceMonitor from the
 #                     same Secret.
 # Mailbox passwords are deliberately NOT here: accounts are provisioned without

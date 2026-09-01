@@ -18,7 +18,7 @@ ingress:
   clusterIssuer: letsencrypt-prod
   tlsSecretName: harbor-tls
 
-# ESO: kvv2/cluster/skylab/apps/harbor (seed with vault/seed-secrets.sh).
+# ESO: kvv2/cluster/skylab/apps/harbor (seed with scripts/seed-secrets.sh).
 externalSecret:
   storeName: vault-backend
   vaultKey: cluster/skylab/apps/harbor

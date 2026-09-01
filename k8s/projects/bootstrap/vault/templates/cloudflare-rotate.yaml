@@ -1,6 +1,6 @@
 # Ongoing rotation of the Cloudflare parent token. A monthly CronJob authenticates
 # via the existing Kubernetes auth backend (role "cloudflare-rotate", created in
-# vault/terraform/cloudflare.tf) and rolls the parent token's value in place. No
+# terraform/vault/cloudflare.tf) and rolls the parent token's value in place. No
 # secret is stored anywhere; the job only holds the "cloudflare-rotate-root"
 # policy (update on cloudflare/config/rotate-root).
 apiVersion: v1

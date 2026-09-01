@@ -87,7 +87,7 @@ vault-unseal:
 	cd $(ANSIBLE_DIR) && ansible-playbook -i $(LAB_INV) playbooks/skylab/unseal.yml
 
 # --- Vault config (terraform + secret values) ------------------------------
-# The GitHub Action applies the terraform on push to vault/** (OIDC + R2 state).
+# The GitHub Action applies the terraform on push to terraform/vault/** (OIDC + R2 state).
 # These are the local/manual escape hatch: set VAULT_ADDR + VAULT_TOKEN (an
 # admin/root token) first; the R2 state-backend creds are pulled from Vault.
 
@@ -95,18 +95,18 @@ vault-unseal:
 # their ExternalSecret can sync). Idempotent — never clobbers an existing field.
 vault-seed:
 	@: "$${VAULT_ADDR:?set VAULT_ADDR}" "$${VAULT_TOKEN:?set VAULT_TOKEN}"
-	CLUSTER=$(CLUSTER) bash vault/seed-secrets.sh
+	CLUSTER=$(CLUSTER) bash scripts/seed-secrets.sh
 
 # terraform plan the Vault config (read-only; safe to run anytime).
 vault-plan:
 	@: "$${VAULT_ADDR:?set VAULT_ADDR}" "$${VAULT_TOKEN:?set VAULT_TOKEN}"
-	cd vault/terraform && $(TF_R2_CREDS) terraform init -input=false && terraform plan
+	cd terraform/vault && $(TF_R2_CREDS) terraform init -input=false && terraform plan
 
 # terraform apply the Vault config: mounts, auth backends, policies, roles, and
 # the database secrets engine. Interactive approval (no -auto-approve).
 vault-apply:
 	@: "$${VAULT_ADDR:?set VAULT_ADDR}" "$${VAULT_TOKEN:?set VAULT_TOKEN}"
-	cd vault/terraform && $(TF_R2_CREDS) terraform init -input=false && terraform apply
+	cd terraform/vault && $(TF_R2_CREDS) terraform init -input=false && terraform apply
 
 # Force ArgoCD to re-pull GitHub immediately (hard refresh every app), instead of
 # waiting for the per-tier ~3min reconcile to cascade through the app-of-apps.
@@ -181,13 +181,13 @@ validate: validate-schema validate-policy
 # or R2 state needed (`-backend=false`). Mirrors the CI `terraform` job, so a
 # provider bump (e.g. vault v4 -> v5) is caught locally the same way. Uses an
 # isolated TF_DATA_DIR so it ignores any real backend already initialized under
-# vault/terraform/.terraform (which would make validate try to read R2 state).
+# terraform/vault/.terraform (which would make validate try to read R2 state).
 tf-validate:
-	@cd vault/terraform && terraform fmt -check -recursive
+	@cd terraform/vault && terraform fmt -check -recursive
 	@# VAULT_ADDR is only to satisfy the provider's required `address` during the
 	@# offline validate (skip_child_token makes the block non-empty, so terraform
 	@# enforces it). validate never connects, so a dummy value is fine.
-	@d=$$(mktemp -d); cd vault/terraform \
+	@d=$$(mktemp -d); cd terraform/vault \
 	  && VAULT_ADDR=https://vault.invalid TF_DATA_DIR=$$d terraform init -backend=false -input=false >/dev/null \
 	  && VAULT_ADDR=https://vault.invalid TF_DATA_DIR=$$d terraform validate; rc=$$?; rm -rf "$$d"; exit $$rc
 

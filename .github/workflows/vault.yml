@@ -16,12 +16,12 @@ on:
   pull_request:
     branches: ["main"]
     paths:
-      - "vault/**"
+      - "terraform/vault/**"
       - ".github/workflows/vault.yml"
   push:
     branches: ["main"]
     paths:
-      - "vault/**"
+      - "terraform/vault/**"
       - ".github/workflows/vault.yml"
   workflow_dispatch:
 
@@ -45,7 +45,7 @@ env:
   HEADSCALE_URL: https://headscale.skyf0l.dev
   TF_IN_AUTOMATION: "1"
   TF_INPUT: "false"
-  WORKING_DIRECTORY: vault/terraform
+  WORKING_DIRECTORY: terraform/vault
 
 jobs:
   # PR plan — joins the tailnet, authenticates with the read-only `tf-plan` role.
