@@ -1,2 +1,8 @@
 # Skylab overrides. host/domain/publicIp all derive from
 # clusters/skylab/config.json via the ApplicationSet — nothing to set here.
+
+# Postgres backups to the skylab-stalwart-pg R2 bucket (terraform/cloudflare).
+backup:
+  enabled: true
+  destinationPath: "s3://skylab-stalwart-pg/stalwart-pg"
+  endpointURL: "https://2620dc6ee3d578b27347d8e5efd95f32.r2.cloudflarestorage.com"

@@ -39,6 +39,7 @@ spec:
           releaseName: keycloak
           valueFiles:
             - values.yaml
+            - values/{{.name}}.yaml
           # Public OIDC host + tailnet-only admin host, derived from global.domain.
           parameters:
             - name: "host"
