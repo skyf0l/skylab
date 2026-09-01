@@ -4,5 +4,5 @@
 # Postgres backups to the skylab-keycloak-pg R2 bucket (terraform/cloudflare).
 backup:
   enabled: true
-  destinationPath: "s3://skylab-keycloak-pg/keycloak-pg"
+  destinationPath: "s3://skylab-keycloak-pg" # barman appends the serverName (keycloak-pg) itself
   endpointURL: "https://2620dc6ee3d578b27347d8e5efd95f32.r2.cloudflarestorage.com"
