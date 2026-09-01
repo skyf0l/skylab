@@ -1,0 +1,134 @@
+# Cloudflare account infrastructure (Terraform: terraform/cloudflare — R2 buckets).
+# Same shape as vault.yml: join the tailnet as tag:ci, GitHub-OIDC -> Vault for the
+# R2 state keypair — plus a Vault-minted Cloudflare token (cloudflare engine roles
+# r2-read for plans, r2-admin for applies; 30m lease, dies with the job's Vault
+# token). No personal Cloudflare token anywhere.
+#
+# Ordering with vault.yml: the roles/policies this consumes live in terraform/vault,
+# so a change touching both lands the Vault apply first (this one just fails and is
+# re-run via workflow_dispatch — both workflows are idempotent).
+name: Cloudflare
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "terraform/cloudflare/**"
+      - ".github/workflows/cloudflare.yml"
+  push:
+    branches: ["main"]
+    paths:
+      - "terraform/cloudflare/**"
+      - ".github/workflows/cloudflare.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # OIDC
+  pull-requests: write
+
+# Serialize applies — the R2 backend has no state locking, so two concurrent
+# runs could corrupt state.
+concurrency:
+  group: cloudflare-terraform
+  cancel-in-progress: false
+
+env:
+  VAULT_ADDR: https://vault.tail.skyf0l.dev
+  HEADSCALE_URL: https://headscale.skyf0l.dev
+  TF_IN_AUTOMATION: "1"
+  TF_INPUT: "false"
+  WORKING_DIRECTORY: terraform/cloudflare
+
+jobs:
+  # PR plan — read-only everywhere: tf-plan Vault role, r2-read Cloudflare token.
+  plan:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v4
+
+      - name: Join tailnet (Headscale)
+        uses: tailscale/github-action@v4
+        with:
+          authkey: ${{ secrets.HEADSCALE_CI_AUTHKEY }}
+          hostname: gha-cloudflare-ci
+          args: --login-server=${{ env.HEADSCALE_URL }} --accept-dns
+
+      - name: Import Secrets
+        uses: hashicorp/vault-action@v4
+        with:
+          url: ${{ env.VAULT_ADDR }}
+          exportToken: true # Required by terraform
+          method: jwt
+          role: tf-plan
+          secrets: |
+            kvv2/data/cicd/cloudflare-tfstates AWS_ACCESS_KEY_ID ;
+            kvv2/data/cicd/cloudflare-tfstates AWS_SECRET_ACCESS_KEY ;
+            cloudflare/creds/r2-read token | CLOUDFLARE_API_TOKEN ;
+
+      - run: terraform init -input=false
+      - run: terraform validate
+      - name: Plan
+        run: terraform plan -out .planfile
+
+      - name: Comment plan
+        uses: borchero/terraform-plan-comment@v3
+        with:
+          token: ${{ github.token }}
+          header: Cloudflare Plan
+          planfile: .planfile
+          working-directory: ${{ env.WORKING_DIRECTORY }}
+
+      - name: Revoke token
+        if: always()
+        run: |
+          curl -X POST -sv -H "X-Vault-Token: ${{ env.VAULT_TOKEN }}" ${{ env.VAULT_ADDR }}/v1/auth/token/revoke-self
+
+  # Apply — only from the protected `production` Environment on main. The admin
+  # Vault role (environment=production OIDC claim) is the sole reader of
+  # cloudflare/creds/r2-admin, the bucket-management token.
+  apply:
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    environment: production
+    defaults:
+      run:
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v4
+
+      - name: Join tailnet (Headscale)
+        uses: tailscale/github-action@v4
+        with:
+          authkey: ${{ secrets.HEADSCALE_CI_AUTHKEY }}
+          hostname: gha-cloudflare-ci
+          args: --login-server=${{ env.HEADSCALE_URL }} --accept-dns
+
+      - name: Import Secrets
+        uses: hashicorp/vault-action@v4
+        with:
+          url: ${{ env.VAULT_ADDR }}
+          exportToken: true # Required by terraform
+          method: jwt
+          role: admin
+          secrets: |
+            kvv2/data/cicd/cloudflare-tfstates AWS_ACCESS_KEY_ID ;
+            kvv2/data/cicd/cloudflare-tfstates AWS_SECRET_ACCESS_KEY ;
+            cloudflare/creds/r2-admin token | CLOUDFLARE_API_TOKEN ;
+
+      - run: terraform init -input=false
+      - run: terraform validate
+      - name: Apply
+        run: terraform apply
+        env:
+          TF_CLI_ARGS_apply: "-auto-approve"
+
+      - name: Revoke token
+        if: always()
+        run: |
+          curl -X POST -sv -H "X-Vault-Token: ${{ env.VAULT_TOKEN }}" ${{ env.VAULT_ADDR }}/v1/auth/token/revoke-self
