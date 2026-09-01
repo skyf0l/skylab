@@ -101,8 +101,12 @@ path "database/rotate-root/*" {
 ## Cloudflare Secrets Engine
 
 # Manage the Cloudflare engine STRUCTURE: parent config, roles, and root-token
-# rotation. Excludes cloudflare/creds/*: the CI configures the engine but never
-# mints tokens (that path belongs to workloads via ESO), mirroring database/.
+# rotation. cloudflare/creds/* belongs to workloads via ESO — with one deliberate
+# exception: r2-admin, the bucket-management token the terraform/cloudflare apply
+# job mints for itself (30m lease, dies with this token at job end).
+path "cloudflare/creds/r2-admin" {
+  capabilities = ["read"]
+}
 path "cloudflare/config" {
   capabilities = ["create", "read", "update", "delete"]
 }

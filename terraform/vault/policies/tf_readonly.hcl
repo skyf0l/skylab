@@ -62,7 +62,12 @@ path "sys/internal/counters/config" {
 }
 
 # Cloudflare engine STRUCTURE — read-only, so plan can refresh config/role state.
-# Excludes cloudflare/creds/* so a PR plan can't mint tokens (mirrors database/).
+# Excludes cloudflare/creds/* (a PR plan must not mint tokens) — except r2-read,
+# the read-only R2 token the terraform/cloudflare plan job needs to refresh
+# bucket state.
+path "cloudflare/creds/r2-read" {
+  capabilities = ["read"]
+}
 path "cloudflare/config" {
   capabilities = ["read"]
 }
