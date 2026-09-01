@@ -80,7 +80,7 @@ externalSecret:
 backup:
   enabled: false
   retentionPolicy: "14d"
-  scheduleCron: "0 3 * * *"
+  scheduleCron: "0 0 3 * * *" # CNPG 6-field cron (sec min hour ...) — 03:00 daily
   destinationPath: "" # s3://<bucket>/<path>, per-cluster
   endpointURL: "" # https://<account>.r2.cloudflarestorage.com, per-cluster
   # R2 S3 credentials minted by Vault's cloudflare engine (r2-keycloak-backup

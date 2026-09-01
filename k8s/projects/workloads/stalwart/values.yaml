@@ -83,7 +83,7 @@ postgres:
 # values/<cluster>.yaml, then flip enabled: true.
 backup:
   enabled: false
-  retentionPolicy: "30d"
+  retentionPolicy: "14d"
   scheduleCron: "0 0 3 * * *" # CNPG 6-field cron (sec min hour ...) — 03:00 daily
   destinationPath: "" # s3://<bucket>/<path>, per-cluster
   endpointURL: "" # https://<account>.r2.cloudflarestorage.com, per-cluster
