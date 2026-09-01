@@ -1,7 +1,7 @@
 # terraform/cloudflare — Cloudflare account infrastructure
 
 Manages Cloudflare **infrastructure** as code: R2 buckets today, zone settings /
-account config later. Manual `plan`/`apply` for now (no CI).
+account config later. Plan on PR, apply on push to `main` (`.github/workflows/cloudflare.yml`).
 
 ## Boundary — what this does and does NOT manage
 
@@ -14,20 +14,20 @@ account config later. Manual `plan`/`apply` for now (no CI).
 State lives in R2 (`tfstates` bucket, key `cloudflare.tfstate`) — separate from
 `terraform/vault`'s `vault.tfstate`.
 
-## Credentials (two, different)
+## Credentials
 
-1. **Provider** — `CLOUDFLARE_API_TOKEN`, a token with **Account → Workers R2
-   Storage → Edit** (+ Zone Settings:Edit if you manage those later). Make it in
-   the dashboard: My Profile → API Tokens → Create Token → Custom. There is no
-   Terraform "login"/OAuth; `wrangler login` does NOT work for Terraform. Do not
-   use a Vault-minted token — those roles are IP-pinned to the VPS.
-2. **State backend** — the same R2 S3 keypair `terraform/vault` uses, exported
-   as `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`.
+None to create by hand. CI (`.github/workflows/cloudflare.yml`) mints everything
+at runtime: the R2 state keypair from `kvv2/cicd/cloudflare-tfstates` and a
+short-lived Cloudflare token from the Vault cloudflare engine (`r2-read` on PR
+plans, `r2-admin` on main applies — roles in `terraform/vault/cloudflare.tf`).
+
+For a local escape-hatch run, mint the same token yourself:
 
 ```sh
-export CLOUDFLARE_API_TOKEN='<Workers R2 Storage:Edit token>'
-export AWS_ACCESS_KEY_ID='<r2 s3 access key id>'
-export AWS_SECRET_ACCESS_KEY='<r2 s3 secret access key>'
+export VAULT_ADDR=https://vault.tail.skyf0l.dev VAULT_TOKEN=<admin>
+export CLOUDFLARE_API_TOKEN=$(vault read -field=token cloudflare/creds/r2-admin)
+export AWS_ACCESS_KEY_ID=$(vault kv get -mount=kvv2 -field=AWS_ACCESS_KEY_ID cicd/cloudflare-tfstates)
+export AWS_SECRET_ACCESS_KEY=$(vault kv get -mount=kvv2 -field=AWS_SECRET_ACCESS_KEY cicd/cloudflare-tfstates)
 ```
 
 ## First run (adopt existing buckets + create the mail one)
