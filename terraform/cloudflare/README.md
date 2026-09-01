@@ -1,4 +1,4 @@
-# infra/terraform — Cloudflare account infrastructure
+# terraform/cloudflare — Cloudflare account infrastructure
 
 Manages Cloudflare **infrastructure** as code: R2 buckets today, zone settings /
 account config later. Manual `plan`/`apply` for now (no CI).
@@ -12,7 +12,7 @@ account config later. Manual `plan`/`apply` for now (no CI).
 | API tokens                                | **Vault** cloudflare secrets engine                                                            |
 
 State lives in R2 (`tfstates` bucket, key `cloudflare.tfstate`) — separate from
-`vault/terraform`'s `vault.tfstate`.
+`terraform/vault`'s `vault.tfstate`.
 
 ## Credentials (two, different)
 
@@ -21,7 +21,7 @@ State lives in R2 (`tfstates` bucket, key `cloudflare.tfstate`) — separate fro
    the dashboard: My Profile → API Tokens → Create Token → Custom. There is no
    Terraform "login"/OAuth; `wrangler login` does NOT work for Terraform. Do not
    use a Vault-minted token — those roles are IP-pinned to the VPS.
-2. **State backend** — the same R2 S3 keypair `vault/terraform` uses, exported
+2. **State backend** — the same R2 S3 keypair `terraform/vault` uses, exported
    as `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`.
 
 ```sh
@@ -33,7 +33,7 @@ export AWS_SECRET_ACCESS_KEY='<r2 s3 secret access key>'
 ## First run (adopt existing buckets + create the mail one)
 
 ```sh
-cd infra/terraform
+cd terraform/cloudflare
 terraform init          # downloads the cloudflare v5 provider, writes .terraform.lock.hcl
 terraform plan          # MUST read: 2 to import (loki, thanos), 1 to create (stalwart-pg)
 terraform apply

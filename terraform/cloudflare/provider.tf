@@ -8,7 +8,7 @@ terraform {
     }
   }
 
-  # State in R2, same backend as vault/terraform but its OWN key so the two
+  # State in R2, same backend as terraform/vault but its OWN key so the two
   # never collide. The `tfstates` bucket is bootstrap infra and is deliberately
   # NOT managed here (it holds this very state — chicken-and-egg).
   backend "s3" {
@@ -19,7 +19,7 @@ terraform {
     }
     region = "auto"
 
-    # Cloudflare R2 specifics (identical to vault/terraform).
+    # Cloudflare R2 specifics (identical to terraform/vault).
     use_path_style              = true
     skip_credentials_validation = true
     skip_region_validation      = true

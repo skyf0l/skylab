@@ -38,7 +38,7 @@
     - name: Terraform init (R2 backend)
       ansible.builtin.command:
         cmd: terraform init -input=false
-        chdir: "{{ repo_root }}/vault/terraform"
+        chdir: "{{ repo_root }}/terraform/vault"
       environment:
         AWS_ACCESS_KEY_ID: "{{ r2_access_key_id }}"
         AWS_SECRET_ACCESS_KEY: "{{ r2_secret_access_key }}"
@@ -47,7 +47,7 @@
     - name: Terraform apply (Vault mounts / auth / policies / roles)
       ansible.builtin.command:
         cmd: terraform apply -input=false -auto-approve
-        chdir: "{{ repo_root }}/vault/terraform"
+        chdir: "{{ repo_root }}/terraform/vault"
       environment:
         AWS_ACCESS_KEY_ID: "{{ r2_access_key_id }}"
         AWS_SECRET_ACCESS_KEY: "{{ r2_secret_access_key }}"
@@ -57,8 +57,8 @@
 
     - name: Seed bootstrap secrets (idempotent — skips fields already set)
       ansible.builtin.command:
-        cmd: ./seed-secrets.sh
-        chdir: "{{ repo_root }}/vault"
+        cmd: ./scripts/seed-secrets.sh
+        chdir: "{{ repo_root }}"
       environment:
         VAULT_ADDR: "{{ gitops_install_vault_local_addr }}"
         VAULT_TOKEN: "{{ gitops_install_vault_token }}"

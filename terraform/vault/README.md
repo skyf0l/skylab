@@ -5,11 +5,11 @@ the External Secrets Operator (ESO) and the Vault Injector.
 
 ## Layout
 
-- `terraform/` — Vault _structure_ as code: mounts (PKI, KV v2), auth backends
+- this module — Vault _structure_ as code: mounts (PKI, KV v2), auth backends
   (GitHub OIDC + Kubernetes), policies, and roles. Applied by the `Vault`
   GitHub Action on push to `main` (`.github/workflows/vault.yml`). Holds **no
   secret values**.
-- `seed-secrets.sh` — seeds bootstrap secret _values_ (random crypto material +
+- `scripts/seed-secrets.sh` (repo root) — seeds bootstrap secret _values_ (random crypto material +
   human-filled placeholders) so apps' ExternalSecrets can sync on a fresh
   cluster. Idempotent; never clobbers existing values.
 
@@ -29,7 +29,7 @@ and root token are written only to the gitignored Ansible workdir.
    seeds the R2 state creds). After that the GitHub Action handles every change:
 
    ```sh
-   cd terraform
+   cd terraform/vault
    export VAULT_ADDR=https://vault.skyf0l.dev
    export VAULT_TOKEN=<root-token>   # one-time, bootstrap only
    terraform init && terraform apply
@@ -40,7 +40,7 @@ and root token are written only to the gitignored Ansible workdir.
    ```sh
    export VAULT_ADDR=https://vault.skyf0l.dev
    export VAULT_TOKEN=<root-or-admin-token>
-   ./seed-secrets.sh
+   ./scripts/seed-secrets.sh   # from the repo root
    ```
 
    Crypto fields are generated random and need no attention. Fields marked
@@ -82,4 +82,4 @@ full Vault rebuild the Vault-owned value is lost (as with the database engine's
 
 Structure changes go through `terraform/` and are applied by the GitHub Action
 (PRs get a plan comment; merges to `main` apply). Adding a new app's bootstrap
-secret is a new `seed_field` block in `seed-secrets.sh`.
+secret is a new `seed_field` block in `scripts/seed-secrets.sh`.

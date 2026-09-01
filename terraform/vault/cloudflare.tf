@@ -6,7 +6,7 @@
 # The parent API token is a real, powerful credential and is deliberately NOT
 # managed here: it is seeded once via CLI and then owned by Vault
 # (config/rotate-root), so no Cloudflare secret ever lands in git or in this
-# module's state. See vault/README.md "Cloudflare engine" for the one-time seed.
+# module's state. See terraform/vault/README.md "Cloudflare engine" for the one-time seed.
 
 variable "cloudflare_account_id" {
   type        = string

@@ -52,7 +52,7 @@ external-dns:
 
 # Cloudflare token minted on demand by Vault's custom cloudflare secrets engine
 # (role dns-edit: Zone Read + DNS Write, 24h lease, VPS-IP-pinned) — nothing to
-# seed in KV. See vault/terraform/cloudflare.tf.
+# seed in KV. See terraform/vault/cloudflare.tf.
 dynamicCreds:
   enabled: true
   serviceAccount: external-dns # SA the generator authenticates as (this ns)

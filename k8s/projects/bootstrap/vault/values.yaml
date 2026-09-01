@@ -53,7 +53,7 @@ vault:
     # shared emptyDir that Vault reads via plugin_directory (set in the raft
     # config above). It re-runs on every pod start, so the binary is versioned
     # and declarative, no kubectl cp, no baked image. Bump PLUGIN_VERSION here
-    # AND cloudflare_plugin_version/sha256 in vault/terraform/cloudflare.tf
+    # AND cloudflare_plugin_version/sha256 in terraform/vault/cloudflare.tf
     # together, then restart+unseal to load the new version.
     volumes:
       - name: plugins
