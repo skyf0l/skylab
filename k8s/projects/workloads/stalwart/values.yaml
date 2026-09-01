@@ -200,7 +200,7 @@ provision:
   # Applies the rendered plan; distroless, versioned separately from the server.
   cliImage: ghcr.io/stalwartlabs/cli:1.0.12
   # Readiness wait + DKIM publishing: needs sh, curl, jq and kubectl.
-  jobImage: alpine/k8s:1.36.2
+  jobImage: alpine/k8s:1.37.0
   adminUser: admin
 
 resources:
