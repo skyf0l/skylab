@@ -4,5 +4,5 @@
 # Postgres backups to the skylab-stalwart-pg R2 bucket (terraform/cloudflare).
 backup:
   enabled: true
-  destinationPath: "s3://skylab-stalwart-pg/stalwart-pg"
+  destinationPath: "s3://skylab-stalwart-pg" # barman appends the serverName (stalwart-pg) itself
   endpointURL: "https://2620dc6ee3d578b27347d8e5efd95f32.r2.cloudflarestorage.com"
