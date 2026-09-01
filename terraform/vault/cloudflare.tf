@@ -120,7 +120,7 @@ resource "vault_generic_endpoint" "cloudflare_role_r2_stalwart_backup" {
     policies = jsonencode([{
       effect            = "allow"
       permission_groups = [{ name = "Workers R2 Storage Bucket Item Write" }]
-      resources         = { "com.cloudflare.api.account.${var.cloudflare_account_id}" = "*" }
+      resources         = { "com.cloudflare.edge.r2.bucket.${var.cloudflare_account_id}_default_skylab-stalwart-pg" = "*" } # object access on the backup bucket only ("default" jurisdiction)
     }])
   })
 }
@@ -230,6 +230,52 @@ resource "vault_generic_endpoint" "cloudflare_role_r2_keycloak_backup" {
       resources = {
         "com.cloudflare.edge.r2.bucket.${var.cloudflare_account_id}_default_skylab-keycloak-pg" = "*"
       }
+    }])
+  })
+}
+
+# --- terraform/cloudflare CI tokens --------------------------------------------
+# Bucket MANAGEMENT (not object access) for the cloudflare Terraform module run
+# in GitHub Actions: the PR plan mints r2-read, the main apply mints r2-admin.
+# Short TTL and no IP pin (GitHub runners have no stable egress); the tokens only
+# ever exist inside the workflow and die with the Vault token's lease at job end
+# (revoke-self). Write-side guardrails: only the environment=production OIDC role
+# may read r2-admin, and every bucket carries prevent_destroy.
+
+resource "vault_generic_endpoint" "cloudflare_role_r2_read" {
+  depends_on           = [vault_mount.cloudflare]
+  path                 = "cloudflare/role/r2-read"
+  disable_read         = true # plugin canonicalises policies JSON; avoid perpetual diffs
+  disable_delete       = false
+  ignore_absent_fields = true
+
+  data_json = jsonencode({
+    token_type = "account"
+    ttl        = "30m"
+    max_ttl    = "1h"
+    policies = jsonencode([{
+      effect            = "allow"
+      permission_groups = [{ name = "Workers R2 Storage Read" }]
+      resources         = { "com.cloudflare.api.account.${var.cloudflare_account_id}" = "*" }
+    }])
+  })
+}
+
+resource "vault_generic_endpoint" "cloudflare_role_r2_admin" {
+  depends_on           = [vault_mount.cloudflare]
+  path                 = "cloudflare/role/r2-admin"
+  disable_read         = true # plugin canonicalises policies JSON; avoid perpetual diffs
+  disable_delete       = false
+  ignore_absent_fields = true
+
+  data_json = jsonencode({
+    token_type = "account"
+    ttl        = "30m"
+    max_ttl    = "1h"
+    policies = jsonencode([{
+      effect            = "allow"
+      permission_groups = [{ name = "Workers R2 Storage Write" }]
+      resources         = { "com.cloudflare.api.account.${var.cloudflare_account_id}" = "*" }
     }])
   })
 }
