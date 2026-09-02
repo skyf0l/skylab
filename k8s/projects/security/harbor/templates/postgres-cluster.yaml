@@ -38,6 +38,8 @@ spec:
         secretAccessKey:
           name: harbor-pg-backup
           key: ACCESS_SECRET_KEY
+      data:
+        compression: gzip
       wal:
         compression: gzip
   {{- end }}
