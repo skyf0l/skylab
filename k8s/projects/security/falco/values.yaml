@@ -33,7 +33,7 @@ plugins:
     image:
       registry: ghcr.io
       repository: falcosecurity/plugins/plugin/container
-      tag: 0.7.1
+      tag: 0.7.2
     # Node paths (the plugin prepends HOST_ROOT). RKE2's containerd only; every
     # other engine is off so the plugin doesn't probe sockets that don't exist.
     # The plugin's schema requires every engine key to be present.
