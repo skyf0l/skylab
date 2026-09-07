@@ -62,7 +62,7 @@ rules:
     image:
       registry: ghcr.io
       repository: falcosecurity/rules/falco-rules
-      tag: 5.1.0
+      tag: 5.2.0
     priority: 50
   # Site overrides, loaded after the upstream file so `override:` applies. Keep
   # exceptions scoped to a workload + binary, never to a bare command line.
