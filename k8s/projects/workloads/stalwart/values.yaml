@@ -116,6 +116,11 @@ ingress:
 # discovery): CNAMEs, cert SANs and ingress rules.
 autodiscovery: true
 
+# Networks Stalwart's fail2ban may never ban: requests arrive from Traefik, and a
+# banned proxy 403s the whole public surface.
+allowedIps:
+  - 10.42.0.0/16 # pod CIDR (traefik source)
+
 # ESO pulls these from Vault at: kvv2/cluster/skylab/apps/stalwart
 #   admin_password    PLAINTEXT admin password (feeds STALWART_RECOVERY_ADMIN and
 #                     the provisioning job's Basic auth — a hash cannot

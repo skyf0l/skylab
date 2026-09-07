@@ -122,6 +122,16 @@ offline.
 {{- $_ := set $accs (printf "acc-%s-%s" (replace "." "-" .name) $slug) (dict "@type" "User" "name" .name "domainId" (printf "#dom-%s" $slug) "roles" (dict "@type" "User") "permissions" (dict "@type" "Inherit") "encryptionAtRest" (dict "@type" "Disabled") "aliases" $aliases) -}}
 {{- end }}
 {{ dict "@type" "upsert" "object" "Account" "matchOn" (list "name" "domainId") "value" $accs | toJson }}
-{{/* Settings written through the API only take effect after a reload. */}}
-{{ dict "@type" "create" "object" "Action" "value" (dict "reload" (dict "@type" "ReloadSettings")) | toJson }}
+{{/* Ban counters and rate limits must follow the client, not Traefik's pod IP. */}}
+{{ dict "@type" "update" "object" "Http" "value" (dict "useXForwarded" true) | toJson }}
+{{- if .Values.allowedIps -}}
+{{- $allowed := dict -}}
+{{- range $i, $net := .Values.allowedIps -}}
+{{- $_ := set $allowed (printf "allow-%d" $i) (dict "address" $net "reason" "reverse proxy") -}}
+{{- end }}
+{{ dict "@type" "upsert" "object" "AllowedIp" "matchOn" (list "address") "value" $allowed | toJson }}
+{{- end }}
+{{/* Settings written through the API only take effect after a reload; the ban
+     lists have their own. */}}
+{{ dict "@type" "create" "object" "Action" "value" (dict "reload" (dict "@type" "ReloadSettings") "reload-ips" (dict "@type" "ReloadBlockedIps")) | toJson }}
 {{- end -}}

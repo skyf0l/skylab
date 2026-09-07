@@ -32,7 +32,8 @@ reverted by selfHeal, and hides the real bug.
 ### Scope and data
 
 - **Suggest first, then edit.** For design decisions, present options and trade-offs and wait for "ok do X" before touching files. Audit requests mean audit only.
-- **Minimal, exactly-scoped diffs.** No meta-comments ("moved from ..."), no unrequested defensive code, no gold-plating. Don't mention learning/demo motivations in code or comments — the repo must read as prod.
+- **Minimal, exactly-scoped diffs.** No unrequested defensive code, no gold-plating. Don't mention learning/demo motivations in code or comments — the repo must read as prod.
+- **Comments carry the why, once.** A line earns its place if it holds what the code cannot: an upstream bug, an ordering constraint, a trap that will bite again. Never narrate the diff or the state it replaced ("moved from ...", "was 30s before") — that is history, it rots, and git already has it. One line usually does it.
 - **Everything as code.** No manual/UI-only configuration: OIDC clients, DNS records, Vault roles, mail domains/accounts all land in this repo (or skylab-private).
 - **Private data discipline**: private domains, headscale users/ACLs, private accounts go only in `skylab-private` (multi-source `$private` values overlay). The public repo must not name or hint at them — that includes Cloudflare zone IDs.
 - **Never print or copy a secret** into a file, a commit, a PR body or a chat answer. Vault unseal keys, kubeconfigs and `ansible/artifacts/` are gitignored, and stay that way.
