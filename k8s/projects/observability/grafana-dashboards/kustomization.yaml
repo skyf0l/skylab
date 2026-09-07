@@ -85,3 +85,7 @@ configMapGenerator:
   - name: grafana-dashboard-falcosidekick-loki
     files:
       - json/falcosidekick-loki-dashboard.json
+  # https://grafana.com/grafana/dashboards/18278-uptime-kuma
+  - name: grafana-dashboard-uptime-kuma
+    files:
+      - json/18278-uptime-kuma.json
