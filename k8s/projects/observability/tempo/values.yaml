@@ -15,7 +15,7 @@
 
 image:
   repository: grafana/tempo
-  tag: 2.10.8
+  tag: 3.0.3
   pullPolicy: IfNotPresent
 
 # R2 object store (S3 API). access_key/secret_key are NOT here — they are expanded
