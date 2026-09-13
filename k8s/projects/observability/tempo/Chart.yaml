@@ -1,0 +1,11 @@
+apiVersion: v2
+name: tempo
+type: application
+version: 0.1.0
+# Hand-rolled Tempo (monolithic — one process, one PVC) rather than a vendored
+# upstream chart: grafana/tempo is deprecated and frozen, and its community
+# successor still hardcodes the jaeger/zipkin listeners into the Service and the
+# generated config, so an OTLP-only deployment means overriding the chart's whole
+# config template from values — which then goes stale silently on a Renovate bump.
+# Same call, and the same shape, as the thanos chart next door; Renovate tracks
+# the image tag in values.yaml.
