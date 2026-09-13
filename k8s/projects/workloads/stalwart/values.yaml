@@ -164,8 +164,8 @@ dns:
   # Priority is meaningless here anyway: one mail host, no fallback.
   mxPriority: 0
   # Defaults for every served domain; override per domain with spf:/dmarc:.
-  # DMARC default is per-domain (rua=postmaster@<domain>) — cross-domain rua
-  # would need an external-reporting authorization record.
+  # DMARC default is per-domain (rua=dmarc@<domain>) — cross-domain rua would
+  # need an external-reporting authorization record.
   spf: "v=spf1 mx -all"
   # RFC 6186/8314 SRV client-discovery records. Off until SRV support of the
   # external-dns Cloudflare provider is verified on this setup.
@@ -194,10 +194,12 @@ extraDomains: []
 # Aliases and roles are reconciled from here on every sync.
 # name = local part, domain defaults to global.domain, aliases are local parts
 # on the same domain.
-# Every mx:true domain should have a postmaster alias (DMARC rua target).
+# Every mx:true domain needs a postmaster alias (RFC 5321) and a dmarc one: rua
+# points at the latter, which must resolve or reporters get a 550 and silently
+# stop sending. ReportSettings intercepts it before it reaches the mailbox.
 accounts:
   - name: admin
-    aliases: [skyf0l, postmaster, contact]
+    aliases: [skyf0l, postmaster, contact, dmarc]
 extraAccounts: []
 
 provision:
