@@ -152,6 +152,9 @@ seed_field "$harbor" csrf_key              rand_hex32
 seed_field "$harbor" jobservice_secret     rand_secret
 seed_field "$harbor" registry_http_secret  rand_secret
 seed_field "$harbor" registry_password     rand_secret
+# NOT seeded: pull_robot_name / pull_robot_secret are the system-level robot$pull
+# Harbor issues (pull-only, every project). Create it in Harbor, then
+# `vault kv patch` both fields here; the harbor chart's pullSecret consumes them.
 
 # grafana — kvv2/cluster/<cluster>/apps/grafana
 # OIDC client secret shared by the Keycloak `grafana` client (substituted into the realm

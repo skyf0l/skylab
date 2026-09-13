@@ -1,0 +1,63 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: skyf0l-dev
+  annotations:
+    # Needs cert-manager and its ClusterIssuer (core).
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          # Auto updated by parent ApplicationSet
+          - list:
+              elements:
+                - name: skylab
+          - git:
+              repoURL: https://github.com/skyf0l/skylab.git
+              revision: main
+              files:
+                - path: clusters/{{.name }}/config.json
+  template:
+    metadata:
+      name: "{{.name}}-skyf0l-dev"
+      labels:
+        app.kubernetes.io/part-of: workloads
+        skylab.dev/tier: workloads
+      annotations:
+        argocd.argoproj.io/sync-wave: "0"
+    spec:
+      project: workloads
+      source:
+        repoURL: "{{.repo.url}}"
+        targetRevision: "{{.repo.revision}}"
+        path: k8s/projects/workloads/skyf0l-dev
+        helm:
+          releaseName: skyf0l-dev
+          valueFiles:
+            - values.yaml
+            - values/{{.name}}.yaml
+          parameters:
+            - name: "host"
+              value: "{{.global.domain}}"
+            - name: "image.registry"
+              value: "harbor.{{.global.domain}}"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: skyf0l-dev
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          # No CreateNamespace: the workloads project grants no cluster-scoped
+          # resources, so the namespace is applied out-of-band once:
+          #   kubectl create namespace skyf0l-dev
+          - Validate=true
+          - PrunePropagationPolicy=foreground
+          - PruneLast=true
+          - RespectIgnoreDifferences=true
+        retry:
+          limit: 10

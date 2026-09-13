@@ -1,6 +1,7 @@
 # Harbor — registry for the cluster's own images (signed, scanned), ONE instance:
 #   harbor.<domain>       public, path-scoped IngressRoute: /v2/ + /service/token
-#                         only (push, pull, cosign, containerd) — no UI, no API
+#                         only (push, pull, cosign, containerd) — no UI, no API.
+#                         Projects are private; pulls use robot$pull (pullSecret).
 #   harbor.tail.<domain>  portal + API + admin via headscale-proxy (tailnet-only)
 # State: Postgres on CloudNativePG (harbor-pg, CNPG owns the credential), Redis
 # from the chart (cache/job queue, ephemeral), blobs on R2 (values/<cluster>.yaml).
@@ -22,6 +23,14 @@ ingress:
 externalSecret:
   storeName: vault-backend
   vaultKey: cluster/skylab/apps/harbor
+
+# Cluster-wide pull credential (system robot$pull, pull-only on every project),
+# delivered as a dockerconfigjson Secret to the namespaces listed per cluster
+# in values/<cluster>.yaml. A chart opts in with imagePullSecrets: [<name>].
+pullSecret:
+  enabled: true
+  name: harbor-pull
+  namespaces: []
 
 # Registry blob storage on R2 via the S3 driver; coordinates per cluster in
 # values/<cluster>.yaml. Credentials are an R2 keypair minted by Vault's

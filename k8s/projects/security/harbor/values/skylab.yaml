@@ -7,3 +7,8 @@ harbor:
       s3:
         bucket: skylab-harbor
         regionendpoint: https://2620dc6ee3d578b27347d8e5efd95f32.r2.cloudflarestorage.com
+
+# Namespaces that pull from Harbor (imagePullSecrets: harbor-pull).
+pullSecret:
+  namespaces:
+    - skyf0l-dev

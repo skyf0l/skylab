@@ -3,3 +3,4 @@ kind: Kustomization
 resources:
   - apps/stalwart.yaml
   - apps/garmin-mcp.yaml
+  - apps/skyf0l-dev.yaml
