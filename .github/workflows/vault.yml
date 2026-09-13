@@ -1,16 +1,13 @@
 # Vault config (Terraform). Vault is tailnet-only, so both jobs join the Headscale
 # tailnet as a tag:ci node before the OIDC -> Vault login.
 #
-# One-time setup of the HEADSCALE_CI_AUTHKEY secret (the ci@ user + tag:ci are
-# declared in the headscale chart — deploy that first so the user exists):
+# One-time setup of the HEADSCALE_CI_AUTHKEY secret (user-less, tag:ci only):
 #
-#   kubectl -n headscale exec headscale-0 -- headscale users list -o json | jq -r '.[]|select(.name=="ci@skyf0l.dev").id'
-#   kubectl -n headscale exec headscale-0 -- headscale preauthkeys create --reusable --ephemeral --expiration 8760h --tags tag:ci --user "$uid"
+#   kubectl -n headscale exec headscale-0 -- headscale preauthkeys create --reusable --ephemeral --expiration 8760h --tags tag:ci
 #   gh secret set HEADSCALE_CI_AUTHKEY --body '<key>'
 #
-# --tags stamps tag:ci on the runner node (tagOwners in headscale only authorizes
-# it — it tags nothing on its own); the ACL matches src tag:ci. reusable+long-expiry
-# = one durable key in CI; ephemeral = each runner node auto-removes after the run.
+# reusable+long-expiry = one durable key in CI; ephemeral = each runner node
+# auto-removes after the run.
 name: Vault
 on:
   pull_request:

@@ -1,4 +1,5 @@
 {{- range $p := .Values.passthrough }}
+{{- $_ := required (printf "passthrough.%s: unknown zone %q" $p.name $p.zone) (index $.Values.zones $p.zone) }}
 # Tailnet node "{{ $p.name }}" -> MagicDNS {{ $p.name }}.{{ $.Values.baseDomain }}.
 # Raw L4 passthrough (NOT via Traefik): tailnet :{{ $p.listenPort }} is delivered
 # to socat, which dials {{ $p.backend }}:{{ $p.backendPort }} directly. No TLS
@@ -36,7 +37,7 @@ spec:
             - name: TS_AUTHKEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ $.Values.authKeySecret | quote }}
+                  name: "tail-{{ $p.zone }}-authkey"
                   key: authkey
             - name: TS_HOSTNAME
               value: {{ $p.name | quote }}

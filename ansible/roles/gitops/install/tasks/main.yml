@@ -77,10 +77,10 @@
 # Headscale 0.28 quirks (mirrored from headscale-proxy/authkey-mint-job): JSON is
 # tab-indented, `preauthkeys create` needs the numeric user id, and the key is
 # grepped from the output.
-- name: Wait for headscale + the skypwn user (ArgoCD-synced)
+- name: Wait for headscale + the skyf0l user (ArgoCD-synced)
   ansible.builtin.shell: >-
     kubectl -n headscale exec headscale-0 -c headscale -- headscale users list -o json 2>/dev/null
-    | tr -d ' \t\n' | grep -q '"name":"skypwn@{{ domain_name }}"'
+    | tr -d ' \t\n' | grep -q '"name":"skyf0l@{{ domain_name }}"'
   args:
     executable: /bin/bash
   environment:
@@ -97,13 +97,13 @@
   environment:
     KUBECONFIG: "{{ kubeconfig_local_path | regex_replace('^~', ansible_env.HOME) }}"
   block:
-    - name: Mint a 24h single-use pre-auth key for skypwn
+    - name: Mint a 24h single-use pre-auth key for skyf0l
       ansible.builtin.shell: |
         set -euo pipefail
         hs() { kubectl -n headscale exec headscale-0 -c headscale -- headscale "$@"; }
         uid=$(hs users list -o json 2>/dev/null | tr -d ' \t\n' \
-          | grep -oE '\{"id":"?[0-9]+"?,"name":"skypwn@{{ domain_name }}"' | grep -oE '[0-9]+' | head -1)
-        [ -n "${uid:-}" ] || { echo "skypwn user not found" >&2; exit 1; }
+          | grep -oE '\{"id":"?[0-9]+"?,"name":"skyf0l@{{ domain_name }}"' | grep -oE '[0-9]+' | head -1)
+        [ -n "${uid:-}" ] || { echo "skyf0l user not found" >&2; exit 1; }
         hs preauthkeys create --user "$uid" --expiration 24h 2>&1 \
           | grep -oE '[a-z]+key-[A-Za-z0-9_.-]+|[a-f0-9]{48,}' | head -1
       args:
@@ -117,7 +117,7 @@
         mode: "0700"
         content: |
           #!/usr/bin/env bash
-          # One-time tailnet join for THIS machine (headscale user skypwn@{{ domain_name }}).
+          # One-time tailnet join for THIS machine (headscale user skyf0l@{{ domain_name }}).
           # Single-use pre-auth key, 24h TTL. Re-run `make bootstrap` to mint a fresh one.
           #
           # Manual fallback (interactive — needs `headscale nodes register` on the server):

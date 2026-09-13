@@ -38,15 +38,11 @@ podName: headscale-0
 # and forwards to Traefik, which terminates TLS and routes by Host. No resolver
 # sidecar / extra_records anymore — MagicDNS resolves the proxy nodes natively.
 
-# Declarative tailnet users. A post-install/upgrade Job creates these and PRUNES
-# any Headscale user not in this list. skypwn = personal devices; infra = owns
-# the router tag + mints the router key; ci = the GitHub Actions identity that
-# owns tag:ci and under which the CI pre-auth key is minted. Pre-auth keys are
-# minted by Jobs too.
+# Declarative tailnet users: people only, their devices are nodes under them.
+# Machines are tagged nodes registered with user-less pre-auth keys. A
+# post-install/upgrade Job creates these and PRUNES any user not in the list.
 users:
-  - "skypwn@{{ .Values.global.domain }}"
-  - "infra@{{ .Values.global.domain }}"
-  - "ci@{{ .Values.global.domain }}"
+  - "skyf0l@{{ .Values.global.domain }}"
 
 # Append-only overlay for private users (e.g. friends), concatenated onto `users`
 # above by the create-users-job (prune-safe). Empty here; supplied by the private
@@ -120,36 +116,27 @@ config:
     autoUpdate: false
 
   acl:
-    # infra owns the proxy + exit tags (keeps them off your personal identity).
+    # Machine tags are only applied by server-minted keys, never self-advertised.
+    # tail-admin/vault/k8s map 1:1 to headscale-proxy zones.
     tagOwners:
-      "tag:tail-proxy": ["infra@{{ .Values.global.domain }}"]
-      "tag:tail-exit": ["infra@{{ .Values.global.domain }}"]
-      # The GitHub Actions Vault runner registers under this tag.
-      "tag:ci": ["ci@{{ .Values.global.domain }}"]
-    # Auto-approve the exit-node route (0.0.0.0/0 + ::/0) advertised by any node
-    # tagged tag:tail-exit (chart: headscale-exit) — no manual
-    # `headscale nodes approve-routes` step needed.
+      "tag:tail-admin": []
+      "tag:tail-vault": []
+      "tag:tail-k8s": []
+      "tag:tail-exit": []
+      "tag:ci": []
     autoApprovers:
       exitNode: ["tag:tail-exit"]
     acls:
-      # skypwn reaches the per-service admin proxies (argocd/vault/grafana/hubble).
+      # autogroup:internet is what allows using the exit node.
       - action: accept
-        src: ["skypwn@{{ .Values.global.domain }}"]
+        src: ["skyf0l@{{ .Values.global.domain }}"]
         dst:
-          - "tag:tail-proxy:*"
-      # skypwn may route ALL its traffic out through the exit node (full VPN):
-      # `tailscale up --exit-node=exit.tail.<domain>`. Using an exit node requires
-      # an explicit dst of autogroup:internet.
-      - action: accept
-        src: ["skypwn@{{ .Values.global.domain }}"]
-        dst:
+          - "skyf0l@{{ .Values.global.domain }}:*"
+          - "tag:tail-admin:443"
+          - "tag:tail-vault:443"
+          - "tag:tail-k8s:6443"
           - "autogroup:internet:*"
-      # The Vault CI runner (tag:ci) reaches the admin proxies on 443 only — enough
-      # to hit vault.tail.<domain>; it can't touch personal devices, the exit node,
-      # or the cluster directly. (All proxies share tag:tail-proxy, so this also
-      # technically allows the other admin proxies; split the proxy tag if you want
-      # to pin it to the Vault node alone.)
       - action: accept
         src: ["tag:ci"]
         dst:
-          - "tag:tail-proxy:443"
+          - "tag:tail-vault:443"

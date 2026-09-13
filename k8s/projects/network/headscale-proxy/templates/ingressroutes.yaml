@@ -9,7 +9,7 @@ metadata:
     app: headscale-proxy
 spec:
   entryPoints:
-    - websecure
+    - tail-{{ .zone }}
   routes:
     - kind: Rule
       match: Host(`{{ .name }}.{{ $.Values.baseDomain }}`)
