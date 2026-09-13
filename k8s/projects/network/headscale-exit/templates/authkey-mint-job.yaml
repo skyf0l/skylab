@@ -110,8 +110,6 @@ spec:
               value: {{ .Values.authkeyMint.headscaleNamespace | quote }}
             - name: HS_POD
               value: {{ .Values.authkeyMint.headscalePod | quote }}
-            - name: HS_USER
-              value: {{ .Values.authkeyMint.user | quote }}
             - name: EXP
               value: {{ .Values.authkeyMint.expiration | quote }}
             - name: TAGS
@@ -141,13 +139,9 @@ spec:
                 fi
                 echo "stored key ($PREFIX...) is gone from Headscale (stale); re-minting."
               fi
-              # Resolve the numeric user id for HS_USER (tabs stripped — 0.28 JSON is tab-indented).
-              UID_=$(hs users list -o json 2>/dev/null \
-                | tr -d ' \t\n' | grep -oE '\{"id":"?[0-9]+"?,"name":"'"$HS_USER"'"' | grep -oE '[0-9]+' | head -1)
-              if [ -z "${UID_:-}" ]; then echo "user $HS_USER not found" >&2; hs users list >&2; exit 1; fi
-              echo "minting reusable key for $HS_USER (id $UID_) with tags [$TAGS]..."
+              echo "minting reusable key with tags [$TAGS]..."
               # Tags MUST be baked into the key: authkey-registered nodes can't self-request tags.
-              KEY=$(hs preauthkeys create --user "$UID_" --reusable --expiration "$EXP" ${TAGS:+--tags "$TAGS"} 2>&1 \
+              KEY=$(hs preauthkeys create --reusable --expiration "$EXP" ${TAGS:+--tags "$TAGS"} 2>&1 \
                 | grep -oE '[a-z]+key-[A-Za-z0-9_.-]+|[a-f0-9]{48,}' | head -1)
               [ -n "${KEY:-}" ] || { echo "could not extract pre-auth key" >&2; exit 1; }
               kubectl create secret generic "$SECRET" --from-literal=authkey="$KEY" \

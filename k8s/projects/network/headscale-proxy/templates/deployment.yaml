@@ -1,11 +1,11 @@
-{{- $traefik := printf "%s" .Values.traefikService }}
-{{- $port := .Values.traefikPort }}
 {{- range $svc := .Values.services }}
 {{- $name := $svc.name }}
+{{- $zone := required (printf "services.%s: unknown zone %q" $name $svc.zone) (index $.Values.zones $svc.zone) }}
+{{- $traefikPort := required (printf "zones.%s.traefikPort is required for services" $svc.zone) $zone.traefikPort }}
 # Tailnet node "{{ $name }}" -> MagicDNS {{ $name }}.tail.<domain> (headscale base_domain).
-# Inbound tailnet :{{ $port }} is delivered to socat (a local socket), which dials
+# Inbound tailnet :443 is delivered to socat (a local socket), which dials
 # Traefik from its own socket so the ClusterIP is translated under Cilium KPR.
-# Traefik terminates TLS (*.tail wildcard) and routes by Host (tail-ingress).
+# Traefik terminates TLS (*.tail wildcard) and routes by Host on tail-{{ $svc.zone }}.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -39,7 +39,7 @@ spec:
             - name: TS_AUTHKEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ $.Values.authKeySecret | quote }}
+                  name: "tail-{{ $svc.zone }}-authkey"
                   key: authkey
             - name: TS_HOSTNAME
               value: {{ $name | quote }}
@@ -76,8 +76,8 @@ spec:
           args:
             # Dual-stack listen (IPv4 + IPv6 via ipv6only=0) so browsers that try the
             # node's IPv6 tailnet address don't stall on Happy-Eyeballs fallback.
-            - "TCP6-LISTEN:{{ $port }},fork,reuseaddr,ipv6only=0"
-            - "TCP:{{ $traefik }}:{{ $port }}"
+            - "TCP6-LISTEN:443,fork,reuseaddr,ipv6only=0"
+            - "TCP:{{ $.Values.traefikService }}:{{ $traefikPort }}"
           resources:
             requests: { cpu: 10m, memory: 16Mi }
             limits: { memory: 64Mi }

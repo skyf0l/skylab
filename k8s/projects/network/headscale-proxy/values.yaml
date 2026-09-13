@@ -12,77 +12,83 @@ image:
 # Injected by the ApplicationSet as https://headscale.<global.domain>.
 loginServer: http://headscale.headscale.svc.cluster.local
 
-# Traefik endpoint every proxy forwards to. Traefik terminates TLS with the
-# *.tail.<domain> wildcard cert and routes by Host via the tail-ingress
-# IngressRoutes. The proxy is a pure L4 passthrough to :443.
+# Traefik terminates TLS with the *.tail.<domain> wildcard cert and routes by Host.
 traefikService: traefik.traefik.svc.cluster.local
-traefikPort: 443
 
-# Shared reusable pre-auth key (tagged tag:tail-proxy), auto-minted by the
-# PreSync Job below and consumed by every proxy pod.
-authKeySecret: tail-proxy-authkey
-tag: "tag:tail-proxy"
+# A zone is one Headscale tag + one in-cluster Traefik entrypoint (tail-<zone>,
+# declared in the traefik chart) that only carries that zone's routes. Traefik
+# routes by Host, so this is what stops a node from reaching another zone's
+# services: the ACL on the tag is the real boundary. Each zone gets its own
+# reusable pre-auth key in Secret tail-<zone>-authkey.
+zones:
+  admin:
+    tag: "tag:tail-admin"
+    traefikPort: 9443
+  vault:
+    tag: "tag:tail-vault"
+    traefikPort: 9444
+  k8s:
+    tag: "tag:tail-k8s"
 
-# Auto-mint the shared key — execs Headscale, mints a REUSABLE key for `user`
-# WITH --tags (authkey nodes can't self-request tags), writes authKeySecret.
-# Idempotent: skips if the secret is already populated. PreSync so the secret
-# exists before the proxy Deployments roll.
 authkeyMint:
   enabled: true
-  # Injected by the ApplicationSet as infra@<global.domain>.
-  user: ""
   headscaleNamespace: headscale
   headscalePod: headscale-0
   jobImage: alpine/kubectl:1.37.0
   expiration: 999d
 
 # ---- TLS + routing (folded in from the old tail-ingress chart) ----
-# Traefik terminates TLS with a wildcard cert and routes by Host; the proxies
-# forward to it. Rendered in THIS namespace so the IngressRoutes reference the
-# cert secret + middleware locally (service refs are cross-ns → needs traefik
+# Rendered in THIS namespace so the IngressRoutes reference the cert secret +
+# middleware locally (service refs are cross-ns → needs traefik
 # allowCrossNamespace=true).
 # Injected by the ApplicationSet as tail.<global.domain>.
 baseDomain: ""
 clusterIssuer: letsencrypt-prod
 tlsSecretName: tail-wildcard-tls
 middlewareName: tailnet-only
-# Only the proxy pods reach Traefik for these hosts (socat connects from the
-# proxy pod IP). Anything else -> 403. This is what makes them tailnet-only.
+# Only pods reach the tail-* entrypoints; anything else -> 403.
 allowedSourceRanges:
   - 10.42.0.0/16 # pod CIDR (proxy-pod source)
 
 # One entry per admin UI. Each renders BOTH a tailnet proxy node
 # (<name>.tail.<domain>) AND a Traefik IngressRoute Host(<name>.tail...) ->
-# service.namespace:port. Add a UI = add one entry.
+# service.namespace:port on its zone's entrypoint. Add a UI = add one entry.
 services:
   - name: argocd
+    zone: admin
     service: argocd-server
     namespace: argocd
     port: 80
   - name: vault
+    zone: vault
     service: vault
     namespace: vault
     port: 8200
     scheme: http # vault listener is http internally; set https if you enable TLS on it
   - name: grafana
+    zone: admin
     service: kube-prometheus-grafana
     namespace: monitoring
     port: 80
   - name: hubble
+    zone: admin
     service: hubble-ui
     namespace: kube-system
     port: 80
   - name: harbor
+    zone: admin
     # Portal + API + admin. The public host only serves /v2/ and the token endpoint.
     service: harbor
     namespace: harbor
     port: 80
   - name: falco
+    zone: admin
     # Falcosidekick Web UI — runtime threat-detection event browser.
     service: falcosidekick-ui
     namespace: falco
     port: 2802
   - name: keycloak
+    zone: admin
     # Keycloak ADMIN console only (tailnet-only). Matches KC_HOSTNAME_ADMIN =
     # keycloak.tail.<domain>. The public OIDC endpoints are served via the separate
     # public Ingress (keycloak.<domain>), not here.
@@ -90,16 +96,19 @@ services:
     namespace: keycloak
     port: 8080
   - name: opencost
+    zone: admin
     # OpenCost UI — FinOps cost allocation (port 9090 is the UI; 9003 is the API).
     service: opencost
     namespace: opencost
     port: 9090
   - name: goldilocks
+    zone: admin
     # Goldilocks dashboard — VPA right-sizing recommendations (current vs recommended).
     service: goldilocks-dashboard
     namespace: goldilocks
     port: 80
   - name: stalwart
+    zone: admin
     # Stalwart web-admin + management API (tailnet-only). The public Ingress
     # (mail.<domain>) only routes /.well-known + /jmap — admin never leaves
     # the tailnet.
@@ -108,12 +117,14 @@ services:
     port: 8080
     scheme: http
   - name: status
+    zone: admin
     # Uptime Kuma ADMIN dashboard (tailnet-only). The public status page is the
     # path-scoped IngressRoute in the uptime-kuma chart (status.<domain>).
     service: uptime-kuma
     namespace: monitoring
     port: 3001
   - name: traefik
+    zone: admin
     # Traefik's own dashboard/API (api@internal). Reached at
     # traefik.tail.<domain>/dashboard/ — tailnet-only, never publicly exposed
     # (the public IngressRoute is disabled in the traefik chart).
@@ -125,6 +136,7 @@ services:
 # straight to <backend>:<backendPort>. Add an entry = add a passthrough node.
 passthrough:
   - name: apiserver
+    zone: k8s
     listenPort: 6443
     backend: kubernetes.default.svc.cluster.local
     backendPort: 443

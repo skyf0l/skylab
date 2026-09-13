@@ -49,6 +49,20 @@ traefik:
             permanent: true
     websecure:
       hostPort: 443
+    # headscale-proxy zones: in-cluster only (no hostPort), each carries only its
+    # zone's tailnet routes.
+    tail-admin:
+      port: 9443
+      exposedPort: 9443
+      expose:
+        default: true
+      protocol: TCP
+    tail-vault:
+      port: 9444
+      exposedPort: 9444
+      expose:
+        default: true
+      protocol: TCP
 
   # Enable the internal API/dashboard
   api:

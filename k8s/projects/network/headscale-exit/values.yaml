@@ -29,15 +29,13 @@ port: 41641
 nodeSelector: {}
 tolerations: []
 
-# Auto-mint the pre-auth key — execs Headscale, mints a REUSABLE key for `user`
+# Auto-mint the pre-auth key — execs Headscale, mints a REUSABLE user-less key
 # WITH --tags (authkey nodes can't self-request tags), writes authKeySecret.
-# Idempotent: skips if the secret is already populated. PreSync so the secret
-# exists before the exit Deployment rolls. The exit-node route (0.0.0.0/0 + ::/0)
-# is auto-approved by autoApprovers.exitNode (tag:tail-exit) in the Headscale ACL.
+# PreSync so the secret exists before the exit Deployment rolls. The exit-node
+# route (0.0.0.0/0 + ::/0) is auto-approved by autoApprovers.exitNode
+# (tag:tail-exit) in the Headscale ACL.
 authkeyMint:
   enabled: true
-  # Injected by the ApplicationSet as infra@<global.domain>.
-  user: ""
   headscaleNamespace: headscale
   headscalePod: headscale-0
   jobImage: alpine/kubectl:1.37.0
