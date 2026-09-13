@@ -15,7 +15,7 @@ the DNSEndpoint template and the provisioning ConfigMap so both always agree.
      from these domains that did NOT go through here — which is the point.
      Keep rua so the aggregate reports keep arriving; override per domain with a
      `dmarc:` key if one ever needs a softer policy. */}}
-{{- $_ := set $d "dmarc" (default (printf "v=DMARC1; p=reject; rua=mailto:postmaster@%s" $name) .dmarc) -}}
+{{- $_ := set $d "dmarc" (default (printf "v=DMARC1; p=reject; rua=mailto:dmarc@%s" $name) .dmarc) -}}
 {{- $_ := set $d "catchAll" (tpl (default "" .catchAll) $root) -}}
 {{/* Optional per-domain mail hostname. Defaults to the shared .Values.host, so
      one server name and one certificate serve every domain. Setting it gives
@@ -109,6 +109,9 @@ offline.
 {{/* Prometheus endpoint with Basic auth read from the pod env, so the secret
      stays in the Kubernetes Secret (never in Stalwart's database). */}}
 {{ dict "@type" "update" "object" "Metrics" "value" (dict "prometheus" (dict "@type" "Enabled" "authUsername" .Values.metrics.username "authSecret" (dict "@type" "EnvironmentVariable" "variableName" "STALWART_METRICS_SECRET"))) | toJson }}
+{{/* Aggregate reports are parsed into the server's own store and dropped, so the
+     rua address never fills a human mailbox. */}}
+{{ dict "@type" "update" "object" "ReportSettings" "value" (dict "inboundReportAddresses" (dict "dmarc@*" true) "inboundReportForwarding" false) | toJson }}
 {{/* Accounts carry NO credentials on purpose: created without a password (set it
      once from the tailnet-only web-admin), and since the field is absent from
      the plan an existing password is never overwritten. */}}
