@@ -67,7 +67,28 @@ offline.
 {{- define "stalwart.plan" -}}
 {{- $root := . -}}
 {{- $domains := include "stalwart.domains" . | fromJsonArray -}}
+{{- $accounts := include "stalwart.accounts" . | fromJsonArray -}}
 {{- $defaultSlug := replace "." "-" .Values.global.domain -}}
+{{/* A domain that receives mail must answer at postmaster (RFC 5321) and at the
+     rua target generated above, or those senders get a 550 and stop retrying.
+     Both live in hand-written alias lists, one of them in the private overlay,
+     so the invariant is checked here rather than left to a comment. */}}
+{{- range $domains -}}
+{{- if .mx -}}
+{{- $dom := .name -}}
+{{- $local := list -}}
+{{- range $accounts -}}
+{{- if eq .domain $dom -}}
+{{- $local = append (concat $local .aliases) .name -}}
+{{- end -}}
+{{- end -}}
+{{- range $want := list "postmaster" "dmarc" -}}
+{{- if not (has $want $local) -}}
+{{- fail (printf "stalwart: mx:true domain %s has no account named %s nor an account carrying the %s alias" $dom $want $want) -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
 {{/* Stalwart's bootstrap set creates a pop3s listener (995) that nothing exposes.
      The filter MUST stay name-scoped: an empty filter destroys every listener. */}}
 {{ dict "@type" "destroy" "object" "NetworkListener" "value" (dict "name" "pop3s") | toJson }}
