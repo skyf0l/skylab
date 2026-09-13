@@ -26,6 +26,18 @@ resource "cloudflare_r2_bucket" "thanos" {
   }
 }
 
+# Tempo trace blocks. Traces are the fattest signal per unit of activity, so the
+# chart starts at a 7d block retention — raise it once the bucket's real growth
+# is known.
+resource "cloudflare_r2_bucket" "tempo" {
+  account_id = var.cloudflare_account_id
+  name       = "skylab-tempo"
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
 # Stalwart mail Postgres backups (barman WAL + base backups). NEW — create this
 # one, then flip backup.enabled in the stalwart chart and point it at this bucket.
 resource "cloudflare_r2_bucket" "stalwart_pg" {

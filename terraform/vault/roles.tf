@@ -142,6 +142,26 @@ resource "vault_kubernetes_auth_backend_role" "loki_r2" {
   token_max_ttl = 2678400
 }
 
+# Tempo R2 credentials: the ESO VaultDynamicSecret generator leases an R2 S3
+# keypair as a dedicated SA in the tracing namespace (namespaced generator, so
+# it cannot use the external-secrets SA cross-namespace).
+resource "vault_kubernetes_auth_backend_role" "tempo_r2" {
+  backend   = vault_auth_backend.kubernetes.path
+  role_name = "tempo-r2"
+
+  bound_service_account_names      = ["tempo-r2"]
+  bound_service_account_namespaces = ["tracing"]
+
+  token_policies = [
+    vault_policy.tempo_r2_creds.name
+  ]
+
+  # Outlive the engine role's 720h ttl so the lease runs its full life (child
+  # leases die with the auth token); ESO refreshes (240h) well inside it.
+  token_ttl     = 2678400 # 31d
+  token_max_ttl = 2678400
+}
+
 # Harbor registry R2 credentials: the ESO VaultDynamicSecret generator leases an
 # R2 S3 keypair as a dedicated SA in the harbor namespace (namespaced generator,
 # so it cannot use the external-secrets SA cross-namespace).
