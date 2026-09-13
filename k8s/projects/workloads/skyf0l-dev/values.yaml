@@ -1,0 +1,27 @@
+# Public host, injected by the ApplicationSet as <global.domain> (the apex).
+host: ""
+
+image:
+  # Injected by the ApplicationSet as harbor.<global.domain>.
+  registry: ""
+  # dockerconfigjson delivered to this namespace by the harbor chart's
+  # ClusterExternalSecret (pullSecret.namespaces).
+  pullSecret: harbor-pull
+  repository: skyf0l.dev/skyf0l.dev
+  # Pinned per cluster in values/<cluster>.yaml to a sha-<commit> tag from CI.
+  tag: ""
+
+replicas: 1
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 16Mi
+  limits:
+    memory: 64Mi
+
+ingress:
+  enabled: true
+  className: traefik
+  clusterIssuer: letsencrypt-prod
+  tlsSecretName: skyf0l-dev-tls

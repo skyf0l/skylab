@@ -1,0 +1,9 @@
+apiVersion: v2
+name: skyf0l-dev
+description: >-
+  Public landing page of the platform (skyf0l.dev): a static SvelteKit build
+  served by nginx. The image is built and pushed to Harbor by the skyf0l.dev
+  repository's CI; this chart only runs and exposes it.
+type: application
+version: 0.1.0
+appVersion: "0.0.1"

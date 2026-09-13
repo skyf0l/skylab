@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: skyf0l-dev
+  labels:
+    app: skyf0l-dev
+spec:
+  type: ClusterIP
+  selector:
+    app: skyf0l-dev
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
