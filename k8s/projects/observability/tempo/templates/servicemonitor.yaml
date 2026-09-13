@@ -1,0 +1,18 @@
+{{- if .Values.serviceMonitor.enabled }}
+# Tempo's own metrics, on the port named `http`. Picked up by the cluster-wide
+# serviceMonitorSelector in the kube-prometheus chart.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: tempo
+  labels:
+    app.kubernetes.io/part-of: tempo
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: tempo
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+{{- end }}

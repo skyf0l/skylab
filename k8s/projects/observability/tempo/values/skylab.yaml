@@ -1,0 +1,6 @@
+# Per-cluster R2 coordinates for skylab. The access key/secret are NOT here —
+# they are leased from Vault by ESO (cloudflare/creds/r2-tempo). Mirrors the
+# thanos chart's values/skylab.yaml (same R2 account, different bucket).
+objstore:
+  bucket: skylab-tempo
+  endpoint: 2620dc6ee3d578b27347d8e5efd95f32.r2.cloudflarestorage.com

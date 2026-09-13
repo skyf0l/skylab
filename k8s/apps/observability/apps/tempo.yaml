@@ -1,0 +1,57 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: tempo
+  annotations:
+    # Before Alloy (which exports traces to Tempo).
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          # Auto updated by parent ApplicationSet
+          - list:
+              elements:
+                - name: skylab
+          - git:
+              repoURL: https://github.com/skyf0l/skylab.git
+              revision: main
+              files:
+                - path: clusters/{{.name }}/config.json
+  template:
+    metadata:
+      name: "{{.name}}-tempo"
+      labels:
+        app.kubernetes.io/part-of: observability
+        skylab.dev/tier: observability
+      annotations:
+        argocd.argoproj.io/sync-wave: "1"
+    spec:
+      project: observability
+      source:
+        repoURL: "{{.repo.url}}"
+        targetRevision: "{{.repo.revision}}"
+        path: k8s/projects/observability/tempo
+        helm:
+          releaseName: tempo
+          valueFiles:
+            - values.yaml
+            - values/{{.name}}.yaml
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: tracing
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - Validate=true
+          - PrunePropagationPolicy=foreground
+          - PruneLast=true
+          - RespectIgnoreDifferences=true
+          - ServerSideApply=true # Avoids annotation size limits
+        retry:
+          limit: 10
