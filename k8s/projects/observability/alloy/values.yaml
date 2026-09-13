@@ -19,8 +19,22 @@ alloy:
       requests:
         cpu: 50m
         memory: 128Mi
+      # Headroom for the OTLP receive path on top of log tailing; the
+      # memory_limiter in config.alloy sheds load below this ceiling.
       limits:
-        memory: 256Mi
+        memory: 512Mi
+
+    # OTLP ingest, exposed on the alloy Service (in-cluster only — no Ingress, no
+    # tailnet route). Apps push to alloy.logging.svc.cluster.local:4317/:4318.
+    extraPorts:
+      - name: otlp-grpc
+        port: 4317
+        targetPort: 4317
+        protocol: TCP
+      - name: otlp-http
+        port: 4318
+        targetPort: 4318
+        protocol: TCP
 
     # Config lives in files/config.alloy (lintable with `alloy fmt`/`alloy validate`),
     # rendered into the alloy-config ConfigMap by templates/configmap.yaml. The
@@ -29,3 +43,8 @@ alloy:
       create: false
       name: alloy-config
       key: config.alloy
+
+  service:
+    # DaemonSet behind one Service: keep a sender on the node it is running on
+    # instead of hopping to another node's collector.
+    internalTrafficPolicy: Local

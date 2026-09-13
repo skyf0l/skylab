@@ -22,6 +22,13 @@ kube-prometheus-stack:
     # the dashboards sidecar's health server).
     sidecar:
       datasources:
+        # Exemplars carry the trace id of the request that produced a sample:
+        # this turns every exemplar dot in a Prometheus panel into a jump to the
+        # trace in Tempo. Needs exemplar-storage on Prometheus (below).
+        exemplarTraceIdDestinations:
+          datasourceUid: tempo
+          traceIdLabelName: trace_id
+          urlDisplayLabel: View trace
         initDatasources: true
         restartPolicy: Always
         startupProbe:
@@ -40,6 +47,16 @@ kube-prometheus-stack:
         access: proxy
         url: http://loki-gateway.logging.svc.cluster.local
         isDefault: false
+        jsonData:
+          # Log line -> trace. Only OTLP-pushed logs carry trace_id (Loki stores
+          # it as structured metadata); tailed stdout lines have no label to
+          # match, which is the reason to send logs over OTLP at all.
+          derivedFields:
+            - name: TraceID
+              matcherType: label
+              matcherRegex: trace_id
+              datasourceUid: tempo
+              url: "${__value.raw}"
       # Thanos Query — same Prometheus API, but spans long-term history from R2
       # (recent data via the sidecar + historical via the store-gateway). Left
       # NON-default so existing dashboards are unaffected; to get long-term range
@@ -53,6 +70,39 @@ kube-prometheus-stack:
         isDefault: false
         jsonData:
           timeInterval: 30s
+          exemplarTraceIdDestinations:
+            - name: trace_id
+              datasourceUid: tempo
+
+      # Tempo — traces, pushed in over OTLP via Alloy. The three links below are
+      # what makes the stack navigable rather than three silos: from a span, jump
+      # to that pod's logs (Loki) or to its metrics (Prometheus); the service map
+      # is drawn from the trace graph itself.
+      - name: Tempo
+        type: tempo
+        uid: tempo
+        access: proxy
+        url: http://tempo.tracing.svc.cluster.local:3200
+        isDefault: false
+        jsonData:
+          tracesToLogsV2:
+            datasourceUid: loki
+            spanStartTimeShift: "-5m"
+            spanEndTimeShift: "5m"
+            filterByTraceID: true
+            # k8sattributes (see config.alloy) stamps these onto every span; they
+            # are the same labels Alloy puts on tailed pod logs.
+            tags:
+              - key: k8s.namespace.name
+                value: namespace
+              - key: k8s.pod.name
+                value: pod
+          tracesToMetrics:
+            datasourceUid: prometheus
+            spanStartTimeShift: "-5m"
+            spanEndTimeShift: "5m"
+          nodeGraph:
+            enabled: true
 
     # Persist dashboards/settings across restarts. storageClass + enable are the
     # cluster-agnostic defaults; the SIZE is tuned per-cluster in values/<c>.yaml.
@@ -264,6 +314,15 @@ kube-prometheus-stack:
       # Select ALL ServiceMonitors/PodMonitors.
       serviceMonitorSelectorNilUsesHelmValues: false
       podMonitorSelectorNilUsesHelmValues: false
+      # Accept remote-written samples: the OTLP metrics apps push to Alloy are
+      # converted and written here. Purely additive — every existing target is
+      # still scraped. Senders must use cumulative temporality; see the exporter
+      # comment in the alloy chart's config.alloy.
+      enableRemoteWriteReceiver: true
+      # Store the exemplars that ride along with remote-written OTLP metrics —
+      # without this the exemplarTraceIdDestinations links above never resolve.
+      enableFeatures:
+        - exemplar-storage
       # Fast tier: 15d of full-resolution data on local disk for snappy recent
       # queries. Long-term (12 months) lives in R2 via Thanos and is queried
       # through Thanos Query, which de-dups the overlap. NB: with compaction
