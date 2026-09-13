@@ -42,6 +42,30 @@ data:
       compaction:
         block_retention: {{ .Values.retention }}
 
+    # TraceQL metrics (`| rate()`, `| quantile_over_time()`) are computed by the
+    # metrics-generator, not by Prometheus — Grafana's Tempo explore page issues
+    # one by default, and without a generator in the ring every such panel 500s
+    # with "empty ring". Only the local-blocks processor is enabled: it answers
+    # those queries from the generator's own blocks. The span-metrics and
+    # service-graphs processors are deliberately NOT enabled — those remote-write
+    # a per-span-name//per-edge series set into Prometheus, and Thanos block size
+    # here scales with distinct series.
+    metrics_generator:
+      processor:
+        local_blocks:
+          # Record every span, not just server-kind ones, so rate() over an
+          # arbitrary TraceQL selector matches what the trace view shows.
+          filter_server_spans: false
+      storage:
+        path: /var/tempo/generator/wal
+      traces_storage:
+        path: /var/tempo/generator/traces
+
+    overrides:
+      defaults:
+        metrics_generator:
+          processors: [local-blocks]
+
     storage:
       trace:
         backend: s3
