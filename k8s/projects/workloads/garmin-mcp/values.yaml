@@ -3,7 +3,7 @@
 
 image:
   repository: ghcr.io/skyf0l/garmin_mcp
-  tag: "1.0.1"
+  tag: "1.0.2"
 
 transport:
   mode: streamable-http
@@ -27,9 +27,10 @@ ingress:
 
 # KEDA scale-to-zero: poll /healthz every 1s so the pod goes Ready (and the
 # interceptor forwards) the instant it serves, instead of the chart's 10s
-# default. failureThreshold bumped to keep the same ~30s startup budget
-# (1s * 30) — the app needs ~7s to log into Garmin, so the chart default of 3
-# would kill it before it boots.
+# default. failureThreshold bumped to keep a ~30s startup budget (1s * 30),
+# which the chart default of 3 would cut to 3s. Since 1.0.2 the Garmin login
+# runs in a background thread, so it no longer delays the first 200 — it is the
+# first tool call that waits on it.
 probes:
   startupPeriodSeconds: 1
   startupFailureThreshold: 30
