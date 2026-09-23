@@ -75,7 +75,18 @@ path "cloudflare/role/*" {
   capabilities = ["read", "list"]
 }
 
-# Plugin catalog — read-only refresh of vault_plugin.cloudflare. The catalog is a
+# Harbor engine STRUCTURE — read-only. Excludes harbor/creds/* (a PR plan must
+# not mint robots) and harbor/config (not managed by Terraform).
+path "harbor/roles/*" {
+  capabilities = ["read", "list"]
+}
+
+# Resource quotas (refresh vault_quota_rate_limit.harbor_creds).
+path "sys/quotas/rate-limit/*" {
+  capabilities = ["read"]
+}
+
+# Plugin catalog — read-only refresh of vault_plugin.cloudflare/harbor. The catalog is a
 # root-protected path, so even a read needs sudo.
 path "sys/plugins/catalog/*" {
   capabilities = ["read", "sudo"]
