@@ -44,3 +44,56 @@ spec:
   privateKey:
     algorithm: RSA
     size: 4096
+---
+# In-cluster https for the `harbor` Service (nginx on 443): a namespace-local CA
+# signed by the self-signed Issuer, then a CA Issuer for the serving cert. The
+# CA outlives many leaf renewals, so Vault's harbor/config ca_cert (the CA, read
+# from harbor-internal-tls ca.crt) stays valid until the CA itself is re-issued.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: harbor-internal-ca
+  labels:
+    app.kubernetes.io/part-of: harbor
+spec:
+  secretName: harbor-internal-ca
+  issuerRef:
+    name: harbor-selfsigned
+    kind: Issuer
+  isCA: true
+  commonName: harbor-internal-ca
+  duration: 87600h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: harbor-internal-ca
+  labels:
+    app.kubernetes.io/part-of: harbor
+spec:
+  ca:
+    secretName: harbor-internal-ca
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: harbor-internal-tls
+  labels:
+    app.kubernetes.io/part-of: harbor
+spec:
+  secretName: harbor-internal-tls
+  issuerRef:
+    name: harbor-internal-ca
+    kind: Issuer
+  dnsNames:
+    - harbor
+    - harbor.{{ .Release.Namespace }}
+    - harbor.{{ .Release.Namespace }}.svc
+    - harbor.{{ .Release.Namespace }}.svc.cluster.local
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always

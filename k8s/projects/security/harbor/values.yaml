@@ -71,16 +71,28 @@ backup:
 harbor:
   externalURL: "" # set by app def -> https://harbor.<domain>
 
-  # TLS terminates at Traefik; the chart's nginx is the single in-cluster entry
-  # (portal on /, core on /api /c /v2 /service) behind the `harbor` Service.
+  # The chart's nginx is the single in-cluster entry (portal on /, core on /api
+  # /c /v2 /service) behind the `harbor` Service. It serves https on 443 with the
+  # namespace-local CA's cert (certificate.yaml) so Vault's harbor engine, which
+  # is https-only, can reach /api/v2.0 in-cluster. With TLS on, port 80 is an
+  # unconditional 301 to https: every route must target 443 (ingressroute.yaml,
+  # headscale-proxy, uptime-kuma).
   expose:
     type: clusterIP
     tls:
-      enabled: false
+      enabled: true
+      certSource: secret
+      secret:
+        secretName: harbor-internal-tls
     clusterIP:
       name: harbor
       ports:
         httpPort: 80
+        httpsPort: 443
+  # With certSource=secret the chart takes the CA core serves for download from
+  # here; left empty it renders a sourceless `secret:` volume that the API
+  # server silently defaults to an emptyDir.
+  caSecretName: harbor-internal-tls
   internalTLS:
     enabled: false
   ipFamily:
@@ -129,6 +141,9 @@ harbor:
       requests: {cpu: 10m, memory: 32Mi}
       limits: {memory: 128Mi}
   nginx:
+    # nginx reads its cert at start; roll it onto each cert-manager renewal.
+    podAnnotations:
+      secret.reloader.stakater.com/reload: harbor-internal-tls
     resources:
       requests: {cpu: 10m, memory: 32Mi}
       limits: {memory: 128Mi}
