@@ -37,6 +37,28 @@ resource "vault_jwt_auth_backend_role" "tf_plan" {
   }
 }
 
+# Image push for skyf0l/skyf0l.dev. The FIRST role bound to another repository:
+# anyone who can run a workflow on that repo's main branch gets this role, so it
+# holds exactly one Harbor creds path (a robot scoped to one project) and
+# nothing else. ref pins it to main, so a branch or PR workflow can't mint push
+# credentials. The token dies with the job (revoke-self), taking the robot with
+# it; token_ttl caps it if that step never runs.
+resource "vault_jwt_auth_backend_role" "skyf0l_dev_harbor_push" {
+  backend        = vault_jwt_auth_backend.jwt.path
+  role_name      = "skyf0l-dev-harbor-push"
+  role_type      = "jwt"
+  token_policies = [vault_policy.skyf0l_dev_harbor_push.name]
+  token_ttl      = 900
+  token_max_ttl  = 3600
+
+  user_claim      = "actor"
+  bound_audiences = ["https://github.com/skyf0l"]
+  bound_claims = {
+    repository = "skyf0l/skyf0l.dev"
+    ref        = "refs/heads/main"
+  }
+}
+
 # Kubernetes auth backend for ESO and the Vault Injector.
 resource "vault_auth_backend" "kubernetes" {
   type = "kubernetes"

@@ -74,3 +74,8 @@ resource "vault_policy" "tempo_r2_creds" {
   name   = "tempo-r2-creds"
   policy = file("policies/tempo_r2_creds.hcl")
 }
+
+resource "vault_policy" "skyf0l_dev_harbor_push" {
+  name   = "skyf0l-dev-harbor-push"
+  policy = file("policies/skyf0l_dev_harbor_push.hcl")
+}
