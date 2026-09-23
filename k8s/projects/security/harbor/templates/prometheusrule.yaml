@@ -1,0 +1,43 @@
+# Vault's harbor engine: the two ways a robot outlives its purpose unnoticed.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: harbor-vault-engine
+  labels:
+    # kube-prometheus only picks up rules carrying its release label
+    # (ruleSelectorNilUsesHelmValues is the chart default).
+    release: kube-prometheus
+    app.kubernetes.io/part-of: harbor
+spec:
+  groups:
+    - name: harbor-vault-engine
+      rules:
+        - alert: VaultIrrevocableLeases
+          # Vault-wide gauge (every engine), but for harbor/creds it is the only
+          # signal that a robot escaped revocation and lives on in Harbor.
+          expr: max(vault_expire_num_irrevocable_leases) > 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: Vault holds irrevocable leases
+            description: >
+              {{ "{{ $value }}" }} lease(s) failed revocation and were given up on.
+              For harbor/creds/* the robot is still live in Harbor until its own
+              expiry. Runbook: terraform/vault/README.md "Irrevocable leases".
+        - alert: HarborRotateRootStale
+          # Monthly job: no success in 35 days, or scheduled but never succeeded.
+          expr: >
+            (time() - max(kube_cronjob_status_last_successful_time{namespace="vault", cronjob="harbor-rotate-root"})) > 35 * 86400
+            or
+            (max(kube_cronjob_status_last_schedule_time{namespace="vault", cronjob="harbor-rotate-root"})
+              unless max(kube_cronjob_status_last_successful_time{namespace="vault", cronjob="harbor-rotate-root"}))
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: Harbor engine principal has not rotated
+            description: >
+              vault/harbor-rotate-root has not succeeded in over 35 days. Check
+              the job logs; `vault write -f harbor/config/rotate-root` by hand
+              rotates it once the cause is fixed.

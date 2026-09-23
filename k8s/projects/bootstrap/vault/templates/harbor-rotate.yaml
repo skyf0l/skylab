@@ -1,0 +1,44 @@
+# Ongoing rotation of the Harbor engine's principal robot. A monthly CronJob
+# authenticates via the Kubernetes auth backend (role "harbor-rotate", created in
+# terraform/vault/harbor.tf) and has Vault replace the principal: a new robot with
+# the same permissions, then the old one deleted. The response carries only the
+# new username and robot_id, never the secret. The job only holds the
+# "harbor-rotate-root" policy (update on harbor/config/rotate-root). Mid-month so
+# it never overlaps cloudflare-rotate-root.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: harbor-rotate
+  namespace: vault
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: harbor-rotate-root
+  namespace: vault
+spec:
+  schedule: "0 3 15 * *" # 03:00 on the 15th of each month
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          serviceAccountName: harbor-rotate
+          restartPolicy: OnFailure
+          containers:
+            - name: rotate
+              image: hashicorp/vault:2.0.3
+              env:
+                - name: VAULT_ADDR
+                  value: "http://vault.vault.svc:8200"
+              command: ["/bin/sh", "-ec"]
+              args:
+                # The 2.x CLI has no `login -method=kubernetes` helper any more;
+                # log in through the auth backend's API path instead.
+                - |
+                  export VAULT_TOKEN=$(vault write -field=token auth/kubernetes/login \
+                    role=harbor-rotate jwt="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)")
+                  vault write -f harbor/config/rotate-root
