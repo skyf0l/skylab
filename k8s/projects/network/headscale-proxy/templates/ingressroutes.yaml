@@ -28,6 +28,9 @@ spec:
           {{- with .scheme }}
           scheme: {{ . }}
           {{- end }}
+          {{- with .serversTransport }}
+          serversTransport: {{ . }}
+          {{- end }}
         {{- end }}
   tls:
     secretName: {{ $.Values.tlsSecretName }}

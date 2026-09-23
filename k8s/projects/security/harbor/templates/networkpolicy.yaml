@@ -1,0 +1,25 @@
+# Layer 2 — Harbor's cross-namespace ingress exception: Vault's harbor secrets
+# engine calls the Harbor API (mint/revoke robots, rotate-root) on nginx https.
+# harbor is not in the network-policies isolation list yet; this ships first so
+# enforcing it later cannot silently break credential issuance. Port is the
+# pod's (8443), not the Service's 443: Cilium matches after service translation.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: harbor-allow-vault
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/part-of: harbor
+spec:
+  endpointSelector:
+    matchLabels:
+      app: harbor
+      component: nginx
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: vault
+      toPorts:
+        - ports:
+            - port: "8443"
+              protocol: TCP

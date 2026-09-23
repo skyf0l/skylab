@@ -78,9 +78,13 @@ services:
   - name: harbor
     zone: admin
     # Portal + API + admin. The public host only serves /v2/ and the token endpoint.
+    # https: nginx's port 80 is a 301 to https://<same host>, which would loop.
+    # The ServersTransport (harbor chart) trusts Harbor's namespace-local CA.
     service: harbor
     namespace: harbor
-    port: 80
+    port: 443
+    scheme: https
+    serversTransport: harbor-internal
   - name: falco
     zone: admin
     # Falcosidekick Web UI — runtime threat-detection event browser.
