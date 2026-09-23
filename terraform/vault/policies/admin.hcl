@@ -117,6 +117,25 @@ path "cloudflare/role/*" {
   capabilities = ["create", "read", "update", "delete", "list"]
 }
 
+## Harbor Secrets Engine
+
+# Manage the Harbor engine STRUCTURE: roles only. No harbor/config (the principal
+# is seeded by CLI and owned by Vault), no rotate-root (the CronJob's), no
+# harbor/creds/* (consumers mint their own robots).
+path "harbor/roles" {
+  capabilities = ["list"]
+}
+path "harbor/roles/*" {
+  capabilities = ["create", "read", "update", "delete", "list"]
+}
+
+## Resource Quotas
+
+# Rate limits on credential issuance (harbor/creds/*).
+path "sys/quotas/rate-limit/*" {
+  capabilities = ["create", "read", "update", "delete", "list"]
+}
+
 ## Plugin Catalog
 
 # Register and upgrade external secret-engine plugins (the Cloudflare engine).
