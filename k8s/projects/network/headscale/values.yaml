@@ -1,6 +1,6 @@
 image:
   repository: docker.io/headscale/headscale
-  tag: "v0.29.3"
+  tag: "v0.29.4"
   pullPolicy: IfNotPresent
 
 # Cluster domain, injected by the ApplicationSet from clusters/<name>/config.json.
