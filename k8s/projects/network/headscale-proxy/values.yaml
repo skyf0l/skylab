@@ -34,7 +34,7 @@ authkeyMint:
   enabled: true
   headscaleNamespace: headscale
   headscalePod: headscale-0
-  jobImage: alpine/kubectl:1.37.0
+  jobImage: alpine/kubectl:1.37.1
   expiration: 999d
 
 # ---- TLS + routing (folded in from the old tail-ingress chart) ----
