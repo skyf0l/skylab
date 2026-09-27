@@ -5,9 +5,9 @@
 #   grafana               -> tempo:3200      -> TraceQL search + trace-by-id, over
 #                                               both the local WAL and R2
 #
-# Monolithic mode: one process running distributor + ingester + querier +
-# compactor. The compactor MUST stay a singleton — never scale this past one
-# replica against one bucket.
+# Monolithic mode: one process running distributor + live-store + querier +
+# backend-scheduler/worker. The backend-scheduler (compaction + retention) MUST
+# stay a singleton: never scale this past one replica against one bucket.
 #
 # Creds: a dedicated R2 keypair (Object R/W on the skylab-tempo bucket) is minted
 # by Vault's cloudflare engine and read from the environment at start; the
@@ -31,17 +31,12 @@ objstore:
 # raise it once the bucket's real growth is known (Loki is 30d, Thanos raw 14d).
 retention: 168h # 7d
 
-# Local disk holds only the WAL and blocks not yet flushed to R2 (max_block_duration
-# below caps how much that can be); the data of record is in R2. RWO volume ->
+# Local disk holds only the WAL and blocks not yet flushed to R2; the data of
+# record is in R2. RWO volume ->
 # Recreate strategy, same as the thanos components.
 persistence:
   storageClass: local-path
   size: 5Gi
-
-# How long a block stays open before being cut and shipped to R2. Shorter = less
-# data at risk on the local PVC and searchable-in-R2 sooner, at the cost of more,
-# smaller objects for the compactor to merge.
-maxBlockDuration: 30m
 
 resources:
   requests: {cpu: 50m, memory: 256Mi}
