@@ -63,7 +63,7 @@ vault:
         mountPath: /vault/plugins
     extraInitContainers:
       - name: fetch-cloudflare-plugin
-        image: curlimages/curl:8.21.0
+        image: curlimages/curl:8.22.0
         env:
           - name: PLUGIN_VERSION
             value: "1.2.0"
@@ -85,7 +85,7 @@ vault:
       # Asset names differ from the Cloudflare release: x86_64 (not amd64) and a
       # versioned _SHA256SUMS (not checksums.txt).
       - name: fetch-harbor-plugin
-        image: curlimages/curl:8.21.0
+        image: curlimages/curl:8.22.0
         env:
           - name: PLUGIN_VERSION
             value: "1.1.0"
