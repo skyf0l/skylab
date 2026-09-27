@@ -33,38 +33,18 @@ data:
             http:
               endpoint: 0.0.0.0:4318
 
-    ingester:
-      # How long a block stays open before it is cut and shipped to R2. Also caps
-      # how much unflushed data the local PVC ever holds.
-      max_block_duration: {{ .Values.maxBlockDuration }}
-
-    compactor:
-      compaction:
-        block_retention: {{ .Values.retention }}
-
-    # TraceQL metrics (`| rate()`, `| quantile_over_time()`) are computed by the
-    # metrics-generator, not by Prometheus — Grafana's Tempo explore page issues
-    # one by default, and without a generator in the ring every such panel 500s
-    # with "empty ring". Only the local-blocks processor is enabled: it answers
-    # those queries from the generator's own blocks. The span-metrics and
-    # service-graphs processors are deliberately NOT enabled — those remote-write
-    # a per-span-name//per-edge series set into Prometheus, and Thanos block size
-    # here scales with distinct series.
-    metrics_generator:
-      processor:
-        local_blocks:
-          # Record every span, not just server-kind ones, so rate() over an
-          # arbitrary TraceQL selector matches what the trace view shows.
-          filter_server_spans: false
-      storage:
-        path: /var/tempo/generator/wal
-      traces_storage:
-        path: /var/tempo/generator/traces
-
+    # live_store block timings stay at upstream defaults: they are tuned against
+    # query_frontend's query_backend_after (15m), and a block held open longer
+    # than that leaves traces that neither the live-store nor R2 will return.
+    #
+    # No metrics_generator: TraceQL metrics are answered by the live-store and
+    # the R2 blocks, and the span-metrics/service-graphs processors would
+    # remote-write a per-span-name/per-edge series set into Prometheus (Thanos
+    # block size here scales with distinct series).
     overrides:
       defaults:
-        metrics_generator:
-          processors: [local-blocks]
+        compaction:
+          block_retention: {{ .Values.retention }}
 
     storage:
       trace:
