@@ -205,7 +205,7 @@ extraAccounts: []
 provision:
   enabled: true
   # Applies the rendered plan; distroless, versioned separately from the server.
-  cliImage: ghcr.io/stalwartlabs/cli:1.0.14
+  cliImage: ghcr.io/stalwartlabs/cli:2.0.0
   # Readiness wait + DKIM publishing: needs sh, curl, jq and kubectl.
   jobImage: alpine/k8s:1.37.2
   adminUser: admin
