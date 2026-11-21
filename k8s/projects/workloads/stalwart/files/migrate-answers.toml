@@ -9,3 +9,15 @@ include = ["settings", "principals", "mail", "calendars", "contacts", "files", "
 [global.changed_defaults]
 policy = "recommended"
 overrides = {}
+
+# v1 rejects unregistered client_ids; mail clients here use passwords, not OAuth.
+[instance.oauth_registration."x:OidcProvider"]
+action = "accept"
+
+[global.new_permissions]
+action = "grant"
+
+# Traefik is the only proxy in front of the HTTP listener and appends the peer.
+[instance.http_forwarded."x:Http"]
+source = "xForwardedFor"
+hops = 1
