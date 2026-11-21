@@ -206,7 +206,7 @@ accounts:
 extraAccounts: []
 
 provision:
-  enabled: true
+  enabled: false
   # Applies the rendered plan; distroless, versioned separately from the server.
   cliImage: ghcr.io/stalwartlabs/cli:1.0.14
   # Readiness wait + DKIM publishing: needs sh, curl, jq and kubectl.
@@ -214,7 +214,7 @@ provision:
   adminUser: admin
 
 # 0 stops the server, which the final migration run requires.
-replicas: 1
+replicas: 0
 
 # One-shot v0.16 -> v1 data migration (stalwart-migrate): copies the v0.16
 # store into postgres.v1Database. The v0.16 store is opened read-only.
@@ -223,7 +223,7 @@ replicas: 1
 migrate:
   # Keeps the state volume (needed by `rollback`) until the v0.16 store is retired.
   enabled: true
-  step: prepare
+  step: final
   image: ghcr.io/stalwartlabs/stalwart-migrate:1.0.8
 
 resources:
