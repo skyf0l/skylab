@@ -2,7 +2,7 @@
 # mail.<global.domain>; MX for every served domain points at it, so private
 # domains never need their own A record or certificate (no CT-log leaks).
 #
-# v0.16 model: the local config file only holds the datastore location.
+# The local config file only holds the datastore location.
 # Domains, DKIM keys, accounts and TLS certificate objects live in the server's
 # database and are reconciled from THIS values file by the provisioning hook
 # job: a stalwart-cli plan rendered by _helpers.tpl (stalwart.plan) and applied
@@ -10,7 +10,7 @@
 # the web-admin is runtime state, not git.
 image:
   repository: stalwartlabs/stalwart
-  tag: v0.16.27
+  tag: v1.1.1
   pullPolicy: IfNotPresent
 
 # Injected by the ApplicationSet from the cluster's global.domain:
@@ -208,13 +208,13 @@ extraAccounts: []
 provision:
   enabled: false
   # Applies the rendered plan; distroless, versioned separately from the server.
-  cliImage: ghcr.io/stalwartlabs/cli:1.0.14
+  cliImage: ghcr.io/stalwartlabs/cli:2.0.0
   # Readiness wait + DKIM publishing: needs sh, curl, jq and kubectl.
   jobImage: alpine/k8s:1.37.2
   adminUser: admin
 
 # 0 stops the server, which the final migration run requires.
-replicas: 0
+replicas: 1
 
 # One-shot v0.16 -> v1 data migration (stalwart-migrate): copies the v0.16
 # store into postgres.v1Database. The v0.16 store is opened read-only.
@@ -223,7 +223,7 @@ replicas: 0
 migrate:
   # Keeps the state volume (needed by `rollback`) until the v0.16 store is retired.
   enabled: true
-  step: final
+  step: ""
   image: ghcr.io/stalwartlabs/stalwart-migrate:1.0.8
 
 resources:
