@@ -8,12 +8,12 @@ spec:
   type: DaemonSet
   podTemplateSpec:
     spec:
-      initContainers:
-        - name: artifact-operator
-          image: {{ .Values.falco.artifactOperator.image.registry }}/{{ .Values.falco.artifactOperator.image.repository }}:{{ .Values.falco.artifactOperator.image.tag }}
       containers:
         - name: falco
           {{- with .Values.falco.resources }}
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+        # falco-operator >= 0.5.0 rejects sidecar overrides under initContainers
+        - name: artifact-operator
+          image: {{ .Values.falco.artifactOperator.image.registry }}/{{ .Values.falco.artifactOperator.image.repository }}:{{ .Values.falco.artifactOperator.image.tag }}
