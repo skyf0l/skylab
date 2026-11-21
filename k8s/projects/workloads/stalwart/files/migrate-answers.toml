@@ -1,0 +1,11 @@
+# stalwart-migrate answers (format of `stalwart-migrate prepare`); the Job
+# copies this file into the state directory before every step.
+version = 1
+
+[global.categories]
+include = ["settings", "principals", "mail", "calendars", "contacts", "files", "sieve", "identities", "push_subscriptions", "spam_samples", "reports", "archive", "spam_model", "queue", "tasks", "telemetry"]
+
+# Pins the defaults whose change would alter behaviour, inherits the rest.
+[global.changed_defaults]
+policy = "recommended"
+overrides = {}

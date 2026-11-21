@@ -63,6 +63,9 @@ storage:
 postgres:
   instances: 1 # single node for now; bump once a second node joins (HA-ready)
   database: stalwart
+  # Empty database the v1 store is migrated into (stalwart-migrate needs a new,
+  # empty target; the v0.16 store above stays untouched as the fallback).
+  v1Database: stalwart_v1
   owner: stalwart # also the login user; CNPG generates its password
   # imageName: "" # optional pin; CNPG default is a recent PostgreSQL
   storage:
@@ -209,6 +212,19 @@ provision:
   # Readiness wait + DKIM publishing: needs sh, curl, jq and kubectl.
   jobImage: alpine/k8s:1.37.2
   adminUser: admin
+
+# 0 stops the server, which the final migration run requires.
+replicas: 1
+
+# One-shot v0.16 -> v1 data migration (stalwart-migrate): copies the v0.16
+# store into postgres.v1Database. The v0.16 store is opened read-only.
+#   prepare: validates answers.toml against the live v0.16 settings (no downtime)
+#   final:   needs replicas: 0 and provision.enabled: false
+migrate:
+  # Keeps the state volume (needed by `rollback`) until the v0.16 store is retired.
+  enabled: true
+  step: prepare
+  image: ghcr.io/stalwartlabs/stalwart-migrate:1.0.8
 
 resources:
   requests:

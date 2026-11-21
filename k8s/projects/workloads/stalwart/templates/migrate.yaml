@@ -1,0 +1,108 @@
+{{- if .Values.migrate.enabled }}
+{{- $db := dict "@type" "PostgreSql" "host" "stalwart-pg-rw" "port" 5432 "authUsername" .Values.postgres.owner "authSecret" (dict "@type" "EnvironmentVariable" "variableName" "DB_PASSWORD") }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: stalwart-migrate
+  labels:
+    app: stalwart-migrate
+data:
+  source.json: {{ set (deepCopy $db) "database" .Values.postgres.database | toJson | quote }}
+  target.json: {{ set (deepCopy $db) "database" .Values.postgres.v1Database | toJson | quote }}
+  answers.toml: |
+{{ .Files.Get "files/migrate-answers.toml" | indent 4 }}
+---
+# Migration state (answers, progress, report). `rollback` reads it, so it must
+# outlive the cutover until the v0.16 store is retired.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: stalwart-migrate
+  labels:
+    app: stalwart-migrate
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: {{ .Values.storage.storageClassName }}
+  resources:
+    requests:
+      storage: 1Gi
+{{- if .Values.migrate.step }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  # A new name per step and answers revision: Job specs are immutable.
+  name: stalwart-migrate-{{ .Values.migrate.step }}-{{ .Files.Get "files/migrate-answers.toml" | sha256sum | trunc 6 }}
+  labels:
+    app: stalwart-migrate
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app: stalwart-migrate
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsUser: 2000
+        runAsGroup: 2000
+        fsGroup: 2000
+        runAsNonRoot: true
+      {{- if eq .Values.migrate.step "final" }}
+      initContainers:
+        # The final run must not start while v0.16 still writes to its store.
+        - name: wait-stopped
+          image: {{ .Values.provision.jobImage | quote }}
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              n=0
+              until [ "$n" -ge 6 ]; do
+                if curl -sf -m 3 http://stalwart:8080/healthz/live >/dev/null; then n=0; else n=$((n+1)); fi
+                sleep 5
+              done
+          resources:
+            requests: { cpu: 10m, memory: 16Mi }
+            limits: { memory: 64Mi }
+      {{- end }}
+      containers:
+        - name: migrate
+          image: {{ .Values.migrate.image | quote }}
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              cp /etc/migrate/answers.toml "$STATE/answers.toml"
+              rc=0
+              stalwart-migrate prepare --non-interactive --source /etc/migrate/source.json --state "$STATE" || rc=$?
+              cat "$STATE/prepare-report.txt" 2>/dev/null || true
+              [ "$rc" -eq 0 ] || { echo "--- answers.toml as rewritten by prepare"; cat "$STATE/answers.toml"; exit "$rc"; }
+              {{- if eq .Values.migrate.step "final" }}
+              stalwart-migrate run --final --yes --source /etc/migrate/source.json --target /etc/migrate/target.json --state "$STATE"
+              stalwart-migrate status --state "$STATE"
+              {{- end }}
+          env:
+            - name: STATE
+              value: /var/lib/stalwart-migrate
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: stalwart-pg-app
+                  key: password
+          volumeMounts:
+            - name: config
+              mountPath: /etc/migrate
+              readOnly: true
+            - name: state
+              mountPath: /var/lib/stalwart-migrate
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { memory: 1Gi }
+      volumes:
+        - name: config
+          configMap:
+            name: stalwart-migrate
+        - name: state
+          persistentVolumeClaim:
+            claimName: stalwart-migrate
+{{- end }}
+{{- end }}
