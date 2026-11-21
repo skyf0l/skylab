@@ -63,3 +63,17 @@ spec:
   cluster:
     name: stalwart-pg
 {{- end }}
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: stalwart-v1
+  labels:
+    app: stalwart
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  cluster:
+    name: stalwart-pg
+  name: {{ .Values.postgres.v1Database }}
+  owner: {{ .Values.postgres.owner }}
