@@ -22,7 +22,7 @@ falco:
     image:
       registry: docker.io
       repository: falcosecurity/artifact-operator
-      tag: 0.4.1
+      tag: 0.5.0
   # Falco container. Left at the operator defaults (100m/512Mi -> 1/1Gi).
   resources: {}
 
