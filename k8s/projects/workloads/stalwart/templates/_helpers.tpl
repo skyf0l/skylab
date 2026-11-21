@@ -105,7 +105,7 @@ offline.
 {{/* The bootstrap set has no STARTTLS submission listener (587) although the
      chart exposes it. Listeners are read at startup: a new one only opens after
      a pod restart. */}}
-{{ dict "@type" "upsert" "object" "NetworkListener" "matchOn" (list "name") "value" (dict "listener-submission" (dict "name" "submission" "bind" (dict "[::]:587" true) "protocol" "smtp" "useTls" true "tlsImplicit" false)) | toJson }}
+{{ dict "@type" "upsert" "object" "NetworkListener" "matchOn" (list "name") "value" (dict "listener-submission" (dict "name" "submission" "bind" (dict "[::]:587" true) "protocol" "smtp" "useTls" true "implicitTls" false)) | toJson }}
 {{/* Special-use folders for NEW mailboxes (existing accounts keep theirs). */}}
 {{- if .Values.defaultFolders -}}
 {{- $folders := dict -}}
@@ -141,13 +141,13 @@ offline.
 {{- $slug := replace "." "-" .domain -}}
 {{- $aliases := dict -}}
 {{- range $i, $alias := .aliases -}}
-{{- $_ := set $aliases (toString $i) (dict "enabled" true "name" $alias "domainId" (printf "#dom-%s" $slug)) -}}
+{{- $_ := set $aliases (toString $i) (dict "enable" true "name" $alias "domainId" (printf "#dom-%s" $slug)) -}}
 {{- end -}}
 {{- $_ := set $accs (printf "acc-%s-%s" (replace "." "-" .name) $slug) (dict "@type" "User" "name" .name "domainId" (printf "#dom-%s" $slug) "roles" (dict "@type" "User") "permissions" (dict "@type" "Inherit") "encryptionAtRest" (dict "@type" "Disabled") "aliases" $aliases) -}}
 {{- end }}
 {{ dict "@type" "upsert" "object" "Account" "matchOn" (list "name" "domainId") "value" $accs | toJson }}
 {{/* Ban counters and rate limits must follow the client, not Traefik's pod IP. */}}
-{{ dict "@type" "update" "object" "Http" "value" (dict "useXForwarded" true) | toJson }}
+{{ dict "@type" "update" "object" "Http" "value" (dict "clientIpSource" "xForwardedFor" "forwardedHops" 1) | toJson }}
 {{- if .Values.allowedIps -}}
 {{- $allowed := dict -}}
 {{- range $i, $net := .Values.allowedIps -}}
