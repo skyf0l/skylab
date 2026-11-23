@@ -3,7 +3,7 @@
 
 image:
   repository: ghcr.io/skyf0l/garmin_mcp
-  tag: "1.0.2"
+  tag: "1.0.3"
 
 transport:
   mode: streamable-http
@@ -37,6 +37,4 @@ probes:
   # The chart defaults readiness to /readyz (Ready only after Garmin login).
   # Scale-to-zero wants Ready on the first /healthz 200 so the interceptor
   # forwards at once; the first tool call then waits on the login instead.
-  # Also REQUIRED while image.tag is 1.0.2: that image has no /readyz (404), so
-  # the chart default would leave the pod NotReady forever.
   readinessPath: /healthz
