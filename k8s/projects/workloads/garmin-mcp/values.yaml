@@ -34,3 +34,7 @@ ingress:
 probes:
   startupPeriodSeconds: 1
   startupFailureThreshold: 30
+  # The chart defaults readiness to /readyz (Ready only after Garmin login).
+  # Scale-to-zero wants Ready on the first /healthz 200 so the interceptor
+  # forwards at once; the first tool call then waits on the login instead.
+  readinessPath: /healthz

@@ -38,7 +38,7 @@ spec:
       #     ExternalSecret that front the MCP. Auth lives here, not in the fork.
       sources:
         - repoURL: https://github.com/skyf0l/garmin_mcp.git
-          targetRevision: feat/helm-chart
+          targetRevision: main
           path: chart/garmin-mcp
           helm:
             releaseName: garmin-mcp
